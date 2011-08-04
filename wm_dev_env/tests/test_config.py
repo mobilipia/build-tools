@@ -1,0 +1,2 @@
+class TestConfig():
+    pass
