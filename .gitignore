@@ -1,1 +1,6 @@
-\.pyc$
+*.pyc
+.coverage
+WebMynd_Development_Environment.egg-info/
+build/
+dist/
+
