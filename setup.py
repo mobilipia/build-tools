@@ -22,10 +22,10 @@ setup(name='WebMynd Development Environment',
     ],
     entry_points={
         'console_scripts': [
-            'wm-refresh = wm_dev_env.main:refresh',
-            'wm-init = wm_dev_env.main:init',
-            'wm-dev-build = wm_dev_env.main:development_build',
-            'wm-prod-build = wm_dev_env.main:production_build',
+            'wm-refresh = webmynd.main:refresh',
+            'wm-init = webmynd.main:init',
+            'wm-dev-build = webmynd.main:development_build',
+            'wm-prod-build = webmynd.main:production_build',
         ]
     }
 )
