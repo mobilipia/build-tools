@@ -31,7 +31,7 @@ class TestLatest(TestRemote):
 		resp = self.remote.latest()
 		eq_(resp, -1)
 		self.remote._authenticate.assert_called_once_with( )
-		self.remote._get.assert_called_once_with('http://test.webmynd.com/api/app/DEAD-BEEF/latest/')
+		self.remote._get.assert_called_once_with('http://test.webmynd.com/api/app/TEST-UUID/latest/')
 		
 class TestFetchUnpackaged(TestRemote):
 	@patch('zipfile.ZipFile')
@@ -72,7 +72,7 @@ class TestBuild(TestRemote):
 		resp = self.remote.build()
 		eq_(resp, -1)
 		self.remote._post.assert_called_once_with(
-			self.test_config.get('main.server')+'app/DEAD-BEEF/build/development',
+			self.test_config.get('main.server')+'app/TEST-UUID/build/development',
 			files=None, data={}
 		)
 		eq_(self.remote._get.call_args_list,
@@ -91,7 +91,7 @@ class TestBuild(TestRemote):
 			resp = self.remote.build()
 		eq_(resp, -1)
 		self.remote._post.assert_called_once_with(
-			self.test_config.get('main.server')+'app/DEAD-BEEF/build/development',
+			self.test_config.get('main.server')+'app/TEST-UUID/build/development',
 			files=None, data={'config': json.dumps(app_config)}
 		)
 		self.remote._get.assert_called_once_with(self.test_config.get('main.server')+'build/-1/detail/')

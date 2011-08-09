@@ -43,7 +43,7 @@ class Generate(object):
 			for f_name in [path.abspath(path.join(root, f)) for f in files]:
 				if f_name.split('.')[-1] in ('html', 'htm', 'js', 'css'):
 					log.debug('replacing "%s" with "%s" in %s' % (find, uuid, f_name))
-					with codecs.open(f_name, encoding='utf8') as f:
+					with codecs.open(f_name, 'r', encoding='utf8') as f:
 						in_file_contents = f.read()
 						in_file_contents = in_file_contents.replace(find, uuid)
 					with codecs.open(f_name, 'w', encoding='utf8') as out_file:
@@ -70,6 +70,7 @@ class Generate(object):
 		for bg_filename in background_files:
 			if bg_filename.startswith('http://') or bg_filename.startswith('https://'):
 				# ignore remote script - pointed at elsewhere
+				___a = 1 # trigger coverage
 				continue
 			bg_filename = path.join(user_dir, bg_filename.lstrip('/'))
 			if not path.isfile(bg_filename):

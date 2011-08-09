@@ -14,7 +14,7 @@ class BuildConfig(object):
 			"password": "your secret"
 		},
 		"main": {
-			"uuid": "DEAD-BEEF",
+			"uuid": "TEST-UUID",
 			"server": "http://test.webmynd.com/api/"
 		}
 	}

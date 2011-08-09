@@ -1,3 +1,4 @@
+import codecs
 from datetime import datetime
 import hashlib
 import logging
@@ -10,7 +11,7 @@ from remote import Remote
 log = logging.getLogger(__name__)
 
 class Manager(object):
-	DEFAULT_TMPL_DIR = '.template'
+	__DEFAULT_TMPL_DIR = '.template'
 	
 	def __init__(self, config, tmpl_dir=None):
 		'''Operations on the locally stored template code
@@ -20,14 +21,15 @@ class Manager(object):
 		:param tmpl_dir: directory name in which the templates will be sat
 		'''
 		if tmpl_dir is None:
-			self.tmpl_dir = self.DEFAULT_TMPL_DIR
+			self._tmpl_dir = self.__DEFAULT_TMPL_DIR
 		else:
-			self.tmpl_dir = tmpl_dir
-		self.config = config
+			self._tmpl_dir = tmpl_dir
+		self._config = config
 		
 	def _hash_file(self, config_filename):
 		hsh = hashlib.md5()
-		with open(config_filename) as config_file:
+		
+		with codecs.open(config_filename) as config_file:
 			hsh.update(config_file.read())
 		
 		return hsh.hexdigest()
@@ -39,8 +41,8 @@ class Manager(object):
 		:return: the relevant templates directory if it exists, or ``None``
 		'''
 		config_hash = self._hash_file(config_filename)
-		if path.exists(path.join(self.tmpl_dir, config_hash+'.hash')):
-			return self.tmpl_dir
+		if path.exists(path.join(self._tmpl_dir, config_hash+'.hash')):
+			return self._tmpl_dir
 		else:
 			return None
 		
@@ -49,7 +51,7 @@ class Manager(object):
 		
 		:param build_id: the primary key of the build
 		'''
-		remote = Remote(self.config)
+		remote = Remote(self._config)
 
 		config_filename = remote.get_app_config(build_id)
 		template_dir = self.templates_for(config_filename)
@@ -61,14 +63,14 @@ class Manager(object):
 		log.info('current configuration hash is %s' % config_hash)
 		
 		# remove old templates
-		log.debug('removing %s' % self.tmpl_dir)
-		shutil.rmtree(self.tmpl_dir, ignore_errors=True)
+		log.debug('removing %s' % self._tmpl_dir)
+		shutil.rmtree(self._tmpl_dir, ignore_errors=True)
 		
 		# grab templated platform
 		log.info('fetching new WebMynd templates')
-		remote.fetch_unpackaged(build_id, to_dir=self.tmpl_dir)
+		remote.fetch_unpackaged(build_id, to_dir=self._tmpl_dir)
 		
-		with open(path.join(self.tmpl_dir, config_hash+'.hash'), 'w') as marker:
+		with open(path.join(self._tmpl_dir, config_hash+'.hash'), 'w') as marker:
 			marker.write(str(datetime.utcnow()))
 		
-		return self.tmpl_dir
+		return self._tmpl_dir
