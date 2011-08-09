@@ -3,4 +3,6 @@
 WebMynd_Development_Environment.egg-info/
 build/
 dist/
+cover
+nosetests.xml
 
