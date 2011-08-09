@@ -72,4 +72,130 @@ class Test_Sync(TestDirectorySync):
 			self.dir_sync._sync, 'from', ['to0', 'to1'], True)
 		eq_(shutil.rmtree.call_count, 2)
 		eq_(os.mkdir.call_count, 2)
-	
+
+class Test_ProcessComparison(object):
+	def setup(self):
+		self.test_config = BuildConfig._test_instance()
+		self.dir_sync = DirectorySync(self.test_config)
+		self.comp = mock.Mock()
+		self.comp.left_only = []
+		self.comp.right_only = []
+		self.comp.common_funny = []
+		self.comp.funny_files = []
+		self.comp.diff_files = []
+		self.comp.subdirs = {}
+		
+	def test_no_problems(self):
+		errors = self.dir_sync._process_comparison(
+			'dummy frm', 'dummy root', 'dummy sub', self.comp
+		)
+		eq_(len(errors), 0)
+		
+	@mock.patch('webmynd.dir_sync.filecmp')
+	@mock.patch('webmynd.dir_sync.os')
+	@mock.patch('webmynd.dir_sync.path')
+	def test_too_deep_dir(self, path, os, filecmp):
+		path.isdir.return_value = True
+		self.comp.left_only = ['dummy thing']
+		filecmp.dircmp.return_value = self.comp
+		
+		assert_raises_regexp(Exception, 'recursion limit',
+			self.dir_sync._process_comparison, 'dummy frm', 'dummy root', 'dummy sub', self.comp
+		)
+		
+		ok_(os.mkdir.call_count > 500)
+		ok_(path.isdir.call_count > 500)
+		
+	@mock.patch('webmynd.dir_sync.os')
+	@mock.patch('webmynd.dir_sync.path')
+	def test_link_file(self, path, os):
+		path.isdir.return_value = False
+		path.isfile.return_value = True
+		self.comp.left_only = ['dummy thing']
+		joins = ['first join', 'second join']
+		def joins_eff(*args, **kw):
+			return joins.pop(0)
+		path.join.side_effect = joins_eff
+		
+		errors = self.dir_sync._process_comparison('dummy frm', 'dummy root', 'dummy sub', self.comp)
+		
+		eq_(len(errors), 0)
+		os.link.assert_called_once_with('first join', 'second join')
+		
+	@mock.patch('webmynd.dir_sync.path')
+	def test_not_a_dir_or_file(self, path):
+		path.isdir.return_value = False
+		path.isfile.return_value = False
+		self.comp.left_only = ['dummy thing']
+		
+		errors = self.dir_sync._process_comparison('dummy frm', 'dummy root', 'dummy sub', self.comp)
+		
+		eq_(len(errors), 1)
+		
+	@mock.patch('webmynd.dir_sync.path')
+	def test_right_only(self, path):
+		self.comp.right_only = ['1', '2']
+		
+		errors = self.dir_sync._process_comparison('dummy frm', 'dummy root', 'dummy sub', self.comp)
+		
+		eq_(len(errors), 1)
+		ok_(errors[0].index('only exist in dummy root') > -1)
+		ok_(errors[0].index('1\n\t2') > -1)
+		
+	@mock.patch('webmynd.dir_sync.path')
+	def test_funny(self, path):
+		self.comp.common_funny = ['1']
+		self.comp.funny_files = ['2']
+		
+		errors = self.dir_sync._process_comparison('dummy frm', 'dummy root', 'dummy sub', self.comp)
+		
+		eq_(len(errors), 1)
+		ok_(errors[0].index('not compare these files') > -1)
+		ok_(errors[0].index('1\n\t2') > -1)
+		
+	@mock.patch('webmynd.dir_sync.path')
+	def test_diff(self, path):
+		self.comp.diff_files = ['1', '2']
+		
+		errors = self.dir_sync._process_comparison('dummy frm', 'dummy root', 'dummy sub', self.comp)
+		
+		eq_(len(errors), 1)
+		ok_(errors[0].index('differ in dummy root and dummy frm') > -1)
+		ok_(errors[0].index('1\n\t2') > -1)
+		
+	@mock.patch('webmynd.dir_sync.path')
+	def test_subdir(self, path):
+		sub_comp = mock.Mock()
+		sub_comp.subdirs.iteritems.return_value = ()
+		sub_comp.left_only = []
+		sub_comp.right_only = []
+		sub_comp.common_funny = []
+		sub_comp.funny_files = []
+		sub_comp.diff_files = []
+
+		del self.comp.subdirs
+		self.comp.subdirs.iteritems.return_value = (('sub directory', sub_comp),)
+		
+		errors = self.dir_sync._process_comparison('dummy frm', 'dummy root', 'dummy sub', self.comp)
+		
+		eq_(len(errors), 0)
+		path.join.call_args_list
+		
+class Test_Sync2(object):
+	def setup(self):
+		self.test_config = BuildConfig._test_instance()
+		self.dir_sync = DirectorySync(self.test_config)
+
+	@mock.patch('webmynd.dir_sync.filecmp')
+	@mock.patch('webmynd.dir_sync.path')
+	def test_normal(self, path, filecmp):
+		path.isdir.return_value = True
+		self.dir_sync._process_comparison = mock.Mock()
+		self.dir_sync._process_comparison.return_value = []
+		
+		self.dir_sync._sync('dummy frm', ['dummy to 1', 'dummy to 2'], False)
+		
+		eq_(self.dir_sync._process_comparison.call_args_list, [
+			(('dummy frm', 'dummy to 1', '', filecmp.dircmp.return_value), {}),
+			(('dummy frm', 'dummy to 2', '', filecmp.dircmp.return_value), {}),
+		])

@@ -1,6 +1,8 @@
 import cookielib
 import json
+from os import path
 
+import mock
 from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 
@@ -35,19 +37,32 @@ class TestLatest(TestRemote):
 		self.remote._get.assert_called_once_with('http://test.webmynd.com/api/app/TEST-UUID/latest/')
 		
 class TestFetchUnpackaged(TestRemote):
-	@patch('zipfile.ZipFile')
-	def test_fetch_unpackaged(self, zipf):
+	@patch('webmynd.remote.zipfile')
+	@patch('webmynd.remote.path')
+	@patch('webmynd.remote.os')
+	def test_fetch_unpackaged(self, os, path, zipf):
+		output_dir = 'output dir'
+		path.abspath.side_effect = lambda x: '/absolute/path/'+x
+		path.isdir.return_value = False
 		self.remote._authenticate = Mock()
 		get_resp = Mock()
-		get_resp.content = json.dumps({'unpackaged':{'chrome': 'chrome url', 'firefox': 'firefox url'}})
+		get_resp.content = json.dumps({'unpackaged':{'chrome': '/path/chrome url', 'firefox': '/path/firefox url'}})
 		self.remote._get = Mock(return_value=get_resp)
-		resp = self.remote.fetch_unpackaged(-1, 'output dir')
+		mock_open = mock.MagicMock()
+		manager = mock_open.return_value.__enter__.return_value
+		
+		with mock.patch('__builtin__.open', new=mock_open):
+			resp = self.remote.fetch_unpackaged(-1, output_dir)
+		
 		self.remote._authenticate.assert_called_once_with()
-		ok_(zipf.call_args_list[0][0][0].endswith('/output dir/chrome url'))
-		ok_(zipf.call_args_list[1][0][0].endswith('/output dir/firefox url'))
-		eq_(zipf.return_value.extractall.call_count, 2)
-		ok_(resp[0].endswith('/output dir/chrome'))
-		ok_(resp[1].endswith('/output dir/firefox'))
+		os.mkdir.assert_called_once_with(output_dir)
+		os.chdir.call_args_list[0][0][0] == output_dir
+		eq_(manager.write.call_args_list, [((get_resp.content,), {})] * 2)
+		ok_(zipf.ZipFile.call_args_list[0][0][0].endswith('chrome url'))
+		ok_(zipf.ZipFile.call_args_list[1][0][0].endswith('firefox url'))
+		eq_(zipf.ZipFile.return_value.extractall.call_count, 2)
+		ok_(resp[0].endswith('chrome'))
+		ok_(resp[1].endswith('firefox'))
 
 class TestBuild(TestRemote):
 	def setup(self):

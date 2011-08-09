@@ -32,13 +32,13 @@ class TestConfig(object):
 	def test_no_file(self, mock_path):
 		mock_path.isfile.return_value = False
 		self.config.parse('dummy filename')
-	
+		
 	@raises(Exception)
 	@mock.patch('webmynd.config.path')
-	def test_no_file(self, mock_path):
+	def test_no_default_file(self, mock_path):
 		mock_path.isfile.return_value = False
 		self.config.parse(webmynd.defaults.CONFIG_FILE)
-		
+	
 	def test_get(self):
 		eq_(self.config.get('main.uuid'), config.BuildConfig.DUMMY_CONFIG['main']['uuid'])
 	def test_get_default(self):

@@ -102,10 +102,6 @@ def development_build():
 	generator = Generate(remote.app_config_file)
 	generator.all('development', defaults.USER_DIR)
 
-def push_code():
-	'Push the customer code up to the remote server'
-	pass
-
 def production_build():
 	'Trigger a new build'
 	# TODO commonality between this and development_build

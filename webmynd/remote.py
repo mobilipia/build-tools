@@ -40,11 +40,10 @@ class Remote(object):
 			raise Exception("We don't have a CSRF token")
 		
 	def __get_or_post(self, *args, **kw):
-		if '__method' in kw:
-			method = kw['__method']
-			del kw['__method']
-		else:
-			method = 'GET'
+		'''Expects ``__method`` and ``__error_message`` entries in :param:`**kw`
+		'''
+		method = kw['__method']
+		del kw['__method']
 		if '__error_message' in kw:
 			error_message = kw['__error_message']
 			del kw['__error_message']
@@ -113,7 +112,6 @@ class Remote(object):
 		
 		filenames = []
 		orig_dir = os.getcwd()
-		to_dir = path.abspath(to_dir)
 		if not path.isdir(to_dir):
 			log.warning('creating output directory "%s"' % to_dir)
 			os.mkdir(to_dir)
@@ -123,19 +121,18 @@ class Remote(object):
 			available_platforms = [plat for plat, url in unpackaged.iteritems() if url]
 			for platform in available_platforms:
 				filename = urlsplit(unpackaged[platform]).path.split('/')[-1]
-				full_filename = path.abspath(filename)
 				resp = self._get(unpackaged[platform])
-				with open(full_filename, 'w') as out_file:
-					log.debug('writing %s to %s' % (unpackaged[platform], full_filename))
+				with open(filename, 'w') as out_file:
+					log.debug('writing %s to %s' % (unpackaged[platform], path.abspath(filename)))
 					out_file.write(resp.content)
 				# unzip source trees to directories named after platforms
-				zipf = zipfile.ZipFile(full_filename)
+				zipf = zipfile.ZipFile(filename)
 				shutil.rmtree(platform, ignore_errors=True)
 				log.debug('removed "%s" directory' % platform)
 				zipf.extractall()
 				log.debug('extracted unpackaged build for %s' % platform)
-				os.remove(full_filename)
-				log.debug('removed downloaded file "%s"' % full_filename)
+				os.remove(filename)
+				log.debug('removed downloaded file "%s"' % filename)
 				filenames.append(path.abspath(platform))
 		finally:
 			os.chdir(orig_dir)
