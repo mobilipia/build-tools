@@ -14,40 +14,32 @@ Python
 ~~~~~~
 Install a version of `Python 2.x <http://www.python.org/getit/releases/>`_ , at least version 2.6.
 
-You can check if you already have Python installed by running in a terminal:
+You can check if you already have Python installed by running in a terminal::
 
-{{{
-$ python -V
-Python 2.7.2
-}}}
+  $ python -V
+  Python 2.7.2
 
-Please update your software if you have an unsupported version of Python, or you see something like:
+Please update your software if you have an unsupported version of Python, or you see something like::
 
-{{{
-$ python -V
--bash: python: command not found
-}}}
+  $ python -V
+  -bash: python: command not found
 
 Setuptools
 ~~~~~~~~~~
 `Setuptools <http://pypi.python.org/pypi/setuptools#installation-instructions>`_ is a package manager for Python.
 
-You may already have it installed: check by opening a terminal and running
+You may already have it installed: check by opening a terminal and running::
 
-{{{
-easy_install
-}}}
+  easy_install
 
 Virtualenv
 ~~~~~~~~~~
 We'll use `virtualenv <http://pypi.python.org/pypi/virtualenv>`_ to provide an easy way to compartmentalise different Python projects.
 
-After installing virtualenv, create a new virtual environment by running in a terminal:
+After installing virtualenv, create a new virtual environment by running in a terminal::
 
-{{{
-virtualenv --no-site-packages webmynd-environment   # creates the environment
-source webmynd-environment/bin/activate             # activates the environment
-}}}
+  virtualenv --no-site-packages webmynd-environment   # creates the environment
+  source webmynd-environment/bin/activate             # activates the environment
 
 From now on, you will need to have activated this environment whenever working with the WebMynd tools.
 
@@ -55,28 +47,26 @@ Installation
 ------------
 Download the WebMynd tools, by either getting the latest source or one of the pre-packaged downloads.
 
-In a terminal, change directory into the newly extracted WebMynd Tools, and install them into your virtual environment:
+In a terminal, change directory into the newly extracted WebMynd Tools, and install them into your virtual environment::
 
-{{{
-cd webmynd-tools
-python setup.py install
+  cd webmynd-tools
+  python setup.py install
 
 Configuration
 ~~~~~~~~~~~~~
-The tools require a small amount of configuration. Copy the following into a new file called webmynd_configuration.json:
+The tools require a small amount of configuration. Copy the following into a new file called webmynd_configuration.json::
 
-{{{
-{
-  "authentication": {
-    "username": "your user name",
-    "password": "your secret"
-  },
-  "main": {
-    "uuid": "UUID for your app",
-    "server": "http://generate.webmynd.com/api/"
+  {
+    "authentication": {
+      "username": "your user name",
+      "password": "your secret"
+    },
+    "main": {
+      "uuid": "UUID for your app",
+      "server": "http://generate.webmynd.com/api/"
+    }
   }
-}
-}}}
+
 You should complete the authentication values with your username and password.
 You can find the UUID for your app by going to `your apps <http://generate.webmynd.com/>`_ and clicking on the relevant one.
 
@@ -84,11 +74,10 @@ Creating a development environment
 ----------------------------------
 The first command to run is "wm-init".
 
-This command downloads the source and configuration for your app, and sets up the initial directory structure for you to develop in.
+This command downloads the source and configuration for your app, and sets up the initial directory structure for you to develop in::
 
-{{{
-wm-init -c webmynd_configuration.json     # name the configuration file you created before 
-}}}
+  wm-init -c webmynd_configuration.json     # name the configuration file you created before 
+
 
 This command will create three things:
 
@@ -98,11 +87,9 @@ This command will create three things:
 
 Running your first build
 ------------------------
-After running "wm-init", which should only be done once per development environment, we can run "wm-dev-build" as many times as we need to create local runnable apps for your app.
+After running "wm-init", which should only be done once per development environment, we can run "wm-dev-build" as many times as we need to create local runnable apps for your app::
 
-{{{
-wm-dev-build -c webmynd_configuration.json
-}}}
+  wm-dev-build -c webmynd_configuration.json
 
 You will now have a "development" directory, under which there are a number of directories - one for each platform you have enabled for your app.
 
