@@ -1,10 +1,11 @@
 import cookielib
 import json
 
-from webmynd import BuildConfig, Remote
-
 from mock import MagicMock, Mock, patch
-from nose.tools import raises, assert_raises_regexp, eq_, assert_not_equals, ok_, assert_false
+from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
+
+from webmynd import BuildConfig, Remote
+from lib import assert_raises_regexp
 
 class TestRemote(object):
 	def setup(self):

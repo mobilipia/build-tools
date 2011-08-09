@@ -1,5 +1,5 @@
 import mock
-from nose.tools import raises, assert_raises_regexp, eq_, assert_not_equals, ok_
+from nose.tools import raises, eq_, assert_not_equals, ok_
 import os
 from os import path
 import shutil
@@ -7,6 +7,7 @@ import tarfile
 import tempfile
 
 import webmynd
+from lib import assert_raises_regexp
 from webmynd import DirectorySync, BuildConfig, defaults
 
 class TestDirectorySync(object):

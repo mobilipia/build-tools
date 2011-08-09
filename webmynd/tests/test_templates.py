@@ -1,5 +1,5 @@
 import mock
-from nose.tools import raises, assert_raises_regexp, eq_, assert_not_equals, ok_, assert_false
+from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 from os import path
 
 from webmynd.config import BuildConfig
