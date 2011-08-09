@@ -1,6 +1,6 @@
 argparse==1.2.1
 coverage==3.5
 mock==0.7.2
-nose==1.0.0
+nose==1.1.2
 requests==0.4.1
 wsgiref==0.1.2
