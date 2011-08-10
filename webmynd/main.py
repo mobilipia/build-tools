@@ -5,7 +5,7 @@ import shutil
 import argparse
 
 import webmynd
-from webmynd.config import BuildConfig
+from webmynd.config import Config
 from webmynd import defaults
 from webmynd.dir_sync import DirectorySync
 from webmynd.generate import Generate
@@ -47,7 +47,7 @@ def refresh():
 	args = parser.parse_args()
 	handle_general_options(args)
 
-	config = BuildConfig()
+	config = Config()
 	config.parse(args.config)
 	sync = DirectorySync(config)
 	sync.user_to_target()
@@ -60,7 +60,7 @@ def init():
 	args = parser.parse_args()
 	handle_general_options(args)
 	
-	config = BuildConfig()
+	config = Config()
 	config.parse(args.config)
 	
 	remote = Remote(config)
@@ -82,7 +82,7 @@ def development_build():
 	args = parser.parse_args()
 	handle_general_options(args)
 	
-	config = BuildConfig()
+	config = Config()
 	config.parse(args.config)
 	remote = Remote(config)
 	manager = Manager(config)
@@ -113,7 +113,7 @@ def production_build():
 	args = parser.parse_args()
 	handle_general_options(args)
 
-	config = BuildConfig()
+	config = Config()
 	config.parse(args.config)
 	remote = Remote(config)
 	

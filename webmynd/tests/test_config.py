@@ -12,21 +12,20 @@ from webmynd import config
 
 class TestConfig(object):
 	def setup(self):
-		self.config = config.BuildConfig._test_instance()
+		self.config = config.Config._test_instance()
 		
 	@mock.patch('webmynd.config.path')
 	def test_parse(self, mock_path):
 		mock_open = mock.MagicMock()
 		manager = mock_open.return_value.__enter__.return_value
-		manager.read.return_value = json.dumps(config.BuildConfig.DUMMY_CONFIG)
+		manager.read.return_value = json.dumps(config.Config.DUMMY_CONFIG)
 		mock_path.isfile.return_value = True
 		
 		with mock.patch('__builtin__.open', new=mock_open):
 			self.config.parse('dummy filename')
 		mock_open.assert_called_once_with('dummy filename')
-		mock_path.assert_called_once()
 		eq_(self.config.get('authentication.password'),
-			config.BuildConfig.DUMMY_CONFIG['authentication']['password'])
+			config.Config.DUMMY_CONFIG['authentication']['password'])
 		
 	@mock.patch('webmynd.config.path')
 	def test_no_file(self, mock_path):
@@ -39,9 +38,36 @@ class TestConfig(object):
 		assert_raises_regexp(Exception, 'default configuration file', self.config.parse, webmynd.defaults.CONFIG_FILE)
 	
 	def test_get(self):
-		eq_(self.config.get('main.uuid'), config.BuildConfig.DUMMY_CONFIG['main']['uuid'])
+		eq_(self.config.get('main.uuid'), config.Config.DUMMY_CONFIG['main']['uuid'])
 	def test_get_default(self):
 		eq_(self.config.get('main.non_existent', 'default value'), 'default value')
 	@raises(KeyError)
 	def test_get_no_default(self):
 		self.config.get('main.non_existent')
+		
+	@mock.patch('webmynd.config.path')
+	def test_verify(self, path):
+		mock_open = mock.MagicMock()
+		manager = mock_open.return_value.__enter__.return_value
+		manager.read.return_value = '{}'
+		path.isfile.return_value = True
+		
+		with mock.patch('__builtin__.open', new=mock_open):
+			self.config.verify('dummy filename')
+		mock_open.assert_called_once_with('dummy filename')
+		path.isfile.assert_called_once_with('dummy filename')		
+	@mock.patch('webmynd.config.path')
+	def test_verify_no_file(self, path):
+		path.isfile.return_value = False
+		assert_raises_regexp(IOError, 'not a valid file', self.config.verify, 'dummy filename')
+		
+	@raises(ValueError)
+	@mock.patch('webmynd.config.path')
+	def test_verify_bad_json(self, path):
+		mock_open = mock.MagicMock()
+		manager = mock_open.return_value.__enter__.return_value
+		manager.read.return_value = '{[}'
+		path.isfile.return_value = True
+		
+		with mock.patch('__builtin__.open', new=mock_open):
+			self.config.verify('dummy filename')

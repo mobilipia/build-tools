@@ -2,12 +2,12 @@ import mock
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 from os import path
 
-from webmynd.config import BuildConfig
+from webmynd.config import Config
 from webmynd.templates import Manager
 
 class Test_HashFile(object):
 	def setup(self):
-		self.manager = Manager(BuildConfig._test_instance())
+		self.manager = Manager(Config._test_instance())
 		
 	def test_normal(self):
 		mock_open = mock.MagicMock()
@@ -22,7 +22,7 @@ class Test_HashFile(object):
 
 class TestTemplatesFor(object):
 	def setup(self):
-		self.manager = Manager(BuildConfig._test_instance(), '.my-templates')
+		self.manager = Manager(Config._test_instance(), '.my-templates')
 		
 	@mock.patch('webmynd.templates.path')
 	def test_exists(self, path):
@@ -51,7 +51,7 @@ class TestTemplatesFor(object):
 
 class TestGetTemplates(object):
 	def setup(self):
-		self.manager = Manager(BuildConfig._test_instance(), 'templates')
+		self.manager = Manager(Config._test_instance(), 'templates')
 		
 	@mock.patch('webmynd.templates.shutil')
 	@mock.patch('webmynd.templates.Remote')

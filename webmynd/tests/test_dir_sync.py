@@ -10,7 +10,7 @@ import webmynd
 from lib import assert_raises_regexp
 from webmynd import defaults
 from webmynd.dir_sync import DirectorySync
-from webmynd.config import BuildConfig
+from webmynd.config import Config
 
 class TestDirectorySync(object):
 	def setup(self):
@@ -21,7 +21,7 @@ class TestDirectorySync(object):
 			name=path.join(path.dirname(__file__), self.TEST_ARCHIVE),
 			mode='r')
 		tar.extractall()
-		self.test_config = BuildConfig._test_instance()
+		self.test_config = Config._test_instance()
 		self.dir_sync = DirectorySync(self.test_config)
 
 	def teardown(self):
@@ -77,7 +77,7 @@ class TestUserToTarget(TestDirectorySync):
 
 class Test_ProcessComparison(object):
 	def setup(self):
-		self.test_config = BuildConfig._test_instance()
+		self.test_config = Config._test_instance()
 		self.dir_sync = DirectorySync(self.test_config)
 		self.comp = mock.Mock()
 		self.comp.left_only = []
@@ -188,7 +188,7 @@ class TestUserToTarget2(object):
 	@mock.patch('webmynd.dir_sync.path')
 	def test_normal(self, path, filecmp):
 		path.isdir.return_value = True
-		self.test_config = BuildConfig._test_instance()
+		self.test_config = Config._test_instance()
 		self.dir_sync = DirectorySync(self.test_config)
 		self.dir_sync._process_comparison = mock.Mock()
 		self.dir_sync._process_comparison.return_value = []

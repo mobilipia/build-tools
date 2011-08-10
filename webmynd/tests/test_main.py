@@ -44,9 +44,9 @@ def test_gen_options():
 	eq_(parser.add_argument.call_args_list, general_argparse)
 
 @mock.patch('webmynd.main.DirectorySync')
-@mock.patch('webmynd.main.BuildConfig')
+@mock.patch('webmynd.main.Config')
 @mock.patch('webmynd.main.argparse')
-def test_refresh(argparse, BuildConfig, DirectorySync):
+def test_refresh(argparse, Config, DirectorySync):
 	parser = argparse.ArgumentParser.return_value
 	main.setup_logging = mock.Mock()
 	
@@ -59,17 +59,17 @@ def test_refresh(argparse, BuildConfig, DirectorySync):
 	parser.parse_args.assert_called_once_with()
 	args = parser.parse_args.return_value
 	main.setup_logging.assert_called_once_with(args)
-	BuildConfig.assert_called_once_with()
-	BuildConfig.return_value.parse.called_once_with(args.config)
-	config = BuildConfig.return_value
+	Config.assert_called_once_with()
+	Config.return_value.parse.called_once_with(args.config)
+	config = Config.return_value
 	DirectorySync.assert_called_once_with(config)
 	DirectorySync.return_value.user_to_target.assert_called_once_with()
 
 @mock.patch('webmynd.main.Remote')
 @mock.patch('webmynd.main.Manager')
-@mock.patch('webmynd.main.BuildConfig')
+@mock.patch('webmynd.main.Config')
 @mock.patch('webmynd.main.argparse')
-def test_init(argparse, BuildConfig, Manager, Remote):
+def test_init(argparse, Config, Manager, Remote):
 	parser = argparse.ArgumentParser.return_value
 	main.setup_logging = mock.Mock()
 	Remote.return_value.build.return_value = -1
@@ -84,17 +84,17 @@ def test_init(argparse, BuildConfig, Manager, Remote):
 	args = parser.parse_args.return_value
 	main.setup_logging.assert_called_once_with(args)
 	
-	BuildConfig.assert_called_once_with()
-	BuildConfig.return_value.parse.called_once_with(args.config)
-	Remote.assert_called_once_with(BuildConfig.return_value)
-	Manager.assert_called_once_with(BuildConfig.return_value)
+	Config.assert_called_once_with()
+	Config.return_value.parse.called_once_with(args.config)
+	Remote.assert_called_once_with(Config.return_value)
+	Manager.assert_called_once_with(Config.return_value)
 	
 	Remote.return_value.get_latest_user_code.assert_called_once_with(defaults.USER_DIR)
 	Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
 	Manager.return_value.get_templates.assert_called_once_with(-1)
 
 class TestBuild(object):
-	def _check_common_setup(self, parser, BuildConfig, Remote):
+	def _check_common_setup(self, parser, Config, Remote):
 		eq_(parser.add_argument.call_args_list, [
 			(('-c', '--config'), {'help': 'your WebMynd configuration file', 'default': defaults.CONFIG_FILE}),
 		] + general_argparse)
@@ -103,29 +103,29 @@ class TestBuild(object):
 		args.quiet = False
 		main.setup_logging(args)
 	
-		BuildConfig.assert_called_once_with()
-		BuildConfig.return_value.parse.called_once_with(args.config)
-		Remote.assert_called_once_with(BuildConfig.return_value)
+		Config.assert_called_once_with()
+		Config.return_value.parse.called_once_with(args.config)
+		Remote.assert_called_once_with(Config.return_value)
 		
-	def _check_dev_setup(self, parser, BuildConfig, Manager, Remote, DirectorySync, Generate):
-		Manager.assert_called_once_with(BuildConfig.return_value)
-		DirectorySync.assert_called_once_with(BuildConfig.return_value)
+	def _check_dev_setup(self, parser, Config, Manager, Remote, DirectorySync, Generate):
+		Manager.assert_called_once_with(Config.return_value)
+		DirectorySync.assert_called_once_with(Config.return_value)
 		Generate.assert_called_once_with(Remote.return_value.app_config_file)
-		self._check_common_setup(parser, BuildConfig, Remote)
+		self._check_common_setup(parser, Config, Remote)
 
 	@mock.patch('webmynd.main.shutil')
 	@mock.patch('webmynd.main.Generate')
 	@mock.patch('webmynd.main.DirectorySync')
 	@mock.patch('webmynd.main.Remote')
 	@mock.patch('webmynd.main.Manager')
-	@mock.patch('webmynd.main.BuildConfig')
+	@mock.patch('webmynd.main.Config')
 	@mock.patch('webmynd.main.argparse')
-	def test_dev_no_conf_change(self, argparse, BuildConfig, Manager, Remote, DirectorySync, Generate, shutil):
+	def test_dev_no_conf_change(self, argparse, Config, Manager, Remote, DirectorySync, Generate, shutil):
 		parser = argparse.ArgumentParser.return_value
 		
 		main.development_build()
 		
-		self._check_dev_setup(parser, BuildConfig, Manager, Remote, DirectorySync, Generate)
+		self._check_dev_setup(parser, Config, Manager, Remote, DirectorySync, Generate)
 		
 		Manager.return_value.templates_for.assert_called_once_with(Remote.return_value.app_config_file)
 		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
@@ -138,16 +138,16 @@ class TestBuild(object):
 	@mock.patch('webmynd.main.DirectorySync')
 	@mock.patch('webmynd.main.Remote')
 	@mock.patch('webmynd.main.Manager')
-	@mock.patch('webmynd.main.BuildConfig')
+	@mock.patch('webmynd.main.Config')
 	@mock.patch('webmynd.main.argparse')
-	def test_dev_conf_change(self, argparse, BuildConfig, Manager, Remote, DirectorySync, Generate, shutil):
+	def test_dev_conf_change(self, argparse, Config, Manager, Remote, DirectorySync, Generate, shutil):
 		parser = argparse.ArgumentParser.return_value
 		Manager.return_value.templates_for.return_value = None
 		Remote.return_value.build.return_value = -1
 		
 		main.development_build()
 		
-		self._check_dev_setup(parser, BuildConfig, Manager, Remote, DirectorySync, Generate)
+		self._check_dev_setup(parser, Config, Manager, Remote, DirectorySync, Generate)
 		
 		Manager.return_value.templates_for.assert_called_once_with(Remote.return_value.app_config_file)
 		Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
@@ -159,15 +159,15 @@ class TestBuild(object):
 		Generate.return_value.all.assert_called_once_with('development', defaults.USER_DIR)
 		
 	@mock.patch('webmynd.main.Remote')
-	@mock.patch('webmynd.main.BuildConfig')
+	@mock.patch('webmynd.main.Config')
 	@mock.patch('webmynd.main.argparse')
-	def test_prod(self, argparse, BuildConfig, Remote):
+	def test_prod(self, argparse, Config, Remote):
 		parser = argparse.ArgumentParser.return_value
 		Remote.return_value.build.return_value = -1
 		
 		main.production_build()
 		
-		self._check_common_setup(parser, BuildConfig, Remote)
+		self._check_common_setup(parser, Config, Remote)
 		
 		Remote.return_value.build.assert_called_once_with(development=False, template_only=False)
 		Remote.return_value.get_app_config.assert_called_once_with(Remote.return_value.build.return_value)

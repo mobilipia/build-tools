@@ -20,7 +20,7 @@ class Manager(object):
 		'''Operations on the locally stored template code
 		
 		:param config: build configuration object
-		:type config: :class:`webmynd.config.BuildConfig`
+		:type config: :class:`webmynd.config.Config`
 		:param tmpl_dir: directory name in which the templates will be sat
 		'''
 		if tmpl_dir is None:

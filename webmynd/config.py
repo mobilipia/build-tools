@@ -1,4 +1,4 @@
-'''Convenience classes for dealing with dictionary-based configuration'''
+'Convenience classes for dealing with JSON-based configuration'
 from copy import deepcopy
 import json
 import logging
@@ -9,9 +9,9 @@ from webmynd import defaults
 
 LOG = logging.getLogger(__name__)
 
-__all__ = ['BuildConfig']
+__all__ = ['Config']
 
-class BuildConfig(object):
+class Config(object):
 	'Parses a JSON-encoded build configuration and offers convenient lookup'
 	
 	DUMMY_CONFIG = {
@@ -31,7 +31,7 @@ class BuildConfig(object):
 		:param config_file: name of the file to read in
 		:raises Exception: if the named file doesn't exist
 		'''
-		super(BuildConfig, self).__init__()
+		super(Config, self).__init__()
 
 		if not path.isfile(config_file):
 			if config_file == defaults.CONFIG_FILE:
@@ -83,6 +83,20 @@ class BuildConfig(object):
 	@classmethod
 	def _test_instance(cls):
 		'Internal use only: an exemplar instance with dummy contents'
-		res = BuildConfig()
+		res = Config()
 		res._config = cls.DUMMY_CONFIG
 		return res
+	
+	@classmethod
+	def verify(cls, config_file):
+		'''Check a JSON-encoded file at :param:`config_file` for syntactical
+		correctness.
+		
+		:param config_file: the location of the file to read
+		:raises IOError: if the specified file doesn't exist
+		:raises ValueError: if the configuration file not valid JSON
+		'''
+		if not path.isfile(config_file):
+			raise IOError('Could not open "%s": not a valid file' % config_file)
+		with open(config_file) as config_file_:
+			json.load(config_file_)
