@@ -1,21 +1,22 @@
+'Entry points for the WebMynd build tools'
 import logging
 import shutil
 
 import argparse
 
-from config import BuildConfig
-import defaults
-from dir_sync import DirectorySync
-from generate import Generate
-from remote import Remote
-from templates import Manager
-
 import webmynd
+from webmynd.config import BuildConfig
+from webmynd import defaults
+from webmynd.dir_sync import DirectorySync
+from webmynd.generate import Generate
+from webmynd.remote import Remote
+from webmynd.templates import Manager
 
-log = None
+LOG = None
 
 def setup_logging(args):
-	global log
+	'Adjust logging parameters according to command line switches'
+	global LOG
 	if args.verbose and args.quiet:
 		args.error('Cannot run in quiet and verbose mode at the same time')
 	if args.verbose:
@@ -25,8 +26,8 @@ def setup_logging(args):
 	else:
 		log_level = logging.INFO
 	logging.basicConfig(level=log_level, format='[%(levelname)7s] %(asctime)s -- %(message)s')
-	log = logging.getLogger(__name__)
-	log.info('WebMynd tools running at version %s' % webmynd.VERSION)
+	LOG = logging.getLogger(__name__)
+	LOG.info('WebMynd tools running at version %s' % webmynd.VERSION)
 
 def add_general_options(parser):
 	'Generic command-line arguments'
@@ -34,6 +35,7 @@ def add_general_options(parser):
 	parser.add_argument('-q', '--quiet', action='store_true')
 	
 def handle_general_options(args):
+	'Parameterise our option based on common command-line arguments'
 	setup_logging(args)
 	
 def refresh():
@@ -87,9 +89,9 @@ def development_build():
 
 	templates_dir = manager.templates_for(remote.app_config_file)
 	if templates_dir:
-		log.info('configuration is unchanged: using existing templates')
+		LOG.info('configuration is unchanged: using existing templates')
 	else:
-		log.info('configuration has changed: creating new templates')
+		LOG.info('configuration has changed: creating new templates')
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
@@ -114,13 +116,12 @@ def production_build():
 	config = BuildConfig()
 	config.parse(args.config)
 	remote = Remote(config)
-	sync = DirectorySync(config)
 	
 	build_id = int(remote.build(development=False, template_only=False))
 	
-	log.info('getting build configuration')
+	LOG.info('getting build configuration')
 	remote.get_app_config(build_id)
 
-	log.info('fetching new WebMynd build')
+	LOG.info('fetching new WebMynd build')
 	remote.fetch_unpackaged(build_id, to_dir='production')
 

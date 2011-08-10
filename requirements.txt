@@ -1,6 +1,14 @@
+Jinja2==2.6
+Pygments==1.4
+Sphinx==1.0.7
 argparse==1.2.1
 coverage==3.5
+docutils==0.8
+logilab-astng==0.22.0
+logilab-common==0.56.1
 mock==0.7.2
 nose==1.1.2
+pylint==0.24.0
 requests==0.4.1
+unittest2==0.5.1
 wsgiref==0.1.2

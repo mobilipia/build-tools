@@ -1,16 +1,19 @@
+'''To enable quick, local-only builds, we create generic templated builds
+to start with, and inject the user code into those templates whenever possible.
+'''
 import codecs
 from datetime import datetime
 import hashlib
 import logging
-import os
 from os import path
 import shutil
 
-from remote import Remote
+from webmynd.remote import Remote
 
-log = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 class Manager(object):
+	'Handles the fetching, updating and management of generic templates'
 	__DEFAULT_TMPL_DIR = '.template'
 	
 	def __init__(self, config, tmpl_dir=None):
@@ -27,6 +30,11 @@ class Manager(object):
 		self._config = config
 		
 	def _hash_file(self, config_filename):
+		'''Compute the hash of a file.
+		
+		:param config_filename: the name of a file to read and hash
+		:return: string version of the hash
+		'''
 		hsh = hashlib.md5()
 		
 		with codecs.open(config_filename) as config_file:
@@ -56,18 +64,18 @@ class Manager(object):
 		config_filename = remote.get_app_config(build_id)
 		template_dir = self.templates_for(config_filename)
 		if template_dir:
-			log.info('already have templates for current App configuration')
+			LOG.info('already have templates for current App configuration')
 			return template_dir
 
 		config_hash = self._hash_file(config_filename)
-		log.info('current configuration hash is %s' % config_hash)
+		LOG.info('current configuration hash is %s' % config_hash)
 		
 		# remove old templates
-		log.debug('removing %s' % self._tmpl_dir)
+		LOG.debug('removing %s' % self._tmpl_dir)
 		shutil.rmtree(self._tmpl_dir, ignore_errors=True)
 		
 		# grab templated platform
-		log.info('fetching new WebMynd templates')
+		LOG.info('fetching new WebMynd templates')
 		remote.fetch_unpackaged(build_id, to_dir=self._tmpl_dir)
 		
 		with open(path.join(self._tmpl_dir, config_hash+'.hash'), 'w') as marker:

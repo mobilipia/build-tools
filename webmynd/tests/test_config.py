@@ -7,6 +7,7 @@ from nose.tools import eq_, raises
 import mock
 
 import webmynd
+from lib import assert_raises_regexp
 from webmynd import config
 
 class TestConfig(object):
@@ -27,17 +28,15 @@ class TestConfig(object):
 		eq_(self.config.get('authentication.password'),
 			config.BuildConfig.DUMMY_CONFIG['authentication']['password'])
 		
-	@raises(Exception)
 	@mock.patch('webmynd.config.path')
 	def test_no_file(self, mock_path):
 		mock_path.isfile.return_value = False
-		self.config.parse('dummy filename')
+		assert_raises_regexp(Exception, '^Configuration file', self.config.parse, 'dummy filename')
 		
-	@raises(Exception)
 	@mock.patch('webmynd.config.path')
 	def test_no_default_file(self, mock_path):
 		mock_path.isfile.return_value = False
-		self.config.parse(webmynd.defaults.CONFIG_FILE)
+		assert_raises_regexp(Exception, 'default configuration file', self.config.parse, webmynd.defaults.CONFIG_FILE)
 	
 	def test_get(self):
 		eq_(self.config.get('main.uuid'), config.BuildConfig.DUMMY_CONFIG['main']['uuid'])

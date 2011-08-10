@@ -1,0 +1,214 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Invoking Remote Operations &mdash; WebMynd Build Tools v0.2.5 documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.2.5',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="WebMynd Build Tools v0.2.5 documentation" href="index.html" />
+    <link rel="next" title="Local File Re-generation" href="generate.html" />
+    <link rel="prev" title="Build Configuration" href="config.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="generate.html" title="Local File Re-generation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="config.html" title="Build Configuration"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">WebMynd Build Tools v0.2.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-webmynd.remote">
+<span id="invoking-remote-operations"></span><h1>Invoking Remote Operations<a class="headerlink" href="#module-webmynd.remote" title="Permalink to this headline">¶</a></h1>
+<p>Operations which require involvement of the remote WebMynd build servers</p>
+<dl class="class">
+<dt id="webmynd.remote.Remote">
+<em class="property">class </em><tt class="descclassname">webmynd.remote.</tt><tt class="descname">Remote</tt><big>(</big><em>config</em><big>)</big><a class="reference internal" href="_modules/webmynd/remote.html#Remote"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#webmynd.remote.Remote" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wrap remote operations</p>
+<dl class="method">
+<dt id="webmynd.remote.Remote.build">
+<tt class="descname">build</tt><big>(</big><em>development=True</em>, <em>template_only=False</em><big>)</big><a class="reference internal" href="_modules/webmynd/remote.html#Remote.build"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#webmynd.remote.Remote.build" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start a build on the remote server.</p>
+<p><strong>NB:</strong> this method blocks until the remote build has completed!</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>development</strong> &#8211; if <tt class="xref docutils literal"><span class="pre">True</span></tt>, we will not do any packaging of the
+build; it will be left in an expanded directory layout</li>
+<li><strong>template_only</strong> &#8211; internal use only: if <tt class="xref docutils literal"><span class="pre">True</span></tt> we will not use
+the &#8220;user&#8221; code - we will just recreate the app templates using the
+current app configuration</li>
+</ul>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the primary key of the build</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name" colspan="2">Raises Exception:</th></tr>
+<tr class="field"><td>&nbsp;</td><td class="field-body"><p class="first last">if any errors occur during the build</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="webmynd.remote.Remote.fetch_unpackaged">
+<tt class="descname">fetch_unpackaged</tt><big>(</big><em>build_id</em>, <em>to_dir='development'</em><big>)</big><a class="reference internal" href="_modules/webmynd/remote.html#Remote.fetch_unpackaged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#webmynd.remote.Remote.fetch_unpackaged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves the unpackaged artefacts for a particular build.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>build_id</strong> &#8211; primary key of the build</li>
+<li><strong>to_dir</strong> &#8211; directory that will hold all the unpackged build trees</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="webmynd.remote.Remote.get_app_config">
+<tt class="descname">get_app_config</tt><big>(</big><em>build_id</em><big>)</big><a class="reference internal" href="_modules/webmynd/remote.html#Remote.get_app_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#webmynd.remote.Remote.get_app_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch remote App configuration and save to local file</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>build_id</strong> &#8211; primary key of the build to consider</td>
+</tr>
+<tr class="field"><th class="field-name">Returns:</th><td class="field-body">the location of the newly-downloaded app configuration</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="webmynd.remote.Remote.get_latest_user_code">
+<tt class="descname">get_latest_user_code</tt><big>(</big><em>to_dir='user'</em><big>)</big><a class="reference internal" href="_modules/webmynd/remote.html#Remote.get_latest_user_code"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#webmynd.remote.Remote.get_latest_user_code" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch the customer&#8217;s code archive attached to this app</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>to_dir</strong> &#8211; directory to place the user code into</td>
+</tr>
+<tr class="field"><th class="field-name" colspan="2">Raises Exception:</th></tr>
+<tr class="field"><td>&nbsp;</td><td class="field-body">if the <a href="#id1"><span class="problematic" id="id2">:param:`to_dir`</span></a> already exists</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="webmynd.remote.Remote.latest">
+<tt class="descname">latest</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/webmynd/remote.html#Remote.latest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#webmynd.remote.Remote.latest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the ID of the latest completed production build for this app.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="webmynd.remote.Remote.server">
+<tt class="descname">server</tt><a class="reference internal" href="_modules/webmynd/remote.html#Remote.server"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#webmynd.remote.Remote.server" title="Permalink to this definition">¶</a></dt>
+<dd><p>The URL of the build server to use (default <a class="reference external" href="http://www.webmynd.com/api/">http://www.webmynd.com/api/</a>)</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="config.html"
+                        title="previous chapter">Build Configuration</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="generate.html"
+                        title="next chapter">Local File Re-generation</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/remote.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="generate.html" title="Local File Re-generation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="config.html" title="Build Configuration"
+             >previous</a> |</li>
+        <li><a href="index.html">WebMynd Build Tools v0.2.5 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, James Brady.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

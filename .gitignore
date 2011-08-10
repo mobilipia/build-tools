@@ -1,6 +1,6 @@
 *.pyc
 .coverage
-WebMynd_Development_Environment.egg-info/
+WebMynd_Build_Tools.egg-info/
 build/
 dist/
 cover

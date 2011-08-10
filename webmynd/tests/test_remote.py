@@ -6,7 +6,8 @@ import mock
 from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 
-from webmynd import BuildConfig, Remote
+from webmynd.config import BuildConfig
+from webmynd.remote import Remote
 from lib import assert_raises_regexp
 
 class TestRemote(object):

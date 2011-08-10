@@ -1,19 +1,14 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.1'
+version = '0.2.5'
 
-setup(name='WebMynd Development Environment',
+setup(name='WebMynd Build Tools',
 	version=version,
-	description="",
-	long_description="""\
-	""",
-	classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
-	keywords='',
 	author='James Brady',
 	author_email='james@webmynd.com',
 	url='http://www.webmynd.com/',
-	license='Closed source',
+	license='MIT',
 	packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
 	include_package_data=True,
 	zip_safe=False,
@@ -29,4 +24,3 @@ setup(name='WebMynd Development Environment',
 		]
 	}
 )
-
