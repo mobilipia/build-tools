@@ -43,6 +43,14 @@ After installing virtualenv, create a new virtual environment by running in a te
 
 From now on, you will need to have activated this environment whenever working with the WebMynd tools.
 
+Pip
+~~~
+We'll use `pip <http://www.pip-installer.org/en/latest/index.html>`_ to install dependencies for the command-line tools.
+
+You may have it installed already: check by running in a terminal::
+
+  pip
+
 Installation
 ------------
 Download the WebMynd tools, by either getting the latest source or one of the pre-packaged downloads.
@@ -50,6 +58,7 @@ Download the WebMynd tools, by either getting the latest source or one of the pr
 In a terminal, change directory into the newly extracted WebMynd Tools, and install them into your virtual environment::
 
   cd webmynd-tools
+  pip install -r requirements.txt
   python setup.py install
 
 Configuration
