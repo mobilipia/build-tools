@@ -14,6 +14,8 @@ __all__ = ['Config']
 class Config(object):
 	'Parses a JSON-encoded build configuration and offers convenient lookup'
 	
+	app_config_file = defaults.APP_CONFIG_FILE
+	
 	DUMMY_CONFIG = {
 		"authentication": {
 			"username": "your user name",
@@ -48,6 +50,8 @@ class Config(object):
 		public_conf['authentication']['password'] = 'xxxxxxxx'
 		for key, val in public_conf.iteritems():
 			LOG.debug('%s: %s' % (key, json.dumps(val)))
+		
+		self.app_config_file = self.get('main.config_file', defaults.APP_CONFIG_FILE)
 			
 	def get(self, keys, default='__ nonsensical default'):
 		'''Lookup a configuration value.

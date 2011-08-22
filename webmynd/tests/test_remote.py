@@ -26,7 +26,6 @@ class Test_CsrfToken(TestRemote):
 		eq_(self.remote._csrf_token(), 'csrf value')
 
 class TestLatest(TestRemote):
-	# latest
 	def test_latest(self):
 		self.remote._authenticate = Mock()
 		get_resp = Mock()
@@ -36,8 +35,28 @@ class TestLatest(TestRemote):
 		eq_(resp, -1)
 		self.remote._authenticate.assert_called_once_with( )
 		self.remote._get.assert_called_once_with('http://test.webmynd.com/api/app/TEST-UUID/latest/')
+
+class TestFetchPackaged(TestRemote):
+	@patch('webmynd.remote.os')
+	def test_fetch_packaged(self, os):
+		output_dir = 'output dir'
+		self.remote._authenticate = Mock()
+		
+		with patch('webmynd.remote.Remote._fetch_output') as _fetch_output:
+			_fetch_output.return_value = ['dummy filename']
+			resp = self.remote.fetch_packaged(-1, output_dir)
+		
+		self.remote._authenticate.assert_called_once_with()
+		eq_(os.chdir.call_args_list[-1][0][0], os.getcwd.return_value)
+		eq_(_fetch_output.call_args_list[0][0][:2], (-1, output_dir))
+		eq_(resp, _fetch_output.return_value)
+		
+class Test_HandlePackaged(TestRemote):
+	def test_normal(self):
+		self.remote._handle_packaged('platform', 'filename')
 		
 class TestFetchUnpackaged(TestRemote):
+	# TODO refactor tests to go after _fetch_output directly
 	@patch('webmynd.remote.zipfile')
 	@patch('webmynd.remote.path')
 	@patch('webmynd.remote.os')
@@ -57,13 +76,14 @@ class TestFetchUnpackaged(TestRemote):
 		
 		self.remote._authenticate.assert_called_once_with()
 		os.mkdir.assert_called_once_with(output_dir)
-		os.chdir.call_args_list[0][0][0] == output_dir
+		eq_(os.chdir.call_args_list[0][0][0], output_dir)
 		eq_(manager.write.call_args_list, [((get_resp.content,), {})] * 2)
 		ok_(zipf.ZipFile.call_args_list[0][0][0].endswith('chrome url'))
 		ok_(zipf.ZipFile.call_args_list[1][0][0].endswith('firefox url'))
 		eq_(zipf.ZipFile.return_value.extractall.call_count, 2)
 		ok_(resp[0].endswith('chrome'))
 		ok_(resp[1].endswith('firefox'))
+		eq_(os.chdir.call_args_list[-1][0][0], os.getcwd.return_value)
 
 class TestBuild(TestRemote):
 	def setup(self):
@@ -112,7 +132,7 @@ class TestBuild(TestRemote):
 			files=None, data={'config': json.dumps(app_config)}
 		)
 		self.remote._get.assert_called_once_with(self.test_config.get('main.server')+'build/-1/detail/')
-		mock_open.assert_called_once_with('app-%s.json' % self.test_config.get('main.uuid'))
+		mock_open.assert_called_once_with('user/config.json')
 	
 	@patch('webmynd.remote.path')
 	@patch('webmynd.remote.os')
@@ -226,62 +246,3 @@ class Test_Authenticate(TestRemote):
 			}
 		)
 		ok_(self.remote._authenticated)
-
-class TestGetAppConfig(TestRemote):
-	def test_normal(self):
-		build_config = {'test': 'config'}
-		self.remote._authenticate = Mock()
-		self.remote._get = Mock()
-		# remote server stores config as string, rather than an object, to preserve formatting
-		self.remote._get.return_value.content = json.dumps({'config': json.dumps(build_config)})
-		mock_open = MagicMock()
-		
-		with patch('__builtin__.open', new=mock_open):
-			filename = self.remote.get_app_config(-1)
-		
-		self.remote._authenticate.assert_called_once_with()
-		self.remote._get.assert_called_once_with(
-			self.test_config.get('main.server')+'build/-1/config/')
-		
-		mock_open.return_value.__enter__.return_value.write.assert_called_once_with(
-			json.dumps(build_config, indent=4))
-		eq_(filename, 'app-%s.json' % self.test_config.get('main.uuid'))
-
-class TestGetLatestUserCode(TestRemote):
-	@patch('webmynd.remote.path')
-	def test_already_there(self, path):
-		path.exists.return_value = True
-		assert_raises_regexp(Exception, 'directory already exists', self.remote.get_latest_user_code)
-
-	@patch('webmynd.remote.tarfile')
-	@patch('webmynd.remote.path')
-	@patch('webmynd.remote.os')
-	def test_normal(self, os, path, tarfile):
-		path.exists.return_value = False
-		mock_open = MagicMock()
-		
-		self.remote._authenticate = Mock()
-		self.remote._get = Mock()
-		self.remote._get.return_value.content = json.dumps({'code_url': 'dummy url'})
-		self.remote._get.return_value.read.return_value = 'dummy binary'
-		os.getcwd.return_value = 'orig directory'
-		
-		with patch('__builtin__.open', new=mock_open):
-			self.remote.get_latest_user_code('dummy directory')
-		
-		eq_(len(self.remote._get.call_args_list), 2)
-		eq_(self.remote._get.call_args_list, [
-			((self.test_config.get('main.server')+'app/'+self.test_config.get('main.uuid')+'/code/',), {}),
-			(('dummy url',), {})
-		])
-		self.remote._authenticate.assert_called_once_with()
-		tmp_filename = mock_open.call_args[0][0]
-		mock_open.return_value.__enter__.return_value.write.assert_called_once_with('dummy binary')
-		os.mkdir.assert_called_once_with('dummy directory')
-		eq_(os.chdir.call_args_list, [
-			(('dummy directory',), {}), (('orig directory',), {})
-		])
-		tarfile.open.assert_called_once_with(tmp_filename)
-		tarfile.open.return_value.extractall.assert_called_once_with()
-		tarfile.open.return_value.close.assert_call_once_with()
-		os.remove.assert_called_once_with(tmp_filename)

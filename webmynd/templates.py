@@ -42,7 +42,7 @@ class Manager(object):
 		
 		return hsh.hexdigest()
 		
-	def templates_for(self, config_filename):
+	def templates_for_config(self, config_filename):
 		'''Determine template files directory for the given configuration.
 		
 		:param config_filename: name of configuration file to consider
@@ -54,20 +54,19 @@ class Manager(object):
 		else:
 			return None
 		
-	def get_templates(self, build_id):
+	def fetch_templates(self, build_id):
 		'''Retrieve remote template files for a specified build, and the config to match.
 		
 		:param build_id: the primary key of the build
 		'''
 		remote = Remote(self._config)
 
-		config_filename = remote.get_app_config(build_id)
-		template_dir = self.templates_for(config_filename)
+		template_dir = self.templates_for_config(self._config.app_config_file)
 		if template_dir:
 			LOG.info('already have templates for current App configuration')
 			return template_dir
 
-		config_hash = self._hash_file(config_filename)
+		config_hash = self._hash_file(self._config.app_config_file)
 		LOG.info('current configuration hash is %s' % config_hash)
 		
 		# remove old templates

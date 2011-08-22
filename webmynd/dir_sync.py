@@ -35,6 +35,7 @@ class DirectorySync(object):
 				path.join('development', 'webmynd.safariextension'),
 			) if path.isdir(d)
 		]
+		self._errors = []
 	
 	def user_to_target(self, force=False):
 		'''Ensure that all files in the ``user`` directory have been hardlinked
