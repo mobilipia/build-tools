@@ -86,7 +86,7 @@ class DirectorySync(object):
 					new_comp = filecmp.dircmp(path.join(from_dir, sub_dir), path.join(root_dir, sub_dir))
 					return self._process_comparison(root_dir, from_dir, sub_dir, new_comp, count+1)
 				elif path.isfile(user_thing):
-					LOG.info('linking %s to %s' % (user_thing, target_thing))
+					LOG.debug('linking %s to %s' % (user_thing, target_thing))
 					os.link(user_thing, target_thing)
 				else:
 					errors.append("Don't know how to handle %s" % user_thing)

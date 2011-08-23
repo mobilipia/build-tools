@@ -17,8 +17,6 @@ setup(name='WebMynd Build Tools',
 	install_requires=[],
 	entry_points={
 		'console_scripts': [
-			'wm-refresh = webmynd.main:refresh',
-			'wm-init = webmynd.main:init',
 			'wm-dev-build = webmynd.main:development_build',
 			'wm-prod-build = webmynd.main:production_build',
 		]

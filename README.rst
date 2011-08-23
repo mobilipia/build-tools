@@ -72,12 +72,15 @@ The tools require a small amount of configuration. Copy the following into a new
     },
     "main": {
       "uuid": "UUID for your app",
+      "config_file": "user/config.json",
       "server": "http://generate.webmynd.com/api/"
     }
   }
 
 You should complete the authentication values with your username and password.
 You can find the UUID for your app by going to `your apps <http://generate.webmynd.com/>`_ and clicking on the relevant one.
+
+**NB**: If your application configuration file isn't in the default (``user/config.json``) location, make sure to update the "config_file" setting with the correct location.
 
 Creating a development environment
 ----------------------------------
