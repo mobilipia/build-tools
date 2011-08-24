@@ -6,6 +6,7 @@ import mock
 from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 
+from webmynd import defaults
 from webmynd.config import Config
 from webmynd.remote import Remote
 from lib import assert_raises_regexp
@@ -246,3 +247,6 @@ class Test_Authenticate(TestRemote):
 			}
 		)
 		ok_(self.remote._authenticated)
+	def test_default_password(self):
+		self.test_config._config['authentication']['password'] = defaults.PASSWORD
+		assert_raises_regexp(Exception, 'have you updated your password', self.remote._authenticate)

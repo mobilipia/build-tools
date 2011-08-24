@@ -15,6 +15,7 @@ class Config(object):
 	'Parses a JSON-encoded build configuration and offers convenient lookup'
 	
 	app_config_file = defaults.APP_CONFIG_FILE
+	build_config_file = defaults.CONFIG_FILE
 	
 	DUMMY_CONFIG = {
 		"authentication": {
@@ -33,7 +34,7 @@ class Config(object):
 		:param config_file: name of the file to read in
 		:raises Exception: if the named file doesn't exist
 		'''
-		super(Config, self).__init__()
+		self.build_config_file = config_file
 
 		if not path.isfile(config_file):
 			if config_file == defaults.CONFIG_FILE:

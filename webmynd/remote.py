@@ -98,6 +98,10 @@ class Remote(object):
 			'username': self.config.get('authentication.username'),
 			'password': self.config.get('authentication.password')
 		}
+		if credentials['password'] == defaults.PASSWORD:
+			msg = 'have you updated your password in %s?' % self.config.build_config_file
+			LOG.error(msg)
+			raise Exception(msg)
 		self._get(urljoin(self.server, 'auth/hello'))
 			
 		self._post(urljoin(self.server, 'auth/verify'), data=credentials)

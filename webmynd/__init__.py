@@ -1,7 +1,7 @@
 '''WebMynd Build Tools'''
 import sys
 
-VERSION = '0.2.4pre'
+VERSION = '1'
 
 def _check_version():
 	'''Throw error if we're on Python < 2.6'''

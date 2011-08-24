@@ -26,6 +26,7 @@ class TestConfig(object):
 		mock_open.assert_called_once_with('dummy filename')
 		eq_(self.config.get('authentication.password'),
 			config.Config.DUMMY_CONFIG['authentication']['password'])
+		eq_(self.config.build_config_file, 'dummy filename')
 		
 	@mock.patch('webmynd.config.path')
 	def test_no_file(self, mock_path):
