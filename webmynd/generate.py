@@ -17,14 +17,22 @@ import shutil
 
 LOG = logging.getLogger(__name__)
 
+def _read_encoded_file(f_name, encoding='utf8'):
+	with codecs.open(f_name, 'r', encoding=encoding) as in_file:
+		try:
+			return in_file.read()
+		except UnicodeDecodeError:
+			LOG.error('%s is not a valid UTF-8 encoded file: please convert it' % f_name)
+			raise
+
 class Generate(object):
 	'Local re-creation of files that are dependent on user code'
 	def __init__(self, app_config_file, **kw):
 		'''
 		:param app_config: app configuration dictionary
 		'''
-		with codecs.open(app_config_file, encoding='utf8') as app_config:
-			self.app_config = json.load(app_config)
+		app_config_s = _read_encoded_file(app_config_file)
+		self.app_config = json.loads(app_config_s)
 			
 	def all(self, target_dir, user_dir):
 		'''Re-create all local files in built targets
@@ -51,9 +59,9 @@ class Generate(object):
 			for f_name in [path.abspath(path.join(root, f)) for f in files]:
 				if f_name.split('.')[-1] in ('html', 'htm', 'js', 'css'):
 					LOG.debug('replacing "%s" with "%s" in %s' % (find, uuid, f_name))
-					with codecs.open(f_name, 'r', encoding='utf8') as in_file:
-						in_file_contents = in_file.read()
-						in_file_contents = in_file_contents.replace(find, uuid)
+					in_file_contents = _read_encoded_file(f_name)
+					in_file_contents = in_file_contents.replace(find, uuid)
+					
 					with codecs.open(f_name, 'w', encoding='utf8') as out_file:
 						out_file.write(in_file_contents)
 		
@@ -70,8 +78,7 @@ class Generate(object):
 		
 		overlay_filename = path.join(target_dir, 'firefox', 'content', 'overlay.js')
 		LOG.debug('reading in "%s"' % overlay_filename)
-		with codecs.open(overlay_filename, encoding='utf8') as overlay_f:
-			overlay = overlay_f.read()
+		overlay = _read_encoded_file(overlay_filename)
 		
 		all_bg_files = StringIO()
 		for bg_filename in background_files:
@@ -84,8 +91,8 @@ class Generate(object):
 				raise Exception('Your "background_files" settings points at "%s", '
 					'but it doesn\'t exist' % bg_filename)
 			LOG.debug('reading in "%s"' % bg_filename)
-			with codecs.open(bg_filename, encoding='utf8') as bg_file:
-				all_bg_files.write('\n'+bg_file.read())
+			bg_file_s = _read_encoded_file(bg_filename)
+			all_bg_files.write('\n'+bg_file_s)
 		
 		marker = 'window.__WEBMYND_MARKER=1;'
 		LOG.debug("replacing %s with %s" % (marker, 'concatenated background files'))

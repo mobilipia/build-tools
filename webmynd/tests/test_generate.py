@@ -1,5 +1,5 @@
 import mock
-from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
+from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false, assert_raises
 from os import path
 
 from lib import assert_raises_regexp
@@ -17,6 +17,9 @@ class TestInit(object):
 	def test_unicode(self):
 		gen = Generate(path.join(path.dirname(__file__), 'dummy_app_config_uni.json'))
 		eq_(gen.app_config['test'], u'config\xc5')
+	def test_unicode(self):
+		assert_raises(UnicodeDecodeError, Generate,
+			path.join(path.dirname(__file__), 'dummy_app_config_binary.json'))
 		
 class TestAll(object):
 	def setup(self):

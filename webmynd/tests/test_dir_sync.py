@@ -13,6 +13,8 @@ from webmynd.dir_sync import DirectorySync
 from webmynd.config import Config
 
 class TestDirectorySync(object):
+	TEST_ARCHIVE = 'test_user_to_target.tgz'
+
 	def setup(self):
 		self.orig_dir = os.getcwd()
 		self.working_dir = tempfile.mkdtemp()
@@ -21,6 +23,7 @@ class TestDirectorySync(object):
 			name=path.join(path.dirname(__file__), self.TEST_ARCHIVE),
 			mode='r')
 		tar.extractall()
+
 		self.test_config = Config._test_instance()
 		self.dir_sync = DirectorySync(self.test_config)
 
@@ -28,10 +31,12 @@ class TestDirectorySync(object):
 		os.chdir(self.orig_dir)
 		shutil.rmtree(self.working_dir, ignore_errors=True)
 		del self.dir_sync
-		
+
+class TestInit(TestDirectorySync):
+	def test_target_dirs(self):
+		eq_(len(self.dir_sync._target_dirs), 3)
+
 class TestUserToTarget(TestDirectorySync):
-	TEST_ARCHIVE = 'test_user_to_target.tgz'
-	
 	@raises(webmynd.dir_sync.FromDirectoryMissing)
 	def test_no_user(self):
 		shutil.rmtree(defaults.USER_DIR)
@@ -47,7 +52,7 @@ class TestUserToTarget(TestDirectorySync):
 			'^Your WebMynd code has not been structured correctly$',
 			self.dir_sync.user_to_target
 		)
-		eq_(len(self.dir_sync._errors), 3)
+		eq_(len(self.dir_sync._errors), 5)
 		for target_dir in self.dir_sync._target_dirs:
 			ok_(path.isdir(path.join(target_dir, 'user-only-dir')))
 			ok_(path.isfile(path.join(target_dir, 'user-only-dir', 'user-only-dir-file')))
@@ -72,8 +77,8 @@ class TestUserToTarget(TestDirectorySync):
 		path.isdir.return_value = False
 		assert_raises_regexp(webmynd.dir_sync.FromDirectoryMissing, 'directory must exist to proceed',
 			self.dir_sync.user_to_target, True)
-		eq_(shutil.rmtree.call_count, 2)
-		eq_(os.mkdir.call_count, 2)
+		eq_(shutil.rmtree.call_count, 3)
+		eq_(os.mkdir.call_count, 3)
 
 class Test_ProcessComparison(object):
 	def setup(self):
