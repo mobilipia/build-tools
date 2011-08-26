@@ -32,7 +32,7 @@ class DirectorySync(object):
 		uuid = self.config.get('main.uuid')
 		self._target_dirs = [path.join(d, uuid) for d in (
 				path.join('development', 'chrome'),
-				path.join('development', 'firefox'),
+				path.join('development', 'firefox', 'content'),
 				path.join('development', 'webmynd.safariextension'),
 			) if path.isdir(d)
 		]

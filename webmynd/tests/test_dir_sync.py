@@ -34,7 +34,11 @@ class TestDirectorySync(object):
 
 class TestInit(TestDirectorySync):
 	def test_target_dirs(self):
-		eq_(len(self.dir_sync._target_dirs), 3)
+		eq_(self.dir_sync._target_dirs, [
+			path.join('development', 'chrome', 'TEST-UUID'),
+			path.join('development', 'firefox', 'content', 'TEST-UUID'),
+			path.join('development', 'webmynd.safariextension', 'TEST-UUID'),
+		])
 
 class TestUserToTarget(TestDirectorySync):
 	@raises(webmynd.dir_sync.FromDirectoryMissing)
