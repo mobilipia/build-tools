@@ -109,16 +109,11 @@ class Generate(object):
 		'''Ensure that ``data.js`` is in Chome's customer code directory.'''
 		LOG.debug('copying data.js from common directory into user code')
 		shutil.copy(path.join(target_dir, 'chrome', 'common', 'data.js'), path.join(user_dir, 'data.js'))
-   
-        def safari(self, target_dir, user_dir):
-            '''Copy over icons if they exist'''
-            LOG.debug('copying icons for Safari')
-            if (self.app_config["icons"]["32"]):
-                shutil.copy(path.join(user_dir, self.app_config["icons"]["32"]), 
-                    path.join(target_dir, 'webmynd.safariextension', 'icon-32.png')) 
-            if (self.app_config["icons"]["32"]):
-                shutil.copy(path.join(user_dir, self.app_config["icons"]["32"]), 
-                    path.join(target_dir, 'webmynd.safariextension', 'icon-32.png'))
-            if (self.app_config["icons"]["32"]):
-                shutil.copy(path.join(user_dir, self.app_config["icons"]["32"]), 
-                path.join(target_dir, 'webmynd.safariextension', 'icon-32.png'))
+		
+	def safari(self, target_dir, user_dir):
+		'''Copy over icons if they exist'''
+		LOG.debug('copying icons for Safari')
+		if "icons" in self.app_config:
+			if "32" in self.app_config["icons"]:
+				shutil.copy(path.join(user_dir, self.app_config["icons"]["32"]),
+					path.join(target_dir, 'webmynd.safariextension', 'icon-32.png'))

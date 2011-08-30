@@ -125,3 +125,28 @@ class TestChrome(object):
 		self.generate.chrome('dummy target dir', 'dummy user dir')
 		
 		shutil.copy.assert_called_once_with(path.join('dummy target dir', 'chrome', 'common', 'data.js'), path.join('dummy user dir', 'data.js'))
+
+class TestSafari(object):
+	def setup(self):
+		self.generate = Generate(path.join(path.dirname(__file__), 'dummy_app_config.json'))
+		self.generate.app_config = dummy_config
+	
+	@mock.patch('webmynd.generate.shutil')
+	def test_no_icons(self, shutil):
+		self.generate.safari('dummy target dir', 'dummy user dir')
+		
+		ok_(not shutil.copy.called)
+
+	@mock.patch('webmynd.generate.shutil')
+	def test_no_icons(self, shutil):
+		saf_config = dummy_config.copy()
+		saf_config["icons"] = {"32": "icon32.png"}
+		self.generate.app_config = saf_config
+
+		self.generate.safari('dummy target dir', 'dummy user dir')
+		
+		shutil.copy.assert_called_once_with(
+			"dummy user dir/icon32.png",
+			"dummy target dir/webmynd.safariextension/icon-32.png",
+		)
+		
