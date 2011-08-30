@@ -33,7 +33,7 @@ class Generate(object):
 		'''
 		app_config_s = _read_encoded_file(app_config_file)
 		self.app_config = json.loads(app_config_s)
-			
+	
 	def all(self, target_dir, user_dir):
 		'''Re-create all local files in built targets
 		
@@ -46,7 +46,9 @@ class Generate(object):
 			self.firefox(target_dir, user_dir)
 		if path.isdir(path.join(target_dir, 'chrome')):
 			self.chrome(target_dir, user_dir)
-		
+                if path.isdir(path.join(target_dir, 'webmynd.safariextension')):
+                    self.safari(target_dir, user_dir)
+	
 	def user(self, user_dir):
 		'''Find and replace ``${uuid}`` with the real UUID
 		
@@ -64,7 +66,7 @@ class Generate(object):
 					
 					with codecs.open(f_name, 'w', encoding='utf8') as out_file:
 						out_file.write(in_file_contents)
-		
+	
 	def firefox(self, target_dir, user_dir):
 		'''Re-create overlay.js for Firefox from source files.
 		
@@ -96,14 +98,27 @@ class Generate(object):
 		
 		marker = 'window.__WEBMYND_MARKER=1;'
 		LOG.debug("replacing %s with %s" % (marker, 'concatenated background files'))
-
+		
 		new_overlay = overlay.replace(marker, all_bg_files.getvalue())
-
+		
 		with codecs.open(overlay_filename, 'w', encoding='utf8') as out_file:
 			out_file.write(new_overlay)
 		LOG.info('re-generated overlay.js')
-		
+	
 	def chrome(self, target_dir, user_dir):
 		'''Ensure that ``data.js`` is in Chome's customer code directory.'''
 		LOG.debug('copying data.js from common directory into user code')
 		shutil.copy(path.join(target_dir, 'chrome', 'common', 'data.js'), path.join(user_dir, 'data.js'))
+   
+        def safari(self, target_dir, user_dir):
+            '''Copy over icons if they exist'''
+            LOG.debug('copying icons for Safari')
+            if (self.app_config["icons"]["32"]):
+                shutil.copy(path.join(user_dir, self.app_config["icons"]["32"]), 
+                    path.join(target_dir, 'webmynd.safariextension', 'icon-32.png')) 
+            if (self.app_config["icons"]["32"]):
+                shutil.copy(path.join(user_dir, self.app_config["icons"]["32"]), 
+                    path.join(target_dir, 'webmynd.safariextension', 'icon-32.png'))
+            if (self.app_config["icons"]["32"]):
+                shutil.copy(path.join(user_dir, self.app_config["icons"]["32"]), 
+                path.join(target_dir, 'webmynd.safariextension', 'icon-32.png'))
