@@ -185,7 +185,7 @@ class Test_Get(TestRemote):
 		requests.post.return_value.ok = True
 		
 		res = self.remote._get(1, 2, a=3, b=4)
-		requests.get.assert_called_once_with(1, 2, a=3, b=4, cookies=self.remote.cookies, data={})
+		requests.get.assert_called_once_with(1, 2, a=3, b=4, cookies=self.remote.cookies)
 		ok_(res is requests.get.return_value)
 	@patch('webmynd.remote.requests')
 	def test_get_failed_no_msg(self, requests):

@@ -53,11 +53,12 @@ class Remote(object):
 			del kw['__error_message']
 		else:
 			error_message = method+' to %(url)s failed: status code %(status_code)s\n%(content)s'
-			
-		data = kw.get('data', {})
-		if method == 'POST':
-			data['csrfmiddlewaretoken'] = self._csrf_token()
-		kw['data'] = data
+		
+		if method == "POST":
+			# must have CSRF token
+			data = kw.get("data", {})
+			data["csrfmiddlewaretoken"] = self._csrf_token()
+			kw["data"] = data
 		kw['cookies'] = self.cookies
 		resp = getattr(requests, method.lower())(*args, **kw)
 		if not resp.ok:
