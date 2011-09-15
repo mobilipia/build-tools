@@ -94,7 +94,7 @@ class Remote(object):
 		return self.__get_or_post(*args, **kw)
 		
 	def _authenticate(self):
-		'''Authentication handshake with server (if we haven't already')
+		'''Authentication handshake with server (if we haven't already)
 		'''
 		if self._authenticated:
 			LOG.debug('already authenticated - continuing')
