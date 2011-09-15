@@ -54,7 +54,7 @@ def create():
 	manager = Manager(config)
 	
 	if os.path.exists('user'):
-		print 'Folder "user" already exists, if you really want to create a new app you will need to remove it!'
+		LOG.info('Folder "user" already exists, if you really want to create a new app you will need to remove it!')
 	else:	
 		name = raw_input('Enter app name: ')
 		uuid = remote.create(name)

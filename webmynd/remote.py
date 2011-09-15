@@ -291,7 +291,7 @@ class Remote(object):
 				os.chdir(orig_dir)
 				user_comp.close()
 		
-				with open(filename, mode='r') as user_files:
+				with open(filename, mode='rb') as user_files:
 					resp = build_request({'user.tar.bz2': user_files})
 			finally:
 				try:
