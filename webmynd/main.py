@@ -87,7 +87,7 @@ def development_build():
 	shutil.rmtree('development', ignore_errors=True)
 	shutil.copytree(templates_dir, 'development')
 	sync = DirectorySync(config)
-	sync.user_to_target(force=True)
+	sync.user_to_target()
 	generator = Generate(config.app_config_file)
 	generator.all('development', defaults.USER_DIR)
 
