@@ -1,5 +1,5 @@
 'Operations which require involvement of the remote WebMynd build servers'
-from cookielib import CookieJar
+from cookielib import LWPCookieJar
 import json
 import logging
 import os
@@ -9,6 +9,7 @@ import tarfile
 import time
 from urlparse import urljoin, urlsplit
 import zipfile
+from getpass import getpass
 
 import requests
 
@@ -23,7 +24,11 @@ class Remote(object):
 	def __init__(self, config):
 		'Start new remote WebMynd builds'
 		self.config = config
-		self.cookies = CookieJar()
+		self.cookies = LWPCookieJar('cookies.txt')
+		if not os.path.exists('cookies.txt'):
+			self.cookies.save()
+		else:
+			self.cookies.load()
 		self._authenticated = False
 		
 	@property
@@ -68,6 +73,7 @@ class Remote(object):
 					getattr(resp, 'content', 'unknown error')
 				)
 			raise Exception(msg)
+		self.cookies.save()
 		return resp
 	def _post(self, *args, **kw):
 		'''Make a POST request.
@@ -93,27 +99,42 @@ class Remote(object):
 		if self._authenticated:
 			LOG.debug('already authenticated - continuing')
 			return
-		LOG.info('authenticating as "%s"' % self.config.get('authentication.username'))
+
+		resp = self._get(urljoin(self.server, 'auth/loggedin'))
+		if json.loads(resp.content)['loggedin']:
+			self._authenticated = True
+			LOG.debug('already authenticated via cookie - continuing')
+			return
+
+		username = raw_input("Login: ")
+		password = getpass()
+		LOG.info('authenticating as "%s"' % username)
 		credentials = {
-			'username': self.config.get('authentication.username'),
-			'password': self.config.get('authentication.password')
+			'username': username,
+			'password': password
 		}
-		if credentials['password'] == defaults.PASSWORD:
-			msg = 'have you updated your password in %s?' % self.config.build_config_file
-			LOG.error(msg)
-			raise Exception(msg)
+
 		self._get(urljoin(self.server, 'auth/hello'))
 			
 		self._post(urljoin(self.server, 'auth/verify'), data=credentials)
 		LOG.info('authentication successful')
 		self._authenticated = True
+
+	def create(self, name):
+		self._authenticate()
+	
+		data = {
+			'name': name
+		}
+		resp = self._post(urljoin(self.server, 'app/'), data=data)
+		return json.loads(resp.content)['uuid']
 		
 	def latest(self):
 		'''Get the ID of the latest completed production build for this app.'''
 		LOG.info('fetching latest build ID')
 		self._authenticate()
 		
-		resp = self._get(urljoin(self.server, 'app/%s/latest/' % self.config.get('main.uuid')))
+		resp = self._get(urljoin(self.server, 'app/%s/latest/' % self.config.get('uuid')))
 		return json.loads(resp.content)['build_id']
 
 	def _fetch_output(self, build_id, to_dir, output_key, post_get_fn):
@@ -140,13 +161,33 @@ class Remote(object):
 		for platform in available_platforms:
 			filename = urlsplit(locations[platform]).path.split('/')[-1]
 			resp = self._get(locations[platform])
-			with open(filename, 'w') as out_file:
+			with open(filename, 'wb') as out_file:
 				LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
 				out_file.write(resp.content)
 			post_get_fn(platform, filename)
 			filenames.append(path.abspath(platform))
 		return filenames
-			
+
+	def fetch_initial(self, uuid):
+		'''Retrieves the initial project template
+		
+		:param uuid: project uuid
+		'''
+		LOG.info('fetching initial project template')
+		self._authenticate()
+		
+		filename = 'initial.zip'
+		resp = self._get(urljoin(self.server, 'app/%s/initial_files' % uuid))
+		with open(filename, 'wb') as out_file:
+			LOG.debug('writing %s' % path.abspath(filename))
+			out_file.write(resp.content)
+		zipf = zipfile.ZipFile(filename)
+		zipf.extractall()
+		zipf.close()
+		LOG.debug('extracted  initial project template')
+		os.remove(filename)
+		LOG.debug('removed downloaded file "%s"' % filename)
+		
 	def _handle_packaged(self, platform, filename):
 		'No-op'
 		pass
@@ -162,6 +203,7 @@ class Remote(object):
 		shutil.rmtree(platform, ignore_errors=True)
 		LOG.debug('removed "%s" directory' % platform)
 		zipf.extractall()
+		zipf.close()
 		LOG.debug('extracted unpackaged build for %s' % platform)
 		os.remove(filename)
 		LOG.debug('removed downloaded file "%s"' % filename)
@@ -225,7 +267,7 @@ class Remote(object):
 		def build_request(files=None):
 			'build the URL to start a build, then POST it'
 			url_path = 'app/%s/%s/%s' % (
-				self.config.get('main.uuid'),
+				self.config.get('uuid'),
 				'template' if template_only else 'build',
 				'development' if development else ''
 			)

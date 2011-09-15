@@ -29,7 +29,7 @@ class DirectorySync(object):
 		super(DirectorySync, self).__init__()
 		self.config = config
 		self._user_dir = path.abspath(defaults.USER_DIR)
-		uuid = self.config.get('main.uuid')
+		uuid = self.config.get('uuid')
 		self._target_dirs = [path.join(d, uuid) for d in (
 				path.join('development', 'chrome'),
 				path.join('development', 'webmynd.safariextension'),

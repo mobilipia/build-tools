@@ -39,7 +39,7 @@ class TestConfig(object):
 		assert_raises_regexp(Exception, 'default configuration file', self.config.parse, webmynd.defaults.CONFIG_FILE)
 	
 	def test_get(self):
-		eq_(self.config.get('main.uuid'), config.Config.DUMMY_CONFIG['main']['uuid'])
+		eq_(self.config.get('uuid'), config.Config.DUMMY_CONFIG['main']['uuid'])
 	def test_get_default(self):
 		eq_(self.config.get('main.non_existent', 'default value'), 'default value')
 	@raises(KeyError)
