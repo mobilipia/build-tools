@@ -3,6 +3,7 @@ import logging
 import shutil
 
 import argparse
+import os
 
 import webmynd
 from webmynd.config import Config
@@ -37,6 +38,27 @@ def add_general_options(parser):
 def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	setup_logging(args)
+
+def create():
+	'Create a new development environment'
+	parser = argparse.ArgumentParser('Initialises your development environment')
+	parser.add_argument('-c', '--config', help='your WebMynd configuration file', default=defaults.CONFIG_FILE)
+	add_general_options(parser)
+	args = parser.parse_args()
+	handle_general_options(args)
+	
+	config = Config()
+	config.parse(args.config)
+	
+	remote = Remote(config)
+	manager = Manager(config)
+	
+	if os.path.exists('user'):
+		print 'Folder "user" already exists, if you really want to create a new app you will need to remove it!'
+	else:	
+		name = raw_input('Enter app name: ')
+		uuid = remote.create(name)
+		remote.fetch_initial(uuid)
 
 def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'

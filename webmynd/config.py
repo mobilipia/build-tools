@@ -18,12 +18,7 @@ class Config(object):
 	build_config_file = defaults.CONFIG_FILE
 	
 	DUMMY_CONFIG = {
-		"authentication": {
-			"username": "your user name",
-			"password": "your secret"
-		},
 		"main": {
-			"uuid": "TEST-UUID",
 			"server": "http://test.webmynd.com/api/"
 		}
 	}
@@ -45,10 +40,14 @@ class Config(object):
 			
 		with open(config_file) as config_file_:
 			self._config = json.load(config_file_)
+			
+		if path.exists('user/config.json'):
+			with open('user/config.json') as config_file_:
+				self._config['uuid'] = json.load(config_file_)['uuid']
 		
 		LOG.debug('WebMynd build tools version %s' % webmynd.VERSION)
 		public_conf = deepcopy(self._config)
-		public_conf['authentication']['password'] = 'xxxxxxxx'
+
 		for key, val in public_conf.iteritems():
 			LOG.debug('%s: %s' % (key, json.dumps(val)))
 		
