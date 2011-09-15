@@ -227,26 +227,3 @@ class Test_Get(TestRemote):
 		requests.get.return_value.ok = False
 		
 		assert_raises_regexp(Exception, 'bleurgh', self.remote._get, __error_message='bleurgh')
-
-class Test_Authenticate(TestRemote):
-	def test_already_authenticated(self):
-		self.remote._authenticated = True
-		self.remote._authenticate()
-	def test_authenticate(self):
-		get_mock = Mock()
-		post_mock = Mock()
-		self.remote._get = get_mock
-		self.remote._post = post_mock
-		
-		self.remote._authenticate()
-		self.remote._get.assert_called_once_with(self.test_config.get('main.server')+'auth/hello')
-		self.remote._post.assert_called_once_with(self.test_config.get('main.server')+'auth/verify',
-			data={
-				'username': self.test_config.get('authentication.username'),
-				'password': self.test_config.get('authentication.password')
-			}
-		)
-		ok_(self.remote._authenticated)
-	def test_default_password(self):
-		self.test_config._config['authentication']['password'] = defaults.PASSWORD
-		assert_raises_regexp(Exception, 'have you updated your password', self.remote._authenticate)

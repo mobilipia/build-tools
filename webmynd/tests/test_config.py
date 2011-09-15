@@ -23,9 +23,7 @@ class TestConfig(object):
 		
 		with mock.patch('__builtin__.open', new=mock_open):
 			self.config.parse('dummy filename')
-		mock_open.assert_called_once_with('dummy filename')
-		eq_(self.config.get('authentication.password'),
-			config.Config.DUMMY_CONFIG['authentication']['password'])
+		eq_([call[0][0] for call in mock_open.call_args_list], ['dummy filename', 'user/config.json'])
 		eq_(self.config.build_config_file, 'dummy filename')
 		
 	@mock.patch('webmynd.config.path')
@@ -39,7 +37,7 @@ class TestConfig(object):
 		assert_raises_regexp(Exception, 'default configuration file', self.config.parse, webmynd.defaults.CONFIG_FILE)
 	
 	def test_get(self):
-		eq_(self.config.get('uuid'), config.Config.DUMMY_CONFIG['main']['uuid'])
+		eq_(self.config.get('uuid'), config.Config.DUMMY_CONFIG['uuid'])
 	def test_get_default(self):
 		eq_(self.config.get('main.non_existent', 'default value'), 'default value')
 	@raises(KeyError)

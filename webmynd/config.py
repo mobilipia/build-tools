@@ -18,6 +18,7 @@ class Config(object):
 	build_config_file = defaults.CONFIG_FILE
 	
 	DUMMY_CONFIG = {
+		"uuid": "TEST-UUID",
 		"main": {
 			"server": "http://test.webmynd.com/api/"
 		}
@@ -46,9 +47,7 @@ class Config(object):
 				self._config['uuid'] = json.load(config_file_)['uuid']
 		
 		LOG.debug('WebMynd build tools version %s' % webmynd.VERSION)
-		public_conf = deepcopy(self._config)
-
-		for key, val in public_conf.iteritems():
+		for key, val in self._config.iteritems():
 			LOG.debug('%s: %s' % (key, json.dumps(val)))
 		
 		self.app_config_file = self.get('main.config_file', defaults.APP_CONFIG_FILE)
