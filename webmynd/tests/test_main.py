@@ -40,6 +40,43 @@ general_argparse = [
 	(('-q', '--quiet'), {'action': 'store_true'})
 ]
 
+class TestCreate(object):
+	@mock.patch('webmynd.main.os')
+	@mock.patch('webmynd.main.Config')
+	@mock.patch('webmynd.main.Remote')
+	@mock.patch('webmynd.main.argparse')
+	def test_normal(self, argparse, Remote, Config, os):
+		parser = argparse.ArgumentParser.return_value
+		os.path.exists.return_value = False
+		mock_raw_input = mock.MagicMock()
+		mock_raw_input.return_value = 'user input'
+		remote = Remote.return_value
+
+		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
+			main.create()
+		
+		os.path.exists.assert_called_once_with('user')
+		remote.create.assert_called_once_with(mock_raw_input.return_value)
+		remote.fetch_initial.assert_called_once_with(remote.create.return_value)
+
+	@mock.patch('webmynd.main.os')
+	@mock.patch('webmynd.main.Config')
+	@mock.patch('webmynd.main.Remote')
+	@mock.patch('webmynd.main.argparse')
+	def test_user_dir_there(self, argparse, Remote, Config, os):
+		parser = argparse.ArgumentParser.return_value
+		os.path.exists.return_value = True
+		mock_raw_input = mock.MagicMock()
+		mock_raw_input.return_value = 'user input'
+		remote = Remote.return_value
+
+		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
+			main.create()
+		
+		os.path.exists.assert_called_once_with('user')
+		ok_(not remote.create.called)
+		ok_(not remote.fetch_initial.called)
+
 class TestBuild(object):
 	def _check_common_setup(self, parser, Config, Remote):
 		eq_(parser.add_argument.call_args_list, [

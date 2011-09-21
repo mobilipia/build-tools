@@ -24,8 +24,9 @@ class Remote(object):
 	def __init__(self, config):
 		'Start new remote WebMynd builds'
 		self.config = config
-		self.cookies = LWPCookieJar(os.getcwd()+'/cookies.txt')
-		if not os.path.exists(os.getcwd()+'/cookies.txt'):
+		cookie_path = path.join(os.getcwd(), 'cookies.txt')
+		self.cookies = LWPCookieJar(cookie_path)
+		if not os.path.exists(cookie_path):
 			self.cookies.save()
 		else:
 			self.cookies.load()
@@ -106,11 +107,11 @@ class Remote(object):
 			LOG.debug('already authenticated via cookie - continuing')
 			return
 
-		username = raw_input("Login: ")
+		email = raw_input("Your email address: ")
 		password = getpass()
-		LOG.info('authenticating as "%s"' % username)
+		LOG.info('authenticating as "%s"' % email)
 		credentials = {
-			'username': username,
+			'email': email,
 			'password': password
 		}
 
