@@ -69,6 +69,10 @@ def development_build():
 	args = parser.parse_args()
 	handle_general_options(args)
 	
+	if not os.path.isdir('user'):
+		LOG.error('Folder "user" does not exist - have you run wm-create yet?')
+		return 1
+	
 	config = Config()
 	config.parse(args.config)
 	remote = Remote(config)

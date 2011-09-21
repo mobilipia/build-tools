@@ -97,6 +97,18 @@ class TestBuild(object):
 		Generate.assert_called_once_with(Config.return_value.app_config_file)
 		self._check_common_setup(parser, Config, Remote)
 
+	@mock.patch('webmynd.main.os.path.isdir')
+	@mock.patch('webmynd.main.Config')
+	@mock.patch('webmynd.main.argparse')
+	def test_user_dir_not_there(self, argparse, Config, isdir):
+		isdir.return_value = False
+		
+		main.development_build()
+
+		isdir.assert_called_once_with('user')
+		ok_(not Config.called)
+		
+	@mock.patch('webmynd.main.os.path.isdir')
 	@mock.patch('webmynd.main.shutil')
 	@mock.patch('webmynd.main.Generate')
 	@mock.patch('webmynd.main.DirectorySync')
@@ -104,7 +116,8 @@ class TestBuild(object):
 	@mock.patch('webmynd.main.Manager')
 	@mock.patch('webmynd.main.Config')
 	@mock.patch('webmynd.main.argparse')
-	def test_dev_no_conf_change(self, argparse, Config, Manager, Remote, DirectorySync, Generate, shutil):
+	def test_dev_no_conf_change(self, argparse, Config, Manager, Remote, DirectorySync, Generate, shutil, isdir):
+		isdir.return_value = True
 		parser = argparse.ArgumentParser.return_value
 		
 		main.development_build()
@@ -117,6 +130,7 @@ class TestBuild(object):
 		DirectorySync.return_value.user_to_target.assert_called_once_with()
 		Generate.return_value.all.assert_called_once_with('development', defaults.USER_DIR)
 		
+	@mock.patch('webmynd.main.os.path.isdir')
 	@mock.patch('webmynd.main.shutil')
 	@mock.patch('webmynd.main.Generate')
 	@mock.patch('webmynd.main.DirectorySync')
@@ -124,7 +138,8 @@ class TestBuild(object):
 	@mock.patch('webmynd.main.Manager')
 	@mock.patch('webmynd.main.Config')
 	@mock.patch('webmynd.main.argparse')
-	def test_dev_conf_change(self, argparse, Config, Manager, Remote, DirectorySync, Generate, shutil):
+	def test_dev_conf_change(self, argparse, Config, Manager, Remote, DirectorySync, Generate, shutil, isdir):
+		isdir.return_value = True
 		parser = argparse.ArgumentParser.return_value
 		Manager.return_value.templates_for_config.return_value = None
 		Remote.return_value.build.return_value = -1
@@ -142,10 +157,12 @@ class TestBuild(object):
 		DirectorySync.return_value.user_to_target.assert_called_once_with()
 		Generate.return_value.all.assert_called_once_with('development', defaults.USER_DIR)
 		
+	@mock.patch('webmynd.main.os.path.isdir')
 	@mock.patch('webmynd.main.Remote')
 	@mock.patch('webmynd.main.Config')
 	@mock.patch('webmynd.main.argparse')
-	def test_prod(self, argparse, Config, Remote):
+	def test_prod(self, argparse, Config, Remote, isdir):
+		isdir.return_value = True
 		parser = argparse.ArgumentParser.return_value
 		Remote.return_value.build.return_value = -1
 		
