@@ -77,7 +77,7 @@ class TestBuild(object):
 		Manager.return_value.templates_for_config.assert_called_once_with(Config.return_value.app_config_file)
 		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
 		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value, 'development')
-		DirectorySync.return_value.user_to_target.assert_called_once_with(force=True)
+		DirectorySync.return_value.user_to_target.assert_called_once_with()
 		Generate.return_value.all.assert_called_once_with('development', defaults.USER_DIR)
 		
 	@mock.patch('webmynd.main.shutil')
@@ -102,7 +102,7 @@ class TestBuild(object):
 		
 		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
 		shutil.copytree.assert_called_once_with(Manager.return_value.fetch_templates.return_value, 'development')
-		DirectorySync.return_value.user_to_target.assert_called_once_with(force=True)
+		DirectorySync.return_value.user_to_target.assert_called_once_with()
 		Generate.return_value.all.assert_called_once_with('development', defaults.USER_DIR)
 		
 	@mock.patch('webmynd.main.Remote')
