@@ -14,6 +14,7 @@ from StringIO import StringIO
 import os
 from os import path
 import shutil
+import tempfile
 
 LOG = logging.getLogger(__name__)
 
@@ -32,14 +33,20 @@ class Generate(object):
 		:param target_dir: the parent directory of the per-platform builds
 		:param user_dir: the directory holding user's code
 		'''
-		if path.isdir(user_dir):
-			self.user(user_dir)
-		if path.isdir(path.join(target_dir, 'firefox')):
-			self.firefox(target_dir, user_dir)
-		if path.isdir(path.join(target_dir, 'chrome')):
-			self.chrome(target_dir, user_dir)
+		temp_d = tempfile.mkdtemp()
+		try:
+			if path.isdir(user_dir):
+				self.user(temp_d, user_dir)
+			if path.isdir(path.join(target_dir, 'firefox')):
+				self.firefox(target_dir, temp_d)
+			if path.isdir(path.join(target_dir, 'chrome')):
+				self.chrome(target_dir, temp_d)
+			if path.isdir(path.join(target_dir, 'android')):
+				self.android(target_dir, temp_d)
+		finally:
+			shutil.rmtree(temp_d)
 		
-	def user(self, user_dir):
+	def user(self, target_dir, user_dir):
 		'''Find and replace ``${uuid}`` with the real UUID
 		
 		:param user_dir: the parent of files to look inside
@@ -48,14 +55,24 @@ class Generate(object):
 		find = '${uuid}'
 		
 		for root, _, files in os.walk(user_dir):
-			for f_name in [path.abspath(path.join(root, f)) for f in files]:
-				if f_name.split('.')[-1] in ('html', 'htm', 'js', 'css'):
-					LOG.debug('replacing "%s" with "%s" in %s' % (find, uuid, f_name))
-					with codecs.open(f_name, 'r', encoding='utf8') as in_file:
+			for f in files:
+				in_dir = root
+				out_dir = target_dir+root[len(user_dir):]
+				if not os.path.exists(out_dir):
+					os.makedirs(out_dir)
+				
+				if f.split('.')[-1] in ('html', 'js'):
+					with codecs.open(path.join(in_dir,f), 'r', encoding='utf8') as in_file:
 						in_file_contents = in_file.read()
 						in_file_contents = in_file_contents.replace(find, uuid)
-					with codecs.open(f_name, 'w', encoding='utf8') as out_file:
+						LOG.debug('replacing "%s" with "%s" in %s' % (find, uuid, path.join(in_dir,f)))
+						if f.split('.')[-1] == 'js':
+							in_file_contents = "a"+in_file_contents+"B"
+							LOG.debug('Wrapping javascript in %s' % path.join(in_dir,f))
+					with codecs.open(path.join(out_dir,f), 'w', encoding='utf8') as out_file:
 						out_file.write(in_file_contents)
+				else:
+					shutil.copyfile(path.join(in_dir,f), path.join(out_dir,f))
 		
 	def firefox(self, target_dir, user_dir):
 		'''Re-create overlay.js for Firefox from source files.
@@ -97,6 +114,18 @@ class Generate(object):
 		LOG.info('re-generated overlay.js')
 		
 	def chrome(self, target_dir, user_dir):
-		'''Ensure that ``data.js`` is in Chome's customer code directory.'''
-		LOG.debug('copying data.js from common directory into user code')
-		shutil.copy(path.join(target_dir, 'chrome', 'common', 'data.js'), path.join(user_dir, 'data.js'))
+		uuid = self.app_config['uuid']
+		chrome_user_dir = path.join(target_dir, 'chrome', uuid)
+		LOG.debug("Copying user dir to chrome")
+		shutil.copytree(user_dir, chrome_user_dir)
+
+	def android(self, target_dir, user_dir):
+		uuid = self.app_config['uuid']
+		android_user_dir = path.join(target_dir, 'android', 'assets')
+		LOG.debug("Copying user dir to android")
+		first = 0;
+		for file in os.listdir(user_dir):
+			if os.path.isdir(path.join(user_dir, file)):
+				shutil.copytree(path.join(user_dir, file), path.join(android_user_dir, file))
+			else:
+				shutil.copyfile(path.join(user_dir, file), path.join(android_user_dir, file))
