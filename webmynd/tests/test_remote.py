@@ -15,7 +15,72 @@ class TestRemote(object):
 	def setup(self):
 		self.test_config = Config._test_instance()
 		self.remote = Remote(self.test_config)
+	
+class Test__Init__(object):
+	@mock.patch('webmynd.remote.LWPCookieJar')
+	@mock.patch('webmynd.remote.os')
+	def test_cookies_there(self, os, LWPCookieJar):
+		os.path.exists.return_value = True
+		os.getcwd.return_value = '/here'
+		
+		remote = Remote(Config._test_instance())
+		
+		LWPCookieJar.return_value.load.assert_called_once_with()
+	@mock.patch('webmynd.remote.LWPCookieJar')
+	@mock.patch('webmynd.remote.os')
+	def test_cookies_not_there(self, os, LWPCookieJar):
+		os.path.exists.return_value = False
+		os.getcwd.return_value = '/here'
+		
+		remote = Remote(Config._test_instance())
+		
+		LWPCookieJar.return_value.save.assert_called_once_with()
 
+class Test_Authenticated(TestRemote):
+	def test_already_auth(self):
+		self.remote._authenticated = True
+		self.remote._get = Mock()
+		
+		self.remote._authenticate()
+		
+		ok_(not self.remote._get.called)
+	def test_have_session(self):
+		get_resp = Mock()
+		get_resp.content = json.dumps({'result': 'ok', 'loggedin': True})
+		self.remote._get = Mock(return_value=get_resp)
+		
+		mock_raw_input = mock.MagicMock()
+		mock_raw_input.return_value = 'user input'
+
+		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
+			self.remote._authenticate()
+		
+		ok_(self.remote._authenticated)
+		ok_(not mock_raw_input.called)
+	@mock.patch('webmynd.remote.getpass')
+	def test_real_login(self, getpass):
+		get_resp = Mock()
+		get_resp.content = json.dumps({'result': 'ok', 'loggedin': False})
+		self.remote._get = Mock(return_value=get_resp)
+		self.remote._post = Mock()
+		
+		mock_raw_input = mock.MagicMock()
+		mock_raw_input.return_value = 'raw user input'
+		getpass.return_value = 'getpass input'
+
+		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
+			self.remote._authenticate()
+		
+		ok_(self.remote._authenticated)
+		mock_raw_input.assert_called_once_with("Your email address: ")
+		getpass.assert_called_once_with()
+		
+		eq_(2, len(self.remote._get.call_args_list))
+		ok_(self.remote._get.call_args_list[0][0][0].endswith('loggedin'))
+		ok_(self.remote._get.call_args_list[1][0][0].endswith('hello'))
+		
+		self.remote._post.assert_called_once_with('http://test.webmynd.com/api/auth/verify', data={'email': 'raw user input', 'password': 'getpass input'})
+		
 class Test_CsrfToken(TestRemote):
 	def test_nocsrf(self):
 		cookie = Mock()
@@ -38,6 +103,40 @@ class TestLatest(TestRemote):
 		eq_(resp, -1)
 		self.remote._authenticate.assert_called_once_with( )
 		self.remote._get.assert_called_once_with('http://test.webmynd.com/api/app/TEST-UUID/latest/')
+
+class TestCreate(TestRemote):
+	def test_normal(self):
+		self.remote._authenticate = Mock()
+		post_resp = Mock()
+		post_resp.content = json.dumps({'result': 'ok', 'uuid': 'SERVER-TEST-UUID'})
+		self.remote._post = Mock(return_value=post_resp)
+		
+		result = self.remote.create('test name')
+		
+		self.remote._authenticate.assert_called_once_with( )
+		self.remote._post.assert_called_once_with('http://test.webmynd.com/api/app/', data={'name': 'test name'})
+		eq_(result, 'SERVER-TEST-UUID')
+
+class TestFetchInitial(TestRemote):
+	@patch('webmynd.remote.zipfile')
+	@patch('webmynd.remote.os')
+	def test_normal(self, os, zipf):
+		self.remote._authenticate = Mock()
+		mock_open = mock.MagicMock()
+		manager = mock_open.return_value.__enter__.return_value
+		get_resp = Mock()
+		get_resp.content = 'zipfile contents'
+		self.remote._get = Mock(return_value=get_resp)
+		
+		with mock.patch('__builtin__.open', new=mock_open):
+			result = self.remote.fetch_initial('TEST-UUID')
+			
+		self.remote._get.assert_called_once_with('http://test.webmynd.com/api/app/TEST-UUID/initial_files')
+		mock_open.assert_called_once_with('initial.zip', 'wb')
+		manager.write.assert_called_once_with('zipfile contents')
+		zipf.ZipFile.assert_called_once_with('initial.zip')
+		zipf.ZipFile.return_value.extractall.assert_called_once_with()
+		os.remove.assert_called_once_with('initial.zip')
 
 class TestFetchPackaged(TestRemote):
 	@patch('webmynd.remote.os')
@@ -206,11 +305,10 @@ class Test_Post(TestRemote):
 class Test_Get(TestRemote):
 	@patch('webmynd.remote.requests')
 	def test_get(self, requests):
-		requests.post.return_value.ok = True
-		
 		res = self.remote._get(1, 2, a=3, b=4)
 		requests.get.assert_called_once_with(1, 2, a=3, b=4, cookies=self.remote.cookies, data={})
 		ok_(res is requests.get.return_value)
+		
 	@patch('webmynd.remote.requests')
 	def test_get_failed_no_msg(self, requests):
 		requests.get.return_value.ok = False
@@ -230,3 +328,12 @@ class Test_Get(TestRemote):
 		requests.get.return_value.ok = False
 		
 		assert_raises_regexp(Exception, 'bleurgh', self.remote._get, __error_message='bleurgh')
+		
+	@patch('webmynd.remote.requests')
+	def test_basic_auth(self, requests):
+		self.remote.config._config['main']['authentication'] = {
+			'username': 'test username',
+			'password': 'test password',
+		}
+		self.remote._get('test url')
+		requests.get.assert_called_once_with('test url', cookies=self.remote.cookies, data={}, auth=('test username', 'test password'))

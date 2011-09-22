@@ -1,7 +1,7 @@
 @echo off
 python -V 2>NUL 1>NUL
 IF ERRORLEVEL 1 GOTO nopython
-ECHO python found.
+ECHO Python found.
 
 easy_install --help 2>NUL 1>NUL
 IF ERRORLEVEL 1 GOTO noeasyinstall
@@ -31,7 +31,6 @@ pip install -r requirements.txt 2>NUL 1>NUL
 IF ERRORLEVEL 1 GOTO reqfail
 ECHO Requirements found and installed.
 
-IF EXIST WebMynd_Build_Tools.egg-info GOTO setupcomplete
 python setup.py install 2>NUL 1>NUL
 IF ERRORLEVEL 1 GOTO setupfail
 ECHO WebMynd enviroment initialised.
@@ -66,22 +65,24 @@ GOTO failure
 
 :easyinstallfail
 ECHO.
-ECHO Failed to install python package using easy_install.
+ECHO Failed to install Python package using easy_install.
 GOTO failure
 
 :createvirtualenvfail
 ECHO.
-ECHO Creating the virtual environment for python failed.
+ECHO Creating the virtual environment for Python failed.
 GOTO failure
 
 :nopython
 ECHO.
-ECHO Python not found, make sure python is installed and in your path.
+ECHO Python not found, make sure Python is installed and in your path.
+ECHO you can download it here: http://www.python.org/getit/
 GOTO failure
 
 :noeasyinstall
 ECHO.
-ECHO Easy install not found.
+ECHO Easy Install not found.
+ECHO you can download it here: http://pypi.python.org/pypi/setuptools
 GOTO failure
 
 :failure

@@ -129,8 +129,8 @@ def create():
 	manager = Manager(config)
 	
 	if os.path.exists('user'):
-		LOG.info('Folder "user" already exists, if you really want to create a new app you will need to remove it!')
-	else:	
+		LOG.error('Folder "user" already exists, if you really want to create a new app you will need to remove it!')
+	else:
 		name = raw_input('Enter app name: ')
 		uuid = remote.create(name)
 		remote.fetch_initial(uuid)
@@ -143,6 +143,10 @@ def development_build():
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
+	
+	if not os.path.isdir('user'):
+		LOG.error('Folder "user" does not exist - have you run wm-create yet?')
+		return 1
 	
 	config = Config()
 	config.parse(args.config)

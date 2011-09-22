@@ -87,7 +87,7 @@ class Config(object):
 	def _test_instance(cls):
 		'Internal use only: an exemplar instance with dummy contents'
 		res = Config()
-		res._config = cls.DUMMY_CONFIG
+		res._config = deepcopy(cls.DUMMY_CONFIG)
 		return res
 	
 	@classmethod
