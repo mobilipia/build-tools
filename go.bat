@@ -31,7 +31,6 @@ pip install -r requirements.txt 2>NUL 1>NUL
 IF ERRORLEVEL 1 GOTO reqfail
 ECHO Requirements found and installed.
 
-IF EXIST WebMynd_Build_Tools.egg-info GOTO setupcomplete
 python setup.py install 2>NUL 1>NUL
 IF ERRORLEVEL 1 GOTO setupfail
 ECHO WebMynd enviroment initialised.
