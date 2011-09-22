@@ -67,7 +67,7 @@ class Generate(object):
 						in_file_contents = in_file_contents.replace(find, uuid)
 						LOG.debug('replacing "%s" with "%s" in %s' % (find, uuid, path.join(in_dir,f)))
 						if f.split('.')[-1] == 'js':
-							in_file_contents = "a"+in_file_contents+"B"
+							in_file_contents = '(function(){var uuid="'+uuid+'";window.webmynd=window.webmynd||{};window.webmynd[uuid]=window.webmynd[uuid]||{};window.webmynd[uuid].onLoad=window.webmynd[uuid].onLoad||[];window.webmynd[uuid].onLoad.push(function(api){'+in_file_contents+'});window.webmynd[uuid].hasLoaded&&window.webmynd[uuid].hasLoaded()})();'
 							LOG.debug('Wrapping javascript in %s' % path.join(in_dir,f))
 					with codecs.open(path.join(out_dir,f), 'w', encoding='utf8') as out_file:
 						out_file.write(in_file_contents)
