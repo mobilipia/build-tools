@@ -63,6 +63,12 @@ class Remote(object):
 			data['csrfmiddlewaretoken'] = self._csrf_token()
 		kw['data'] = data
 		kw['cookies'] = self.cookies
+
+		if self.config.get('main.authentication', None):
+			kw['auth'] = (
+				self.config.get('main.authentication.username'),
+				self.config.get('main.authentication.password')
+			)
 		resp = getattr(requests, method.lower())(*args, **kw)
 		if not resp.ok:
 			try:

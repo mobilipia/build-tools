@@ -15,7 +15,7 @@ class TestRemote(object):
 	def setup(self):
 		self.test_config = Config._test_instance()
 		self.remote = Remote(self.test_config)
-
+	
 class Test__Init__(object):
 	@mock.patch('webmynd.remote.LWPCookieJar')
 	@mock.patch('webmynd.remote.os')
@@ -305,11 +305,10 @@ class Test_Post(TestRemote):
 class Test_Get(TestRemote):
 	@patch('webmynd.remote.requests')
 	def test_get(self, requests):
-		requests.post.return_value.ok = True
-		
 		res = self.remote._get(1, 2, a=3, b=4)
 		requests.get.assert_called_once_with(1, 2, a=3, b=4, cookies=self.remote.cookies, data={})
 		ok_(res is requests.get.return_value)
+		
 	@patch('webmynd.remote.requests')
 	def test_get_failed_no_msg(self, requests):
 		requests.get.return_value.ok = False
@@ -329,3 +328,12 @@ class Test_Get(TestRemote):
 		requests.get.return_value.ok = False
 		
 		assert_raises_regexp(Exception, 'bleurgh', self.remote._get, __error_message='bleurgh')
+		
+	@patch('webmynd.remote.requests')
+	def test_basic_auth(self, requests):
+		self.remote.config._config['main']['authentication'] = {
+			'username': 'test username',
+			'password': 'test password',
+		}
+		self.remote._get('test url')
+		requests.get.assert_called_once_with('test url', cookies=self.remote.cookies, data={}, auth=('test username', 'test password'))
