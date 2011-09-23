@@ -8,6 +8,7 @@ import logging
 from os import path
 import shutil
 
+from webmynd import defaults
 from webmynd.remote import Remote
 
 LOG = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ class Manager(object):
 		'''Operations on the locally stored template code
 		
 		:param config: build configuration object
-		:type config: :class:`webmynd.config.Config`
+		:type config: ``dict``
 		:param tmpl_dir: directory name in which the templates will be sat
 		'''
 		if tmpl_dir is None:
@@ -61,12 +62,12 @@ class Manager(object):
 		'''
 		remote = Remote(self._config)
 
-		template_dir = self.templates_for_config(self._config.app_config_file)
+		template_dir = self.templates_for_config(defaults.APP_CONFIG_FILE)
 		if template_dir:
 			LOG.info('already have templates for current App configuration')
 			return template_dir
 
-		config_hash = self._hash_file(self._config.app_config_file)
+		config_hash = self._hash_file(defaults.APP_CONFIG_FILE)
 		LOG.info('current configuration hash is %s' % config_hash)
 		
 		# remove old templates

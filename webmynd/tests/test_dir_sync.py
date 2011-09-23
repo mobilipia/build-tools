@@ -10,7 +10,7 @@ import webmynd
 from lib import assert_raises_regexp
 from webmynd import defaults
 from webmynd.dir_sync import DirectorySync
-from webmynd.config import Config
+from webmynd.tests import dummy_config
 
 class TestDirectorySync(object):
 	def setup(self):
@@ -21,7 +21,7 @@ class TestDirectorySync(object):
 			name=path.join(path.dirname(__file__), self.TEST_ARCHIVE),
 			mode='r')
 		tar.extractall()
-		self.test_config = Config._test_instance()
+		self.test_config = dummy_config()
 		self.dir_sync = DirectorySync(self.test_config)
 
 	def teardown(self):
@@ -60,7 +60,7 @@ class TestUserToTarget2(object):
 	@mock.patch('webmynd.dir_sync.path')
 	def test_normal(self, path, shutil):
 		path.isdir.return_value = True
-		self.test_config = Config._test_instance()
+		self.test_config = dummy_config()
 		self.dir_sync = DirectorySync(self.test_config)
 		self.dir_sync._user_dir = 'dummy frm'
 		self.dir_sync._target_dirs = ['dummy to 1', 'dummy to 2']

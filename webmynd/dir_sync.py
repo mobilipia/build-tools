@@ -20,7 +20,7 @@ class DirectorySync(object):
 	def __init__(self, config):
 		'''
 		:param config: system configuration
-		:type config: :class:`~webmynd.config.Config`
+		:type config: ``dict``
 		'''
 		super(DirectorySync, self).__init__()
 		self.config = config

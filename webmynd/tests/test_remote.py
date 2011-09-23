@@ -7,13 +7,13 @@ from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 
 from webmynd import defaults
-from webmynd.config import Config
 from webmynd.remote import Remote
+from webmynd.tests import dummy_config
 from lib import assert_raises_regexp
 
 class TestRemote(object):
 	def setup(self):
-		self.test_config = Config._test_instance()
+		self.test_config = dummy_config()
 		self.remote = Remote(self.test_config)
 	
 class Test__Init__(object):
@@ -23,7 +23,7 @@ class Test__Init__(object):
 		os.path.exists.return_value = True
 		os.getcwd.return_value = '/here'
 		
-		remote = Remote(Config._test_instance())
+		remote = Remote(dummy_config())
 		
 		LWPCookieJar.return_value.load.assert_called_once_with()
 	@mock.patch('webmynd.remote.LWPCookieJar')
@@ -32,7 +32,7 @@ class Test__Init__(object):
 		os.path.exists.return_value = False
 		os.getcwd.return_value = '/here'
 		
-		remote = Remote(Config._test_instance())
+		remote = Remote(dummy_config())
 		
 		LWPCookieJar.return_value.save.assert_called_once_with()
 
@@ -79,7 +79,7 @@ class Test_Authenticated(TestRemote):
 		ok_(self.remote._get.call_args_list[0][0][0].endswith('loggedin'))
 		ok_(self.remote._get.call_args_list[1][0][0].endswith('hello'))
 		
-		self.remote._post.assert_called_once_with('http://test.webmynd.com/api/auth/verify', data={'email': 'raw user input', 'password': 'getpass input'})
+		self.remote._post.assert_called_once_with('https://test.webmynd.com/api/auth/verify', data={'email': 'raw user input', 'password': 'getpass input'})
 		
 class Test_CsrfToken(TestRemote):
 	def test_nocsrf(self):
@@ -102,7 +102,7 @@ class TestLatest(TestRemote):
 		resp = self.remote.latest()
 		eq_(resp, -1)
 		self.remote._authenticate.assert_called_once_with( )
-		self.remote._get.assert_called_once_with('http://test.webmynd.com/api/app/TEST-UUID/latest/')
+		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/app/TEST-UUID/latest/')
 
 class TestCreate(TestRemote):
 	def test_normal(self):
@@ -114,7 +114,7 @@ class TestCreate(TestRemote):
 		result = self.remote.create('test name')
 		
 		self.remote._authenticate.assert_called_once_with( )
-		self.remote._post.assert_called_once_with('http://test.webmynd.com/api/app/', data={'name': 'test name'})
+		self.remote._post.assert_called_once_with('https://test.webmynd.com/api/app/', data={'name': 'test name'})
 		eq_(result, 'SERVER-TEST-UUID')
 
 class TestFetchInitial(TestRemote):
@@ -131,7 +131,7 @@ class TestFetchInitial(TestRemote):
 		with mock.patch('__builtin__.open', new=mock_open):
 			result = self.remote.fetch_initial('TEST-UUID')
 			
-		self.remote._get.assert_called_once_with('http://test.webmynd.com/api/app/TEST-UUID/initial_files')
+		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/app/TEST-UUID/initial_files')
 		mock_open.assert_called_once_with('initial.zip', 'wb')
 		manager.write.assert_called_once_with('zipfile contents')
 		zipf.ZipFile.assert_called_once_with('initial.zip')
@@ -211,11 +211,11 @@ class TestBuild(TestRemote):
 		resp = self.remote.build()
 		eq_(resp, -1)
 		self.remote._post.assert_called_once_with(
-			self.test_config.get('main.server')+'app/TEST-UUID/build/development',
+			'https://test.webmynd.com/api/app/TEST-UUID/build/development',
 			files=None, data={}
 		)
 		eq_(self.remote._get.call_args_list,
-			[((self.test_config.get('main.server')+'build/-1/detail/',), {})] * 3
+			[(('https://test.webmynd.com/api/build/-1/detail/',), {})] * 3
 		)
 	@patch('webmynd.remote.path')
 	def test_data(self, mock_path):
@@ -230,10 +230,10 @@ class TestBuild(TestRemote):
 			resp = self.remote.build()
 		eq_(resp, -1)
 		self.remote._post.assert_called_once_with(
-			self.test_config.get('main.server')+'app/TEST-UUID/build/development',
+			'https://test.webmynd.com/api/app/TEST-UUID/build/development',
 			files=None, data={'config': json.dumps(app_config)}
 		)
-		self.remote._get.assert_called_once_with(self.test_config.get('main.server')+'build/-1/detail/')
+		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/build/-1/detail/')
 		# Fails on windows
 		#mock_open.assert_called_once_with('user/config.json')
 	
@@ -275,9 +275,9 @@ class Test_Post(TestRemote):
 		requests.post.return_value.ok = True
 		self.remote._csrf_token = Mock(return_value='csrf token')
 		
-		res = self.remote._post(1, 2, a=3, b=4)
+		res = self.remote._post('url', 2, a=3, b=4)
 		self.remote._csrf_token.assert_called_once_with()
-		requests.post.assert_called_once_with(1, 2, cookies=self.remote.cookies, data={'csrfmiddlewaretoken': 'csrf token'}, a=3, b=4)
+		requests.post.assert_called_once_with('url', 2, cookies=self.remote.cookies, data={'csrfmiddlewaretoken': 'csrf token'}, a=3, b=4, headers={'REFERER': 'url'})
 		ok_(res is requests.post.return_value)
 	@patch('webmynd.remote.requests')
 	def test_post_failed_no_msg(self, requests):
@@ -285,7 +285,7 @@ class Test_Post(TestRemote):
 		requests.post.return_value.url = 'dummy url'
 		self.remote._csrf_token = Mock(return_value='csrf token')
 		
-		assert_raises_regexp(Exception, 'POST to dummy url failed <mock', self.remote._post)
+		assert_raises_regexp(Exception, 'POST to dummy url failed <mock', self.remote._post, 'url')
 	@patch('webmynd.remote.requests')
 	def test_post_failed_msg(self, requests):
 		requests.post.return_value.ok = False
@@ -294,19 +294,19 @@ class Test_Post(TestRemote):
 		requests.post.return_value.content = 'dummy content'
 		self.remote._csrf_token = Mock(return_value='csrf token')
 		
-		assert_raises_regexp(Exception, 'POST to dummy url failed: status code', self.remote._post)
+		assert_raises_regexp(Exception, 'POST to dummy url failed: status code', self.remote._post, 'url')
 	@patch('webmynd.remote.requests')
 	def test_post_failed_custom_msg(self, requests):
 		requests.post.return_value.ok = False
 		self.remote._csrf_token = Mock(return_value='csrf token')
 		
-		assert_raises_regexp(Exception, 'bleurgh', self.remote._post, __error_message='bleurgh')
+		assert_raises_regexp(Exception, 'bleurgh', self.remote._post, 'url', __error_message='bleurgh')
 
 class Test_Get(TestRemote):
 	@patch('webmynd.remote.requests')
 	def test_get(self, requests):
-		res = self.remote._get(1, 2, a=3, b=4)
-		requests.get.assert_called_once_with(1, 2, a=3, b=4, cookies=self.remote.cookies, data={})
+		res = self.remote._get('url', 2, a=3, b=4)
+		requests.get.assert_called_once_with('url', 2, a=3, b=4, cookies=self.remote.cookies, data={}, headers={'REFERER': 'url'})
 		ok_(res is requests.get.return_value)
 		
 	@patch('webmynd.remote.requests')
@@ -314,7 +314,7 @@ class Test_Get(TestRemote):
 		requests.get.return_value.ok = False
 		requests.get.return_value.url = 'dummy url'
 		
-		assert_raises_regexp(Exception, 'GET to dummy url failed <mock', self.remote._get)
+		assert_raises_regexp(Exception, 'GET to dummy url failed <mock', self.remote._get, 'url')
 	@patch('webmynd.remote.requests')
 	def test_get_failed_msg(self, requests):
 		requests.get.return_value.ok = False
@@ -322,18 +322,18 @@ class Test_Get(TestRemote):
 		requests.get.return_value.status_code = 1000
 		requests.get.return_value.content = 'dummy content'
 		
-		assert_raises_regexp(Exception, 'GET to dummy url failed: status code', self.remote._get)
+		assert_raises_regexp(Exception, 'GET to dummy url failed: status code', self.remote._get, 'url')
 	@patch('webmynd.remote.requests')
 	def test_get_failed_custom_msg(self, requests):
 		requests.get.return_value.ok = False
 		
-		assert_raises_regexp(Exception, 'bleurgh', self.remote._get, __error_message='bleurgh')
+		assert_raises_regexp(Exception, 'bleurgh', self.remote._get, 'url', __error_message='bleurgh')
 		
 	@patch('webmynd.remote.requests')
 	def test_basic_auth(self, requests):
-		self.remote.config._config['main']['authentication'] = {
+		self.remote.config['main']['authentication'] = {
 			'username': 'test username',
 			'password': 'test password',
 		}
 		self.remote._get('test url')
-		requests.get.assert_called_once_with('test url', cookies=self.remote.cookies, data={}, auth=('test username', 'test password'))
+		requests.get.assert_called_once_with('test url', cookies=self.remote.cookies, data={}, auth=('test username', 'test password'), headers={'REFERER': 'test url'})

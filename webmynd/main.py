@@ -1,13 +1,13 @@
 'Entry points for the WebMynd build tools'
 import logging
+import json
 import shutil
 
 import argparse
 import os
 
 import webmynd
-from webmynd.config import Config
-from webmynd import defaults
+from webmynd import defaults, build_config
 from webmynd.dir_sync import DirectorySync
 from webmynd.generate import Generate
 from webmynd.remote import Remote
@@ -42,14 +42,11 @@ def handle_general_options(args):
 def create():
 	'Create a new development environment'
 	parser = argparse.ArgumentParser('Initialises your development environment')
-	parser.add_argument('-c', '--config', help='your WebMynd configuration file', default=defaults.CONFIG_FILE)
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
 	
-	config = Config()
-	config.parse(args.config)
-	
+	config = build_config.load()
 	remote = Remote(config)
 	manager = Manager(config)
 	
@@ -64,7 +61,6 @@ def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
 	
 	parser = argparse.ArgumentParser('Creates new local, unzipped development add-ons with your source and configuration')
-	parser.add_argument('-c', '--config', help='your WebMynd configuration file', default=defaults.CONFIG_FILE)
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -73,12 +69,11 @@ def development_build():
 		LOG.error('Folder "user" does not exist - have you run wm-create yet?')
 		return 1
 	
-	config = Config()
-	config.parse(args.config)
+	config = build_config.load()
 	remote = Remote(config)
 	manager = Manager(config)
 
-	templates_dir = manager.templates_for_config(config.app_config_file)
+	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
 	if templates_dir:
 		LOG.info('configuration is unchanged: using existing templates')
 	else:
@@ -92,20 +87,18 @@ def development_build():
 	shutil.copytree(templates_dir, 'development')
 	sync = DirectorySync(config)
 	sync.user_to_target()
-	generator = Generate(config.app_config_file)
+	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.USER_DIR)
 
 def production_build():
 	'Trigger a new build'
 	# TODO commonality between this and development_build
 	parser = argparse.ArgumentParser('Start a new production build and retrieve the packaged and unpackaged output')
-	parser.add_argument('-c', '--config', help='your WebMynd configuration file', default=defaults.CONFIG_FILE)
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
 
-	config = Config()
-	config.parse(args.config)
+	config = build_config.load()
 	remote = Remote(config)
 	
 	build_id = int(remote.build(development=False, template_only=False))

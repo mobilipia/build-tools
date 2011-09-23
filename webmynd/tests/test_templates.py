@@ -2,12 +2,13 @@ import mock
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 from os import path
 
-from webmynd.config import Config
+from webmynd import defaults
 from webmynd.templates import Manager
+from webmynd.tests import dummy_config
 
 class Test_HashFile(object):
 	def setup(self):
-		self.manager = Manager(Config._test_instance())
+		self.manager = Manager(dummy_config())
 		
 	def test_normal(self):
 		mock_open = mock.MagicMock()
@@ -22,7 +23,7 @@ class Test_HashFile(object):
 
 class TestTemplatesFor(object):
 	def setup(self):
-		self.manager = Manager(Config._test_instance(), '.my-templates')
+		self.manager = Manager(dummy_config(), '.my-templates')
 		
 	@mock.patch('webmynd.templates.path')
 	def test_exists(self, path):
@@ -51,7 +52,7 @@ class TestTemplatesFor(object):
 
 class TestFetchTemplates(object):
 	def setup(self):
-		self.manager = Manager(Config._test_instance(), 'templates')
+		self.manager = Manager(dummy_config(), 'templates')
 		
 	@mock.patch('webmynd.templates.shutil')
 	@mock.patch('webmynd.templates.Remote')
@@ -65,7 +66,7 @@ class TestFetchTemplates(object):
 		with mock.patch('__builtin__.open', new=mock_open):
 			res = self.manager.fetch_templates(-1)
 			
-		self.manager.templates_for_config.assert_called_once_with(self.manager._config.app_config_file)
+		self.manager.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		shutil.rmtree.assert_called_once_with('templates', ignore_errors=True)
 		remote.fetch_unpackaged.assert_called_once_with(-1, to_dir='templates')
 		mock_open.assert_called_once_with(path.join('templates', 'hashed file.hash'), 'w')

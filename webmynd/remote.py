@@ -35,7 +35,7 @@ class Remote(object):
 	@property
 	def server(self):
 		'The URL of the build server to use (default http://www.webmynd.com/api/)'
-		return self.config.get('main.server', default='http://www.webmynd.com/api/')
+		return self.config.get('main', {}).get('server', 'http://www.webmynd.com/api/')
 	def _csrf_token(self):
 		'''Return the server-negotiated CSRF token, if we have one
 		
@@ -47,7 +47,7 @@ class Remote(object):
 		else:
 			raise Exception("We don't have a CSRF token")
 		
-	def __get_or_post(self, *args, **kw):
+	def __get_or_post(self, url, *args, **kw):
 		'''Expects ``__method`` and ``__error_message`` entries in :param:`**kw`
 		'''
 		method = kw['__method']
@@ -63,13 +63,14 @@ class Remote(object):
 			data['csrfmiddlewaretoken'] = self._csrf_token()
 		kw['data'] = data
 		kw['cookies'] = self.cookies
+		kw['headers'] = {'REFERER': url}
 
-		if self.config.get('main.authentication', None):
+		if self.config.get('main', {}).get('authentication'):
 			kw['auth'] = (
-				self.config.get('main.authentication.username'),
-				self.config.get('main.authentication.password')
+				self.config['main']['authentication'].get('username'),
+				self.config['main']['authentication'].get('password')
 			)
-		resp = getattr(requests, method.lower())(*args, **kw)
+		resp = getattr(requests, method.lower())(url, *args, **kw)
 		if not resp.ok:
 			try:
 				msg = error_message % resp.__dict__
@@ -82,23 +83,23 @@ class Remote(object):
 			raise Exception(msg)
 		self.cookies.save()
 		return resp
-	def _post(self, *args, **kw):
+	def _post(self, url, *args, **kw):
 		'''Make a POST request.
 		
-		:param:`*args` and :param:`**kw` are passed through to the
-		:module:`requests` library.
+		:param url: see :module:`requests`
+		:param *args: see :module:`requests`
 		'''
 		kw['__method'] = 'POST'
-		return self.__get_or_post(*args, **kw)
+		return self.__get_or_post(url, *args, **kw)
 
-	def _get(self, *args, **kw):
+	def _get(self, url, *args, **kw):
 		'''Make a GET request.
 		
-		:param:`*args` and :param:`**kw` are passed through to the
-		:module:`requests` library.
+		:param url: see :module:`requests`
+		:param *args: see :module:`requests`
 		'''
 		kw['__method'] = 'GET'
-		return self.__get_or_post(*args, **kw)
+		return self.__get_or_post(url, *args, **kw)
 		
 	def _authenticate(self):
 		'''Authentication handshake with server (if we haven't already)
@@ -268,8 +269,8 @@ class Remote(object):
 		self._authenticate()
 		
 		data = {}
-		if path.isfile(self.config.app_config_file):
-			with open(self.config.app_config_file) as app_config:
+		if path.isfile(defaults.APP_CONFIG_FILE):
+			with open(defaults.APP_CONFIG_FILE) as app_config:
 				data['config'] = app_config.read()
 		def build_request(files=None):
 			'build the URL to start a build, then POST it'
