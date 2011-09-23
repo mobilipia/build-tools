@@ -1,5 +1,5 @@
 {
 	"main": {
-		"server": "http://webmynd.com/api/"
+		"server": "https://webmynd.com/api/"
 	}
 }

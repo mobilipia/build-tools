@@ -158,6 +158,7 @@ class Remote(object):
 		'''
 		resp = self._get(urljoin(self.server, 'build/%d/detail/' % build_id))
 		content = json.loads(resp.content)
+		LOG.debug('build detail: %s' % content)
 		
 		filenames = []
 		if not path.isdir(to_dir):
