@@ -88,9 +88,8 @@ class TestBuild(object):
 	
 		Remote.assert_called_once_with(dummy_config())
 		
-	def _check_dev_setup(self, parser, Manager, Remote, DirectorySync, Generate):
+	def _check_dev_setup(self, parser, Manager, Remote, Generate):
 		Manager.assert_called_once_with(dummy_config())
-		DirectorySync.assert_called_once_with(dummy_config())
 		Generate.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		self._check_common_setup(parser, Remote)
 
@@ -110,34 +109,31 @@ class TestBuild(object):
 	@mock.patch('webmynd.main.os.path.isdir')
 	@mock.patch('webmynd.main.shutil')
 	@mock.patch('webmynd.main.Generate')
-	@mock.patch('webmynd.main.DirectorySync')
 	@mock.patch('webmynd.main.Remote')
 	@mock.patch('webmynd.main.Manager')
 	@mock.patch('webmynd.main.argparse')
-	def test_dev_no_conf_change(self, argparse, Manager, Remote, DirectorySync, Generate, shutil, isdir, build_config):
+	def test_dev_no_conf_change(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		isdir.return_value = True
 		build_config.load.return_value = dummy_config()
 		
 		main.development_build()
 		
-		self._check_dev_setup(parser, Manager, Remote, DirectorySync, Generate)
+		self._check_dev_setup(parser, Manager, Remote, Generate)
 		
 		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
 		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value, 'development')
-		DirectorySync.return_value.user_to_target.assert_called_once_with()
 		Generate.return_value.all.assert_called_once_with('development', defaults.USER_DIR)
 		
 	@mock.patch('webmynd.main.build_config')
 	@mock.patch('webmynd.main.os.path.isdir')
 	@mock.patch('webmynd.main.shutil')
 	@mock.patch('webmynd.main.Generate')
-	@mock.patch('webmynd.main.DirectorySync')
 	@mock.patch('webmynd.main.Remote')
 	@mock.patch('webmynd.main.Manager')
 	@mock.patch('webmynd.main.argparse')
-	def test_dev_conf_change(self, argparse, Manager, Remote, DirectorySync, Generate, shutil, isdir, build_config):
+	def test_dev_conf_change(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		Manager.return_value.templates_for_config.return_value = None
 		Remote.return_value.build.return_value = -1
@@ -146,7 +142,7 @@ class TestBuild(object):
 		
 		main.development_build()
 		
-		self._check_dev_setup(parser, Manager, Remote, DirectorySync, Generate)
+		self._check_dev_setup(parser, Manager, Remote, Generate)
 
 		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
@@ -154,7 +150,6 @@ class TestBuild(object):
 		
 		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
 		shutil.copytree.assert_called_once_with(Manager.return_value.fetch_templates.return_value, 'development')
-		DirectorySync.return_value.user_to_target.assert_called_once_with()
 		Generate.return_value.all.assert_called_once_with('development', defaults.USER_DIR)
 		
 	@mock.patch('webmynd.main.build_config')

@@ -16,6 +16,8 @@ from os import path
 import shutil
 import tempfile
 
+from webmynd import build_config
+
 LOG = logging.getLogger(__name__)
 
 class Generate(object):
@@ -24,8 +26,7 @@ class Generate(object):
 		'''
 		:param app_config: app configuration dictionary
 		'''
-		with codecs.open(app_config_file, encoding='utf8') as app_config:
-			self.app_config = json.load(app_config)
+		self.app_config = build_config.load_app(app_config_file)
 			
 	def all(self, target_dir, user_dir):
 		'''Re-create all local files in built targets
@@ -49,6 +50,7 @@ class Generate(object):
 	def user(self, target_dir, user_dir):
 		'''Find and replace ``${uuid}`` with the real UUID
 		
+		:param target_dir: the working directory TODO
 		:param user_dir: the parent of files to look inside
 		'''
 		uuid = self.app_config['uuid']

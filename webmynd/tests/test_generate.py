@@ -22,18 +22,24 @@ class TestAll(object):
 	def setup(self):
 		self.generate = Generate(path.join(path.dirname(__file__), 'dummy_app_config.json'))
 		
+	@mock.patch('webmynd.generate.shutil')
+	@mock.patch('webmynd.generate.tempfile')
 	@mock.patch('webmynd.generate.path')
-	def test_normal(self, path):
+	def test_normal(self, path, tempfile, shutil):
 		path.isdir.return_value = True
 		self.generate.user = mock.Mock()
 		self.generate.firefox = mock.Mock()
 		self.generate.chrome = mock.Mock()
+		self.generate.android = mock.Mock()
+		tmp_dir = tempfile.mkdtemp.return_value
 		
 		self.generate.all('dummy target dir', 'dummy user dir')
 
-		self.generate.user.assert_called_once_with('dummy user dir')
-		self.generate.firefox.assert_called_once_with('dummy target dir', 'dummy user dir')
-		self.generate.chrome.assert_called_once_with('dummy target dir', 'dummy user dir')
+		self.generate.user.assert_called_once_with(tmp_dir, 'dummy user dir')
+		self.generate.firefox.assert_called_once_with('dummy target dir', tmp_dir)
+		self.generate.chrome.assert_called_once_with('dummy target dir', tmp_dir)
+		self.generate.android.assert_called_once_with('dummy target dir', tmp_dir)
+		shutil.rmtree.assert_called_once_with(tmp_dir)
 
 class TestUser(object):
 	def setup(self):
@@ -53,7 +59,7 @@ class TestUser(object):
 		manager.read.return_value = 'blah uuid $uuid ${} ${uuid} blah'
 		
 		with mock.patch('webmynd.generate.codecs.open', new=mock_open):
-			self.generate.user('dummy user dir')
+			self.generate.user('dummy tmp dir', 'dummy user dir')
 		
 		eq_(manager.read.call_count, 4)
 		eq_(manager.write.call_count, 4)
@@ -99,18 +105,6 @@ class TestFirefox(object):
 		eq_(mock_open.call_args_list[0][1], {'encoding': 'utf8'})
 		
 		manager.write.assert_called_once_with('overlay.js: some text \ndummy_file.js function stuff(things) { here }; other text')
-		
-	@mock.patch('webmynd.generate.path.isfile')
-	def test_no_file(self, isfile):
-		isfile.return_value = False
-		mock_open = mock.MagicMock()
-		manager = mock_open.return_value.__enter__.return_value
-		
-		with mock.patch('webmynd.generate.codecs.open', new=mock_open):
-			assert_raises_regexp(Exception, 'Your "background_files" settings points at ',
-				self.generate.firefox, 'dummy target dir', 'dummy user dir')
-		
-		ok_(not manager.write.called)
 
 class TestChrome(object):
 	def setup(self):
