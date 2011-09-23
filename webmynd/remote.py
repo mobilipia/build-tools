@@ -63,6 +63,9 @@ class Remote(object):
 			data['csrfmiddlewaretoken'] = self._csrf_token()
 		kw['data'] = data
 		kw['cookies'] = self.cookies
+		kw['headers'] = {
+			'referer': self.config.get('main.server')
+		}
 
 		if self.config.get('main.authentication', None):
 			kw['auth'] = (
