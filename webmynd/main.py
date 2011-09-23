@@ -5,13 +5,15 @@ import shutil
 
 import argparse
 import os
+import time
+
 
 import webmynd
 from webmynd import defaults, build_config
-from webmynd.dir_sync import DirectorySync
 from webmynd.generate import Generate
 from webmynd.remote import Remote
 from webmynd.templates import Manager
+from webmynd.android import runAndroid
 
 LOG = None
 
@@ -38,6 +40,63 @@ def add_general_options(parser):
 def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	setup_logging(args)
+
+def run():
+	parser = argparse.ArgumentParser('Run a built dev app on a particular platform')
+	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
+	parser.add_argument('-j', '--jdk', help='Path to the Java JDK')
+	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
+	parser.add_argument('platform', choices=['android'])
+	add_general_options(parser)
+	args = parser.parse_args()
+	handle_general_options(args)
+	if args.platform == 'android':
+		sdk = ''
+		# Some sensible places to look for the Android SDK
+		possibleSdk = [
+			"C:/Program Files (x86)/Android/android-sdk/",
+			"C:/Program Files/Android/android-sdk/",
+			"C:/Android/android-sdk/",
+			"C:/Android/android-sdk-windows/",
+			"C:/android-sdk-windows/"
+		]
+		if args.sdk:
+			possibleSdk.insert(0, args.sdk)
+		for curSdk in possibleSdk:
+			if (os.path.isdir(curSdk)):
+				if curSdk[-1:] == '/':
+					sdk = curSdk
+				else:
+					sdk = curSdk+'/'
+				break
+		if sdk == '':
+			raise Exception("No Android SDK found, please specify with the --sdk flag")
+		# Some sensible places to look for the Java JDK
+		possibleJdk = [
+			"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
+			"C:/Program Files/Java/jdk1.6.0_24/bin/",
+			"C:/Program Files (x86)/Java/jdk1.6.0_25/bin/",
+			"C:/Program Files/Java/jdk1.6.0_25/bin/",
+			"C:/Program Files (x86)/Java/jdk1.6.0_26/bin/",
+			"C:/Program Files/Java/jdk1.6.0_26/bin/",
+			"C:/Program Files (x86)/Java/jdk1.6.0_27/bin/",
+			"C:/Program Files/Java/jdk1.6.0_27/bin/",
+			"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
+			"C:/Program Files/Java/jdk1.7.0/bin/"
+		]
+		if args.jdk:
+			possibleSdk.insert(0, args.jdk)
+		for curJdk in possibleJdk:
+			if (os.path.isdir(curJdk)):
+				if curJdk[-1:] == '/':
+					jdk = curJdk
+				else:
+					jdk = curJdk+'/'
+				break
+		if jdk == '':
+			raise Exception("No Java JDK found, please specify with the --sdk flag")
+
+		runAndroid(sdk, jdk, args.device)
 
 def create():
 	'Create a new development environment'
@@ -84,9 +143,18 @@ def development_build():
 		templates_dir = manager.fetch_templates(build_id)
 	
 	shutil.rmtree('development', ignore_errors=True)
-	shutil.copytree(templates_dir, 'development')
-	sync = DirectorySync(config)
-	sync.user_to_target()
+	# Windows often gives a permission error without a small wait
+	tryAgain = 0
+	while tryAgain < 5:
+		time.sleep(tryAgain)
+		try:
+			tryAgain += 1
+			shutil.copytree(templates_dir, 'development')
+			break
+		except Exception, e:
+			if tryAgain == 5:
+				raise
+		
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.USER_DIR)
 

@@ -18,6 +18,7 @@ setup(name='WebMynd Build Tools',
 	entry_points={
 		'console_scripts': [
 			'wm-create = webmynd.main:create',
+			'wm-run = webmynd.main:run',
 			'wm-dev-build = webmynd.main:development_build',
 			'wm-prod-build = webmynd.main:production_build',
 		]
