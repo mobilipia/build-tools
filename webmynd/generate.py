@@ -119,15 +119,48 @@ class Generate(object):
 		uuid = self.app_config['uuid']
 		chrome_user_dir = path.join(target_dir, 'chrome', uuid)
 		LOG.debug("Copying user dir to chrome")
-		shutil.copytree(user_dir, chrome_user_dir)
+
+		find = "</head>"
+		replace = "<script src='/webmynd/all.js'></script></head>"
+		
+		for root, _, files in os.walk(user_dir):
+			for f in files:
+				in_dir = root
+				out_dir = chrome_user_dir+root[len(user_dir):]
+				if not os.path.exists(out_dir):
+					os.makedirs(out_dir)
+				
+				if f.split('.')[-1] in ('html'):
+					with codecs.open(path.join(in_dir,f), 'r', encoding='utf8') as in_file:
+						in_file_contents = in_file.read()
+						in_file_contents = in_file_contents.replace(find, replace)
+						LOG.debug('replacing "%s" with "%s" in %s' % (find, replace, path.join(in_dir,f)))
+					with codecs.open(path.join(out_dir,f), 'w', encoding='utf8') as out_file:
+						out_file.write(in_file_contents)
+				else:
+					shutil.copyfile(path.join(in_dir,f), path.join(out_dir,f))
 
 	def android(self, target_dir, user_dir):
 		uuid = self.app_config['uuid']
 		android_user_dir = path.join(target_dir, 'android', 'assets')
 		LOG.debug("Copying user dir to android")
-		first = 0;
-		for file in os.listdir(user_dir):
-			if os.path.isdir(path.join(user_dir, file)):
-				shutil.copytree(path.join(user_dir, file), path.join(android_user_dir, file))
-			else:
-				shutil.copyfile(path.join(user_dir, file), path.join(android_user_dir, file))
+	
+		find = "</head>"
+		replace = "<script src='file:///android_asset/webmynd/all.js'></script></head>"
+		
+		for root, _, files in os.walk(user_dir):
+			for f in files:
+				in_dir = root
+				out_dir = android_user_dir+root[len(user_dir):]
+				if not os.path.exists(out_dir):
+					os.makedirs(out_dir)
+				
+				if f.split('.')[-1] in ('html'):
+					with codecs.open(path.join(in_dir,f), 'r', encoding='utf8') as in_file:
+						in_file_contents = in_file.read()
+						in_file_contents = in_file_contents.replace(find, replace)
+						LOG.debug('replacing "%s" with "%s" in %s' % (find, replace, path.join(in_dir,f)))
+					with codecs.open(path.join(out_dir,f), 'w', encoding='utf8') as out_file:
+						out_file.write(in_file_contents)
+				else:
+					shutil.copyfile(path.join(in_dir,f), path.join(out_dir,f))
