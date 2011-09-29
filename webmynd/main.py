@@ -41,6 +41,16 @@ def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	setup_logging(args)
 
+def _check_for_dir(dirs, fail_msg):
+	for directory in dirs:
+		if (os.path.isdir(directory)):
+			if directory.endswith('/'):
+				return directory
+			else:
+				return directory+'/'
+	else:
+		raise Exception(fail_msg)
+
 def run():
 	parser = argparse.ArgumentParser('Run a built dev app on a particular platform')
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
@@ -51,7 +61,6 @@ def run():
 	args = parser.parse_args()
 	handle_general_options(args)
 	if args.platform == 'android':
-		sdk = ''
 		# Some sensible places to look for the Android SDK
 		possibleSdk = [
 			"C:/Program Files (x86)/Android/android-sdk/",
@@ -62,15 +71,8 @@ def run():
 		]
 		if args.sdk:
 			possibleSdk.insert(0, args.sdk)
-		for curSdk in possibleSdk:
-			if (os.path.isdir(curSdk)):
-				if curSdk[-1:] == '/':
-					sdk = curSdk
-				else:
-					sdk = curSdk+'/'
-				break
-		if sdk == '':
-			raise Exception("No Android SDK found, please specify with the --sdk flag")
+			
+		sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
 		# Some sensible places to look for the Java JDK
 		possibleJdk = [
 			"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
@@ -85,17 +87,9 @@ def run():
 			"C:/Program Files/Java/jdk1.7.0/bin/"
 		]
 		if args.jdk:
-			possibleSdk.insert(0, args.jdk)
-		for curJdk in possibleJdk:
-			if (os.path.isdir(curJdk)):
-				if curJdk[-1:] == '/':
-					jdk = curJdk
-				else:
-					jdk = curJdk+'/'
-				break
-		if jdk == '':
-			raise Exception("No Java JDK found, please specify with the --sdk flag")
-
+			possibleJdk.insert(0, args.jdk)
+		jdk = _check_for_dir(possibleJdk, "No Java JDK found, please specify with the --jdk flag")
+		
 		runAndroid(sdk, jdk, args.device)
 
 def create():

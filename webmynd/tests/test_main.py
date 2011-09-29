@@ -3,7 +3,7 @@ import mock
 from nose.tools import ok_, eq_
 
 import webmynd
-from webmynd.tests import dummy_config
+from webmynd.tests import dummy_config, lib
 from webmynd import main, defaults
 
 @mock.patch('webmynd.main.logging')
@@ -77,6 +77,40 @@ class TestCreate(object):
 		os.path.exists.assert_called_once_with('user')
 		ok_(not remote.create.called)
 		ok_(not remote.fetch_initial.called)
+
+class TestRun(object):
+	@mock.patch('webmynd.main.argparse')
+	def test_not_android(self, argparse):
+		parser = argparse.ArgumentParser.return_value
+		args = mock.Mock()
+		args.platform = 'chrome'
+		parser.parse_args.return_value = args
+		
+		main.run()
+		
+		parser.parse_args.assert_called_once()
+
+class Test_CheckForDir(object):
+	def test_no_dirs(self):
+		lib.assert_raises_regexp(Exception, 'dummy', main._check_for_dir, [], 'dummy')
+		
+	@mock.patch('webmynd.main.os.path.isdir')
+	def test_no_slash(self, isdir):
+		isdir.return_value = True
+		
+		result = main._check_for_dir(['dir name'], 'dummy')
+		
+		eq_(result, 'dir name/')
+		isdir.assert_called_once
+		
+	@mock.patch('webmynd.main.os.path.isdir')
+	def test_slash(self, isdir):
+		isdir.return_value = True
+		
+		result = main._check_for_dir(['dir name/'], 'dummy')
+		
+		eq_(result, 'dir name/')
+		isdir.assert_called_once
 
 class TestBuild(object):
 	def _check_common_setup(self, parser, Remote):
