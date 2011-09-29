@@ -2,15 +2,15 @@
 set LOG_FILE=webmynd-install.log
 del %LOG_FILE%
 
-python -V 1>%LOG_FILE 2>&1
+python -V 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO nopython
 ECHO Python found.
 
-easy_install --help 1>%LOG_FILE 2>&1
+easy_install --help 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO noeasyinstall
 ECHO easy_install found.
 
-virtualenv --version 1>%LOG_FILE 2>&1
+virtualenv --version 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO novirtualenv
 ECHO virtualenv found.
 
@@ -25,17 +25,17 @@ CALL webmynd-environment\Scripts\activate.bat
 IF ERRORLEVEL 1 GOTO activatevirtualenvfail
 ECHO Entered WebMynd virtual env.
 
-pip --version 1>%LOG_FILE 2>&1
+pip --version 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO nopip
 ECHO pip found.
 :pipinstalled
 
 ECHO Checking and installing requirements, this may take some time.
-pip install -r requirements.txt 1>%LOG_FILE 2>&1
+pip install -r requirements.txt 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO reqfail
 ECHO Requirements found and installed.
 
-python setup.py install 1>%LOG_FILE 2>&1
+python setup.py install 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO setupfail
 ECHO WebMynd enviroment initialised.
 :setupcomplete
