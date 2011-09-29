@@ -1,6 +1,7 @@
 #!/bin/bash
 
 LOG_FILE='.webmynd-install.log'
+rm $LOG_FILE
 
 function failure {
 	echo
@@ -55,9 +56,16 @@ then
 	echo 'WebMynd virtual environment created.'
 fi
 
-. ./webmynd-environment/bin/activate
+source ./webmynd-environment/bin/activate
 
-echo 'Entered WebMynd virtual env.'
+if [ $? -ne 0 ]; then
+	rm -rf ./webmynd-environment
+	echo
+	echo 'Your virtual environment appears to be broken; please re-run this script to fix it!'
+	exit
+else
+	echo 'Entered WebMynd virtual env.'
+fi
 
 pip --version  >> $LOG_FILE 2>&1
 if [ $? -ne 0 ]
@@ -96,4 +104,7 @@ fi
 
 echo 'WebMynd environment ready, entering command line interface.'
 echo
+
+rm $LOG_FILE
+
 bash --norc
