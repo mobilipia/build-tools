@@ -179,11 +179,6 @@ class TestBuild(object):
 		
 		lib.assert_raises_regexp(Exception, 'Error', main.development_build)
 		
-		self._check_dev_setup(parser, Manager, Remote, Generate)
-		
-		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
-		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
-		
 	@mock.patch('webmynd.main.build_config')
 	@mock.patch('webmynd.main.os.path.isdir')
 	@mock.patch('webmynd.main.shutil')
