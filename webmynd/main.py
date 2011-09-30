@@ -60,6 +60,7 @@ def run():
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
+
 	if args.platform == 'android':
 		# Some sensible places to look for the Android SDK
 		possibleSdk = [
@@ -71,7 +72,7 @@ def run():
 		]
 		if args.sdk:
 			possibleSdk.insert(0, args.sdk)
-			
+
 		sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
 		# Some sensible places to look for the Java JDK
 		possibleJdk = [

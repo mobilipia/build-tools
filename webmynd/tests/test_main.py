@@ -90,6 +90,27 @@ class TestRun(object):
 		
 		parser.parse_args.assert_called_once()
 
+	@mock.patch('webmynd.main._check_for_dir')
+	@mock.patch('webmynd.main.runAndroid')
+	@mock.patch('webmynd.main.argparse')
+	def test_found_jdk_and_sdk(self, argparse, runAndroid, _check_for_dir):
+		parser = argparse.ArgumentParser.return_value
+		args = mock.Mock()
+		args.platform = 'android'
+		args.device = 'device'
+		parser.parse_args.return_value = args
+
+		values = ['jdk', 'sdk']
+		def get_dir(*args, **kw):
+			return values.pop()
+
+		_check_for_dir.side_effect = get_dir
+		
+		main.run()
+		
+		parser.parse_args.assert_called_once()
+		runAndroid.assert_called_once_with('sdk', 'jdk', 'device')
+
 class Test_CheckForDir(object):
 	def test_no_dirs(self):
 		lib.assert_raises_regexp(Exception, 'dummy', main._check_for_dir, [], 'dummy')
@@ -138,6 +159,30 @@ class TestBuild(object):
 
 		isdir.assert_called_once_with('user')
 		ok_(not build_config.called)
+		
+	@mock.patch('webmynd.main.build_config')
+	@mock.patch('webmynd.main.os.path.isdir')
+	@mock.patch('webmynd.main.shutil')
+	@mock.patch('webmynd.main.Generate')
+	@mock.patch('webmynd.main.Remote')
+	@mock.patch('webmynd.main.Manager')
+	@mock.patch('webmynd.main.argparse')
+	def test_dev_copy_template_fail(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
+		parser = argparse.ArgumentParser.return_value
+		isdir.return_value = True
+		build_config.load.return_value = dummy_config()
+		
+		def raise_except(*args, **kw):
+			raise Exception("Error");
+
+		shutil.copytree.side_effect = raise_except
+		
+		lib.assert_raises_regexp(Exception, 'Error', main.development_build)
+		
+		self._check_dev_setup(parser, Manager, Remote, Generate)
+		
+		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
+		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
 		
 	@mock.patch('webmynd.main.build_config')
 	@mock.patch('webmynd.main.os.path.isdir')
