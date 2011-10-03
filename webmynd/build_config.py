@@ -17,7 +17,10 @@ def load(filename=None):
 		config = json.load(conf_file)
 	
 	if path.exists(defaults.APP_CONFIG_FILE):
+		LOG.debug('setting app UUID from %s' % defaults.APP_CONFIG_FILE)
 		config['uuid'] = load_app(defaults.APP_CONFIG_FILE)['uuid']
+	else:
+		LOG.warning('no app configuration file found at %s' % defaults.APP_CONFIG_FILE)
 	
 	LOG.debug('WebMynd build tools version: %s' % webmynd.VERSION)
 	for key, val in config.iteritems():

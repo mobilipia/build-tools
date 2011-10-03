@@ -91,16 +91,13 @@ then
 fi
 echo 'Requirements found and installed.'
 
-if [ ! -e 'WebMynd_Build_Tools.egg-info' ]
+python setup.py install >> $LOG_FILE 2>&1
+if [ $? -ne 0 ]
 then
-	python setup.py install >> $LOG_FILE 2>&1
-	if [ $? -ne 0 ]
-	then
-		echo 'WebMynd setup failed.'
-		failure 
-	fi
-	echo 'WebMynd environment initialised.'
+	echo 'WebMynd setup failed.'
+	failure 
 fi
+echo 'WebMynd tools installed.'
 
 echo 'WebMynd environment ready, entering command line interface.'
 echo
