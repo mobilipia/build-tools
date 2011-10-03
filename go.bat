@@ -1,17 +1,20 @@
 @echo off
-python -V 2>NUL 1>NUL
+set LOG_FILE=webmynd-install.log
+del %LOG_FILE%
+
+python -V 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO nopython
 ECHO Python found.
 
-easy_install --help 2>NUL 1>NUL
+easy_install --help 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO noeasyinstall
 ECHO easy_install found.
 
-virtualenv --version 2>NUL 1>NUL
+virtualenv --version 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO novirtualenv
 ECHO virtualenv found.
-:virtualenvinstalled
 
+:virtualenvinstalled
 IF EXIST webmynd-environment GOTO virtualenvcreated
 virtualenv --no-site-packages webmynd-environment
 IF ERRORLEVEL 1 GOTO createvirtualenvfail
@@ -19,19 +22,20 @@ ECHO WebMynd virtual env created.
 
 :virtualenvcreated
 CALL webmynd-environment\Scripts\activate.bat
+IF ERRORLEVEL 1 GOTO activatevirtualenvfail
 ECHO Entered WebMynd virtual env.
 
-pip --version 2>NUL 1>NUL
+pip --version 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO nopip
 ECHO pip found.
 :pipinstalled
 
 ECHO Checking and installing requirements, this may take some time.
-pip install -r requirements.txt 2>NUL 1>NUL
+pip install -r requirements.txt 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO reqfail
 ECHO Requirements found and installed.
 
-python setup.py install 2>NUL 1>NUL
+python setup.py install 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO setupfail
 ECHO WebMynd enviroment initialised.
 :setupcomplete
@@ -73,6 +77,11 @@ ECHO.
 ECHO Creating the virtual environment for Python failed.
 GOTO failure
 
+:activatevirtualenvfail
+ECHO.
+ECHO Your virtual environment appears to be broken; please re-run this script to fix it!
+exit /b 1
+
 :nopython
 ECHO.
 ECHO Python not found, make sure Python is installed and in your path.
@@ -94,4 +103,7 @@ EXIT
 
 :success
 ECHO.
+
+del %LOG_FILE%
+
 cmd /k

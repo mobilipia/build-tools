@@ -1,12 +1,19 @@
 #!/bin/bash
 
+LOG_FILE='.webmynd-install.log'
+rm $LOG_FILE
+
 function failure {
+	echo
+	echo 'START LOG OUTPUT'
+	cat $LOG_FILE
+	echo 'END LOG OUTPUT'
 	echo
 	echo 'Something went wrong! Check the output above for more details and see the documentation for common troubleshooting issues.'
 	exit
 }
 
-python -V > /dev/null 2>&1
+python -V >> $LOG_FILE 2>&1
 if [ $? -ne 0 ]
 then
 	echo 'Python not found.'
@@ -14,7 +21,7 @@ then
 fi
 echo 'python found.'
 
-easy_install --help  > /dev/null 2>&1
+easy_install --help  >> $LOG_FILE 2>&1
 if [ $? -ne 0 ]
 then
 	echo 'easy_install not found.'
@@ -22,7 +29,7 @@ then
 fi
 echo 'easy_install found.'
 
-virtualenv --version  > /dev/null 2>&1
+virtualenv --version  >> $LOG_FILE 2>&1
 if [ $? -ne 0 ]
 then
 	echo 'No virtualenv, attempting install.'
@@ -49,11 +56,18 @@ then
 	echo 'WebMynd virtual environment created.'
 fi
 
-. ./webmynd-environment/bin/activate
+source ./webmynd-environment/bin/activate
 
-echo 'Entered WebMynd virtual env.'
+if [ $? -ne 0 ]; then
+	rm -rf ./webmynd-environment
+	echo
+	echo 'Your virtual environment appears to be broken; please re-run this script to fix it!'
+	exit
+else
+	echo 'Entered WebMynd virtual env.'
+fi
 
-pip --version  > /dev/null 2>&1
+pip --version  >> $LOG_FILE 2>&1
 if [ $? -ne 0 ]
 then
 	echo 'No pip, attempting install.'
@@ -69,7 +83,7 @@ fi
 echo 'pip found.'
 
 echo 'Checking and installing requirements, this may take some time.'
-pip install -r requirements.txt > /dev/null 2>&1
+pip install -r requirements.txt >> $LOG_FILE 2>&1
 if [ $? -ne 0 ]
 then
 	echo 'Requirements install failed.'
@@ -79,7 +93,7 @@ echo 'Requirements found and installed.'
 
 if [ ! -e 'WebMynd_Build_Tools.egg-info' ]
 then
-	python setup.py install > /dev/null 2>&1
+	python setup.py install >> $LOG_FILE 2>&1
 	if [ $? -ne 0 ]
 	then
 		echo 'WebMynd setup failed.'
@@ -90,4 +104,7 @@ fi
 
 echo 'WebMynd environment ready, entering command line interface.'
 echo
+
+rm $LOG_FILE
+
 bash --norc

@@ -1,7 +1,9 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.9.9'
+import webmynd
+
+version = webmynd.VERSION
 
 setup(name='WebMynd Build Tools',
 	version=version,
