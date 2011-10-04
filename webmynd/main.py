@@ -129,9 +129,10 @@ def development_build():
 
 	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
 	if templates_dir:
-		LOG.info('configuration is unchanged: using existing templates')
+		LOG.info('app configuration is unchanged: using existing templates')
 	else:
-		LOG.info('configuration has changed: creating new templates')
+		LOG.info(': creating new templates')
+		LOG.warning('app configuration has changed: re-generating templates - this may take a couple of minutes...')
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
@@ -152,6 +153,7 @@ def development_build():
 		
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.USER_DIR)
+	LOG.info('build complete: output is in the "development" directory')
 
 def production_build():
 	'Trigger a new build'
