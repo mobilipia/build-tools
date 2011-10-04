@@ -1,7 +1,7 @@
 #!/bin/bash
 
 LOG_FILE='.webmynd-install.log'
-rm $LOG_FILE
+rm -f $LOG_FILE
 
 failure () {
 	echo
