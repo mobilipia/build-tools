@@ -85,7 +85,8 @@ def run():
 			"C:/Program Files (x86)/Java/jdk1.6.0_27/bin/",
 			"C:/Program Files/Java/jdk1.6.0_27/bin/",
 			"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
-			"C:/Program Files/Java/jdk1.7.0/bin/"
+			"C:/Program Files/Java/jdk1.7.0/bin/",
+			"/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Commands"
 		]
 		if args.jdk:
 			possibleJdk.insert(0, args.jdk)

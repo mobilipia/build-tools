@@ -1,97 +1,80 @@
 @echo off
 set LOG_FILE=webmynd-install.log
-del %LOG_FILE%
+IF EXIST %LOG_FILE% del %LOG_FILE%
+
+rem
+rem LOCATE PYTHON AND STICK IT IN OUR PATH (the python installer doesn't do that...)
+rem
+SET WINCURVERKEY=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion
+REG QUERY "%WINCURVERKEY%" /v "ProgramFilesDir (x86)" >nul 2>nul
+if %ERRORLEVEL% EQU 0 (
+  SET WIN64=1
+) else (
+  SET WIN64=0
+)
+
+if "%WIN64%" EQU "1" (
+  SET PYTHONKEY=HKLM\SOFTWARE\Wow6432Node\Python\PythonCore
+) else (
+  SET PYTHONKEY=HKLM\SOFTWARE\Python\PythonCore
+)
+
+SET PYTHONVERSION=
+SET PYTHONINSTALL=
+
+if "%PYTHONVERSION%" EQU "" (
+  REG QUERY "%PYTHONKEY%\2.7\InstallPath" /ve >nul 2>nul
+  if %ERRORLEVEL% EQU 0 (
+    SET PYTHONVERSION=2.7
+  )
+)
+
+if "%PYTHONVERSION%" EQU "" (
+  REG QUERY "%PYTHONKEY%\2.6\InstallPath" /ve >nul 2>nul
+  if %ERRORLEVEL% EQU 0 (
+    SET PYTHONVERSION=2.6
+  )
+)
+
+if "%PYTHONVERSION%" EQU "" (
+  REG QUERY "%PYTHONKEY%\2.5\InstallPath" /ve >nul 2>nul
+  if %ERRORLEVEL% EQU 0 (
+    SET PYTHONVERSION=2.5
+  )
+)
+
+if "%PYTHONVERSION%" EQU "" (
+  REG QUERY "%PYTHONKEY%\2.4\InstallPath" /ve >nul 2>nul
+  if %ERRORLEVEL% EQU 0 (
+    SET PYTHONVERSION=2.4
+  )
+)
+
+if "%PYTHONVERSION%" NEQ "" (
+  FOR /F "tokens=3* skip=1 delims=	 " %%A IN ('REG QUERY "%PYTHONKEY%\%PYTHONVERSION%\InstallPath" /ve') DO SET "PYTHONINSTALL=%%A"
+)
+
+if "%PYTHONINSTALL%" NEQ "" (
+  SET "PATH=%PATH%;%PYTHONINSTALL%"
+)
+
+rem
+rem END LOCATE PYTHON
+rem
 
 python -V 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO nopython
-ECHO Python found.
 
-easy_install --help 1>%LOG_FILE% 2>&1
-IF ERRORLEVEL 1 GOTO noeasyinstall
-ECHO easy_install found.
+SET FORGE_ROOT=%CD%
 
-virtualenv --version 1>%LOG_FILE% 2>&1
-IF ERRORLEVEL 1 GOTO novirtualenv
-ECHO virtualenv found.
+CALL scripts\activate.bat
 
-:virtualenvinstalled
-IF EXIST webmynd-environment GOTO virtualenvcreated
-virtualenv --no-site-packages webmynd-environment
-IF ERRORLEVEL 1 GOTO createvirtualenvfail
-ECHO WebMynd virtual env created.
-
-:virtualenvcreated
-CALL webmynd-environment\Scripts\activate.bat
-IF ERRORLEVEL 1 GOTO activatevirtualenvfail
-ECHO Entered WebMynd virtual env.
-
-pip --version 1>%LOG_FILE% 2>&1
-IF ERRORLEVEL 1 GOTO nopip
-ECHO pip found.
-:pipinstalled
-
-ECHO Checking and installing requirements, this may take some time.
-pip install -r requirements.txt 1>%LOG_FILE% 2>&1
-IF ERRORLEVEL 1 GOTO reqfail
-ECHO Requirements found and installed.
-
-python setup.py install 1>%LOG_FILE% 2>&1
-IF ERRORLEVEL 1 GOTO setupfail
-ECHO WebMynd enviroment initialised.
-:setupcomplete
-
-ECHO WebMynd environment ready, entering command line interface.
 GOTO success
-
-:nopip
-ECHO No pip, attempting install
-easy_install pip
-IF ERRORLEVEL 1 GOTO easyinstallfail
-ECHO pip installed.
-GOTO pipinstalled
-
-:novirtualenv
-ECHO No virtualenv, attempting install
-easy_install virtualenv
-IF ERRORLEVEL 1 GOTO easyinstallfail
-ECHO virtualenv installed.
-GOTO virtualenvinstalled
-
-:reqfail
-ECHO.
-ECHO Requirements install failed.
-GOTO failure
-
-:reqfail
-ECHO.
-ECHO WebMynd setup failed
-GOTO failure
-
-:easyinstallfail
-ECHO.
-ECHO Failed to install Python package using easy_install.
-GOTO failure
-
-:createvirtualenvfail
-ECHO.
-ECHO Creating the virtual environment for Python failed.
-GOTO failure
-
-:activatevirtualenvfail
-ECHO.
-ECHO Your virtual environment appears to be broken; please re-run this script to fix it!
-exit /b 1
 
 :nopython
 ECHO.
 ECHO Python not found, make sure Python is installed and in your path.
 ECHO you can download it here: http://www.python.org/getit/
-GOTO failure
-
-:noeasyinstall
-ECHO.
-ECHO Easy Install not found.
-ECHO you can download it here: http://pypi.python.org/pypi/setuptools
 GOTO failure
 
 :failure
@@ -100,7 +83,7 @@ ECHO Something went wrong! Check the output above for more details and see the d
 ECHO.
 PAUSE
 EXIT
-
+rem 
 :success
 ECHO.
 

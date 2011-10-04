@@ -1,0 +1,4 @@
+#!/usr/bin/env python
+from webmynd import main
+
+main.production_build()
