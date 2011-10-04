@@ -21,39 +21,16 @@ then
 fi
 echo 'python found.'
 
-easy_install --help  >> $LOG_FILE 2>&1
-if [ $? -ne 0 ]
-then
-	echo 'easy_install not found.'
-	failure 
-fi
-echo 'easy_install found.'
-
-virtualenv --version  >> $LOG_FILE 2>&1
-if [ $? -ne 0 ]
-then
-	echo 'No virtualenv, attempting install.'
-	easy_install virtualenv
-	if [ $? -ne 0 ]
-	then
-		echo
-		echo 'Failed to install python package using easy_install.'
-		failure
-	fi
-	echo 'virtualenv installed.'
-fi
-echo 'virtualenv found.'
-
 if [ ! -e 'webmynd-environment' ]
 then
-	virtualenv --no-site-packages webmynd-environment
+	tar xzvf webmynd-environment.tar.gz >> $LOG_FILE 2>&1
 	if [ $? -ne 0 ]
 	then
 		echo
-		echo 'Creating the virtual environment for python failed.'
+		echo 'Extracting the virtual environment for python failed.'
 		failure
 	fi
-	echo 'WebMynd virtual environment created.'
+	echo 'WebMynd virtual environment extracted.'
 fi
 
 . ./webmynd-environment/bin/activate
