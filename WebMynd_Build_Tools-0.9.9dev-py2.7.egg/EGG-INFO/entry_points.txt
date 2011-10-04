@@ -1,6 +1,0 @@
-[console_scripts]
-wm-prod-build = webmynd.main:production_build
-wm-dev-build = webmynd.main:development_build
-wm-create = webmynd.main:create
-wm-run = webmynd.main:run
-
