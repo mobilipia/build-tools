@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+# EASY-INSTALL-ENTRY-SCRIPT: 'WebMynd-Build-Tools==0.9.9dev','console_scripts','wm-create'
+__requires__ = 'WebMynd-Build-Tools==0.9.9dev'
+import sys
+from pkg_resources import load_entry_point
+
+sys.exit(
+   load_entry_point('WebMynd-Build-Tools==0.9.9dev', 'console_scripts', 'wm-create')()
+)
