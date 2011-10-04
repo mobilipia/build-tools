@@ -3,7 +3,7 @@
 LOG_FILE='.webmynd-install.log'
 rm $LOG_FILE
 
-function failure {
+failure () {
 	echo
 	echo 'START LOG OUTPUT'
 	cat $LOG_FILE
@@ -56,7 +56,7 @@ then
 	echo 'WebMynd virtual environment created.'
 fi
 
-source ./webmynd-environment/bin/activate
+. ./webmynd-environment/bin/activate
 
 if [ $? -ne 0 ]; then
 	rm -rf ./webmynd-environment
