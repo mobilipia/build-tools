@@ -17,6 +17,18 @@ from webmynd.android import runAndroid
 
 LOG = None
 
+def with_error_handler(function):
+	def decorated_with_handler(*args, **kwargs):
+		try:
+			function(*args, **kwargs)
+		except Exception as e:
+			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
+			LOG.error("Something went wrong that we didn't expect:");
+			LOG.error(e);
+			LOG.error("Please contact support@webmynd.com");
+
+	return decorated_with_handler
+
 def setup_logging(args):
 	'Adjust logging parameters according to command line switches'
 	global LOG
