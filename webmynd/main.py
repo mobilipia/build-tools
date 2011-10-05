@@ -41,6 +41,9 @@ def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	setup_logging(args)
 
+class CouldNotLocate(Exception):
+	pass
+
 def _check_for_dir(dirs, fail_msg):
 	for directory in dirs:
 		if (os.path.isdir(directory)):
@@ -49,7 +52,7 @@ def _check_for_dir(dirs, fail_msg):
 			else:
 				return directory+'/'
 	else:
-		raise Exception(fail_msg)
+		raise CouldNotLocate(fail_msg)
 
 def run():
 	parser = argparse.ArgumentParser('Run a built dev app on a particular platform')
@@ -73,26 +76,29 @@ def run():
 		if args.sdk:
 			possibleSdk.insert(0, args.sdk)
 
-		sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
-		# Some sensible places to look for the Java JDK
-		possibleJdk = [
-			"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
-			"C:/Program Files/Java/jdk1.6.0_24/bin/",
-			"C:/Program Files (x86)/Java/jdk1.6.0_25/bin/",
-			"C:/Program Files/Java/jdk1.6.0_25/bin/",
-			"C:/Program Files (x86)/Java/jdk1.6.0_26/bin/",
-			"C:/Program Files/Java/jdk1.6.0_26/bin/",
-			"C:/Program Files (x86)/Java/jdk1.6.0_27/bin/",
-			"C:/Program Files/Java/jdk1.6.0_27/bin/",
-			"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
-			"C:/Program Files/Java/jdk1.7.0/bin/",
-			"/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Commands"
-		]
-		if args.jdk:
-			possibleJdk.insert(0, args.jdk)
-		jdk = _check_for_dir(possibleJdk, "No Java JDK found, please specify with the --jdk flag")
-		
-		runAndroid(sdk, jdk, args.device)
+		try:
+			sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
+			# Some sensible places to look for the Java JDK
+			possibleJdk = [
+				"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
+				"C:/Program Files/Java/jdk1.6.0_24/bin/",
+				"C:/Program Files (x86)/Java/jdk1.6.0_25/bin/",
+				"C:/Program Files/Java/jdk1.6.0_25/bin/",
+				"C:/Program Files (x86)/Java/jdk1.6.0_26/bin/",
+				"C:/Program Files/Java/jdk1.6.0_26/bin/",
+				"C:/Program Files (x86)/Java/jdk1.6.0_27/bin/",
+				"C:/Program Files/Java/jdk1.6.0_27/bin/",
+				"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
+				"C:/Program Files/Java/jdk1.7.0/bin/",
+				"/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Commands"
+			]
+			if args.jdk:
+				possibleJdk.insert(0, args.jdk)
+			jdk = _check_for_dir(possibleJdk, "No Java JDK found, please specify with the --jdk flag")
+			
+			runAndroid(sdk, jdk, args.device)
+		except CouldNotLocate as e:
+			LOG.error(e)
 
 def create():
 	'Create a new development environment'
