@@ -49,10 +49,10 @@ if [ "x$OSTYPE" = "xmsys" ] ; then
   PATH="`pwd`/scripts:$PATH"
   # msys will convert any env vars with PATH in it to use msys
   # form and will unconvert before launching
-  PYTHONPATH="`pwd -W`/webmynd-dependencies;$PYTHONPATH"
+  PYTHONPATH="$FORGE_ROOT/webmynd-dependencies;$FORGE_ROOT;$PYTHONPATH"
 else
   FORGE_ROOT="`pwd`"
-  PYTHONPATH="$FORGE_ROOT/webmynd-dependencies:$PYTHONPATH"
+  PYTHONPATH="$FORGE_ROOT/webmynd-dependencies:$FORGE_ROOT:$PYTHONPATH"
   PATH="$FORGE_ROOT/scripts:$PATH"
 fi
 

@@ -57,7 +57,7 @@ class TestCreate(object):
 		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
 			main.create()
 		
-		os.path.exists.assert_called_once_with('user')
+		os.path.exists.assert_called_once_with(defaults.SRC_DIR)
 		remote.create.assert_called_once_with(mock_raw_input.return_value)
 		remote.fetch_initial.assert_called_once_with(remote.create.return_value)
 
@@ -74,7 +74,7 @@ class TestCreate(object):
 		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
 			main.create()
 		
-		os.path.exists.assert_called_once_with('user')
+		os.path.exists.assert_called_once_with(defaults.SRC_DIR)
 		ok_(not remote.create.called)
 		ok_(not remote.fetch_initial.called)
 
@@ -157,7 +157,7 @@ class TestBuild(object):
 		
 		main.development_build()
 
-		isdir.assert_called_once_with('user')
+		isdir.assert_called_once_with(defaults.SRC_DIR)
 		ok_(not build_config.called)
 		
 	@mock.patch('webmynd.main.build_config')
@@ -198,7 +198,7 @@ class TestBuild(object):
 		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
 		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value, 'development')
-		Generate.return_value.all.assert_called_once_with('development', defaults.USER_DIR)
+		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
 		
 	@mock.patch('webmynd.main.build_config')
 	@mock.patch('webmynd.main.os.path.isdir')
@@ -224,7 +224,7 @@ class TestBuild(object):
 		
 		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
 		shutil.copytree.assert_called_once_with(Manager.return_value.fetch_templates.return_value, 'development')
-		Generate.return_value.all.assert_called_once_with('development', defaults.USER_DIR)
+		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
 		
 	@mock.patch('webmynd.main.build_config')
 	@mock.patch('webmynd.main.os.path.isdir')

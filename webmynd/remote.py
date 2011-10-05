@@ -17,6 +17,17 @@ from webmynd import defaults
 
 LOG = logging.getLogger(__name__)
 
+class RequestError(Exception):
+	'The Forge API responded with an error code'
+	def __init__(self, message, response, *args, **kwargs):
+		super(RequestError, self).__init__(message, *args, **kwargs)
+		self.response = response
+
+class AuthenticationError(Exception):
+	'Authenticating with the Forge API failed'
+	def __init__(self, *args, **kwargs):
+		super(AuthenticationError, self).__init__(*args, **kwargs)
+
 class Remote(object):
 	'Wrap remote operations'
 	POLL_DELAY = 10
@@ -24,7 +35,7 @@ class Remote(object):
 	def __init__(self, config):
 		'Start new remote WebMynd builds'
 		self.config = config
-		cookie_path = path.join(os.getcwd(), 'cookies.txt')
+		cookie_path = path.join(defaults.FORGE_ROOT, 'cookies.txt')
 		self.cookies = LWPCookieJar(cookie_path)
 		if not os.path.exists(cookie_path):
 			self.cookies.save()
@@ -80,7 +91,8 @@ class Remote(object):
 					str(resp),
 					getattr(resp, 'content', 'unknown error')
 				)
-			raise Exception(msg)
+
+			raise RequestError(msg, resp)
 		self.cookies.save()
 		return resp
 	def _post(self, url, *args, **kw):
@@ -104,29 +116,33 @@ class Remote(object):
 	def _authenticate(self):
 		'''Authentication handshake with server (if we haven't already)
 		'''
-		if self._authenticated:
-			LOG.debug('already authenticated - continuing')
-			return
+		try:
+			if self._authenticated:
+				LOG.debug('already authenticated - continuing')
+				return
 
-		resp = self._get(urljoin(self.server, 'auth/loggedin'))
-		if json.loads(resp.content)['loggedin']:
+			resp = self._get(urljoin(self.server, 'auth/loggedin'))
+			if json.loads(resp.content)['loggedin']:
+				self._authenticated = True
+				LOG.debug('already authenticated via cookie - continuing')
+				return
+
+			email = raw_input("Your email address: ")
+			password = getpass()
+			LOG.info('authenticating as "%s"' % email)
+			credentials = {
+				'email': email,
+				'password': password
+			}
+
+			self._get(urljoin(self.server, 'auth/hello'))
+				
+			self._post(urljoin(self.server, 'auth/verify'), data=credentials)
+			LOG.info('authentication successful')
 			self._authenticated = True
-			LOG.debug('already authenticated via cookie - continuing')
-			return
-
-		email = raw_input("Your email address: ")
-		password = getpass()
-		LOG.info('authenticating as "%s"' % email)
-		credentials = {
-			'email': email,
-			'password': password
-		}
-
-		self._get(urljoin(self.server, 'auth/hello'))
-			
-		self._post(urljoin(self.server, 'auth/verify'), data=credentials)
-		LOG.info('authentication successful')
-		self._authenticated = True
+		except RequestError as e:
+			reason = json.loads(e.response.content)['text']
+			raise AuthenticationError(reason)
 
 	def create(self, name):
 		self._authenticate()
@@ -136,7 +152,7 @@ class Remote(object):
 		}
 		resp = self._post(urljoin(self.server, 'app/'), data=data)
 		return json.loads(resp.content)['uuid']
-		
+
 	def latest(self):
 		'''Get the ID of the latest completed production build for this app.'''
 		LOG.info('fetching latest build ID')
@@ -191,7 +207,9 @@ class Remote(object):
 			LOG.debug('writing %s' % path.abspath(filename))
 			out_file.write(resp.content)
 		zipf = zipfile.ZipFile(filename)
+		# XXX: shouldn't do the renaming here - need to fix the server to serve up the correct structure
 		zipf.extractall()
+		shutil.move('user', defaults.SRC_DIR)
 		zipf.close()
 		LOG.debug('extracted  initial project template')
 		os.remove(filename)
@@ -283,10 +301,10 @@ class Remote(object):
 			url = urljoin(self.server, url_path)
 			return self._post(url, data=data, files=files)
 			
-		user_dir = defaults.USER_DIR
+		user_dir = defaults.SRC_DIR
 		if template_only or not path.isdir(user_dir):
 			if not path.isdir(user_dir):
-				LOG.warning('no "user" directory found - we will be using the App\'s default code!')
+				LOG.warning('no "%s" directory found - we will be using the App\'s default code!' % defaults.SRC_DIR)
 			resp = build_request()
 		else:
 			filename, orig_dir = 'user.%s.tar.bz2' % time.time(), os.getcwd()
