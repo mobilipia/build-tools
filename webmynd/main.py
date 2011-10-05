@@ -11,11 +11,23 @@ import time
 import webmynd
 from webmynd import defaults, build_config
 from webmynd.generate import Generate
-from webmynd.remote import Remote
+from webmynd.remote import Remote, AuthenticationError
 from webmynd.templates import Manager
 from webmynd.android import runAndroid
 
 LOG = None
+
+def with_error_handler(function):
+	def decorated_with_handler(*args, **kwargs):
+		try:
+			function(*args, **kwargs)
+		except Exception as e:
+			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
+			LOG.error("Something went wrong that we didn't expect:");
+			LOG.error(e);
+			LOG.error("Please contact support@webmynd.com");
+
+	return decorated_with_handler
 
 def setup_logging(args):
 	'Adjust logging parameters according to command line switches'
@@ -41,6 +53,9 @@ def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	setup_logging(args)
 
+class CouldNotLocate(Exception):
+	pass
+
 def _check_for_dir(dirs, fail_msg):
 	for directory in dirs:
 		if (os.path.isdir(directory)):
@@ -49,7 +64,7 @@ def _check_for_dir(dirs, fail_msg):
 			else:
 				return directory+'/'
 	else:
-		raise Exception(fail_msg)
+		raise CouldNotLocate(fail_msg)
 
 def run():
 	parser = argparse.ArgumentParser('Run a built dev app on a particular platform')
@@ -73,26 +88,29 @@ def run():
 		if args.sdk:
 			possibleSdk.insert(0, args.sdk)
 
-		sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
-		# Some sensible places to look for the Java JDK
-		possibleJdk = [
-			"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
-			"C:/Program Files/Java/jdk1.6.0_24/bin/",
-			"C:/Program Files (x86)/Java/jdk1.6.0_25/bin/",
-			"C:/Program Files/Java/jdk1.6.0_25/bin/",
-			"C:/Program Files (x86)/Java/jdk1.6.0_26/bin/",
-			"C:/Program Files/Java/jdk1.6.0_26/bin/",
-			"C:/Program Files (x86)/Java/jdk1.6.0_27/bin/",
-			"C:/Program Files/Java/jdk1.6.0_27/bin/",
-			"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
-			"C:/Program Files/Java/jdk1.7.0/bin/",
-			"/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Commands"
-		]
-		if args.jdk:
-			possibleJdk.insert(0, args.jdk)
-		jdk = _check_for_dir(possibleJdk, "No Java JDK found, please specify with the --jdk flag")
-		
-		runAndroid(sdk, jdk, args.device)
+		try:
+			sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
+			# Some sensible places to look for the Java JDK
+			possibleJdk = [
+				"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
+				"C:/Program Files/Java/jdk1.6.0_24/bin/",
+				"C:/Program Files (x86)/Java/jdk1.6.0_25/bin/",
+				"C:/Program Files/Java/jdk1.6.0_25/bin/",
+				"C:/Program Files (x86)/Java/jdk1.6.0_26/bin/",
+				"C:/Program Files/Java/jdk1.6.0_26/bin/",
+				"C:/Program Files (x86)/Java/jdk1.6.0_27/bin/",
+				"C:/Program Files/Java/jdk1.6.0_27/bin/",
+				"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
+				"C:/Program Files/Java/jdk1.7.0/bin/",
+				"/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Commands"
+			]
+			if args.jdk:
+				possibleJdk.insert(0, args.jdk)
+			jdk = _check_for_dir(possibleJdk, "No Java JDK found, please specify with the --jdk flag")
+			
+			runAndroid(sdk, jdk, args.device)
+		except CouldNotLocate as e:
+			LOG.error(e)
 
 def create():
 	'Create a new development environment'
@@ -105,12 +123,15 @@ def create():
 	remote = Remote(config)
 	manager = Manager(config)
 	
-	if os.path.exists('user'):
-		LOG.error('Folder "user" already exists, if you really want to create a new app you will need to remove it!')
+	if os.path.exists(defaults.SRC_DIR):
+		LOG.error('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
 	else:
 		name = raw_input('Enter app name: ')
-		uuid = remote.create(name)
-		remote.fetch_initial(uuid)
+		try:
+			uuid = remote.create(name)
+			remote.fetch_initial(uuid)
+		except AuthenticationError as e:
+			LOG.error('Failed to login to forge: %s' % e.message)
 
 def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
@@ -120,8 +141,8 @@ def development_build():
 	args = parser.parse_args()
 	handle_general_options(args)
 	
-	if not os.path.isdir('user'):
-		LOG.error('Folder "user" does not exist - have you run wm-create yet?')
+	if not os.path.isdir(defaults.SRC_DIR):
+		LOG.error('Source folder "%s" does not exist - have you run wm-create yet?' % defaults.SRC_DIR)
 		return 1
 	
 	config = build_config.load()
@@ -130,10 +151,9 @@ def development_build():
 
 	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
 	if templates_dir:
-		LOG.info('app configuration is unchanged: using existing templates')
+		LOG.info('configuration is unchanged: using existing templates')
 	else:
-		LOG.info(': creating new templates')
-		LOG.warning('app configuration has changed: re-generating templates - this may take a couple of minutes...')
+		LOG.info('configuration has changed: creating new templates')
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
@@ -153,8 +173,7 @@ def development_build():
 				raise
 		
 	generator = Generate(defaults.APP_CONFIG_FILE)
-	generator.all('development', defaults.USER_DIR)
-	LOG.info('build complete: output is in the "development" directory')
+	generator.all('development', defaults.SRC_DIR)
 
 def production_build():
 	'Trigger a new build'
