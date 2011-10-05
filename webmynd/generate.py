@@ -89,22 +89,7 @@ class Generate(object):
 		find = "<head>"
 		replace = "<head><script src='/webmynd/all.js'></script>"
 		
-		for root, _, files in os.walk(user_dir):
-			for f in files:
-				in_dir = root
-				out_dir = chrome_user_dir+root[len(user_dir):]
-				if not os.path.exists(out_dir):
-					os.makedirs(out_dir)
-				
-				if f.split('.')[-1] in ('html'):
-					with codecs.open(path.join(in_dir,f), 'r', encoding='utf8') as in_file:
-						in_file_contents = in_file.read()
-						in_file_contents = in_file_contents.replace(find, replace)
-						LOG.debug('replacing "%s" with "%s" in %s' % (find, replace, path.join(in_dir,f)))
-					with codecs.open(path.join(out_dir,f), 'w', encoding='utf8') as out_file:
-						out_file.write(in_file_contents)
-				else:
-					shutil.copyfile(path.join(in_dir,f), path.join(out_dir,f))
+		self._recursive_replace(user_dir, chrome_user_dir, ('html',), find, replace)
 
 	def android(self, target_dir, user_dir):
 		uuid = self.app_config['uuid']
@@ -114,19 +99,43 @@ class Generate(object):
 		find = "<head>"
 		replace = "<head><script src='file:///android_asset/webmynd/all.js'></script>"
 		
-		for root, _, files in os.walk(user_dir):
-			for f in files:
-				in_dir = root
-				out_dir = android_user_dir+root[len(user_dir):]
+		self._recursive_replace(user_dir, android_user_dir, ('html',), find, replace)
+	
+	def _recursive_replace(self, parent, output_root, suffixes, find, replace):
+		'''Recurse over a tree of files (under :param:`parent`), writing all files to an analagous structure under
+		:param:`output_root`. In addition, for files with a names ending in .:param:`suffix`, instances of
+		:param:`find` are replaced with :param:`replace`.
+
+		:param parent: the top-level directory to look for files in
+		:param output_root: top-level directory that the files will be written to
+		:param suffixes: a collection of string suffixes of files to consider when replacing :param:`find` with :param:`replace`
+		:param find: string to look for in the text
+		:param replace: what to replace :param:`find` with before writing the output
+		'''
+		for root, _, files in os.walk(parent):
+			for file_ in files:
+				out_dir = output_root + root[len(parent):]
 				if not os.path.exists(out_dir):
 					os.makedirs(out_dir)
 				
-				if f.split('.')[-1] in ('html'):
-					with codecs.open(path.join(in_dir,f), 'r', encoding='utf8') as in_file:
-						in_file_contents = in_file.read()
-						in_file_contents = in_file_contents.replace(find, replace)
-						LOG.debug('replacing "%s" with "%s" in %s' % (find, replace, path.join(in_dir,f)))
-					with codecs.open(path.join(out_dir,f), 'w', encoding='utf8') as out_file:
-						out_file.write(in_file_contents)
+				if file_.rpartition('.')[2] in suffixes:
+					self._replace_and_write_file(path.join(root, file_), path.join(out_dir, file_), find, replace)
 				else:
-					shutil.copyfile(path.join(in_dir,f), path.join(out_dir,f))
+					shutil.copyfile(path.join(root, file_), path.join(out_dir, file_))
+
+	
+	def _replace_and_write_file(self, in_filename, out_filename, find, replace):
+		'''Read from :param:`in_filename`, write to :param:`out_filename`,
+			replacing :param:`find` with :param:`replace` as we go.
+			
+		:param in_filename: the name of the input file
+		:param out_filename: the name of the output file
+		:param find: string to look for in the text
+		:param replace: what to replace :param:`find` with before writing the output
+		'''
+		LOG.debug('replacing "%s" with "%s" in %s' % (find, replace, in_filename))
+		with codecs.open(in_filename, 'r', encoding='utf8') as in_file:
+			in_file_contents = in_file.read()
+			in_file_contents = in_file_contents.replace(find, replace)
+		with codecs.open(out_filename, 'w', encoding='utf8') as out_file:
+			out_file.write(in_file_contents)
