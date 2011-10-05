@@ -256,7 +256,7 @@ class TestBuild(TestRemote):
 			resp = self.remote.build()
 			
 		tmp_file = mock_open.call_args_list[0][0][0]
-		eq_(os.chdir.call_args_list, [(('user',), {}), (('original dir',), {})])
+		eq_(os.chdir.call_args_list, [((defaults.SRC_DIR,), {}), (('original dir',), {})])
 		tarfile.open.assert_called_once_with(tmp_file, mode='w:bz2')
 		tarfile.open.return_value.close.assert_called_once_with()
 		os.listdir.assert_called_once_with('.')
