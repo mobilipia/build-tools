@@ -1,5 +1,15 @@
 #!/bin/bash
 
+case "$-" in
+	*i*) ;;
+	*)  echo
+		echo "You can't run this as a script, please run:"
+		echo source go.sh
+		echo
+		exit 1
+		;;
+esac
+
 LOG_FILE='.webmynd-install.log'
 rm -f $LOG_FILE
 
@@ -48,5 +58,3 @@ then
 fi
 
 rm -f $LOG_FILE
-
-bash --norc
