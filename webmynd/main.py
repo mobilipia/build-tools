@@ -11,7 +11,7 @@ import time
 import webmynd
 from webmynd import defaults, build_config
 from webmynd.generate import Generate
-from webmynd.remote import Remote
+from webmynd.remote import Remote, AuthenticationError
 from webmynd.templates import Manager
 from webmynd.android import runAndroid
 
@@ -109,8 +109,11 @@ def create():
 		LOG.error('Folder "user" already exists, if you really want to create a new app you will need to remove it!')
 	else:
 		name = raw_input('Enter app name: ')
-		uuid = remote.create(name)
-		remote.fetch_initial(uuid)
+		try:
+			uuid = remote.create(name)
+			remote.fetch_initial(uuid)
+		except AuthenticationError as e:
+			LOG.error('Failed to login to forge: %s' % e.message)
 
 def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'

@@ -23,6 +23,11 @@ class RequestError(Exception):
 		super(RequestError, self).__init__(message, *args, **kwargs)
 		self.response = response
 
+class AuthenticationError(Exception):
+	'Authenticating with the Forge API failed'
+	def __init__(self, *args, **kwargs):
+		super(AuthenticationError, self).__init__(*args, **kwargs)
+
 class Remote(object):
 	'Wrap remote operations'
 	POLL_DELAY = 10
@@ -111,29 +116,33 @@ class Remote(object):
 	def _authenticate(self):
 		'''Authentication handshake with server (if we haven't already)
 		'''
-		if self._authenticated:
-			LOG.debug('already authenticated - continuing')
-			return
+		try:
+			if self._authenticated:
+				LOG.debug('already authenticated - continuing')
+				return
 
-		resp = self._get(urljoin(self.server, 'auth/loggedin'))
-		if json.loads(resp.content)['loggedin']:
+			resp = self._get(urljoin(self.server, 'auth/loggedin'))
+			if json.loads(resp.content)['loggedin']:
+				self._authenticated = True
+				LOG.debug('already authenticated via cookie - continuing')
+				return
+
+			email = raw_input("Your email address: ")
+			password = getpass()
+			LOG.info('authenticating as "%s"' % email)
+			credentials = {
+				'email': email,
+				'password': password
+			}
+
+			self._get(urljoin(self.server, 'auth/hello'))
+				
+			self._post(urljoin(self.server, 'auth/verify'), data=credentials)
+			LOG.info('authentication successful')
 			self._authenticated = True
-			LOG.debug('already authenticated via cookie - continuing')
-			return
-
-		email = raw_input("Your email address: ")
-		password = getpass()
-		LOG.info('authenticating as "%s"' % email)
-		credentials = {
-			'email': email,
-			'password': password
-		}
-
-		self._get(urljoin(self.server, 'auth/hello'))
-			
-		self._post(urljoin(self.server, 'auth/verify'), data=credentials)
-		LOG.info('authentication successful')
-		self._authenticated = True
+		except RequestError as e:
+			reason = json.loads(e.response.content)['text']
+			raise AuthenticationError(reason)
 
 	def create(self, name):
 		self._authenticate()
@@ -143,7 +152,7 @@ class Remote(object):
 		}
 		resp = self._post(urljoin(self.server, 'app/'), data=data)
 		return json.loads(resp.content)['uuid']
-		
+
 	def latest(self):
 		'''Get the ID of the latest completed production build for this app.'''
 		LOG.info('fetching latest build ID')
