@@ -105,8 +105,8 @@ def create():
 	remote = Remote(config)
 	manager = Manager(config)
 	
-	if os.path.exists('user'):
-		LOG.error('Folder "user" already exists, if you really want to create a new app you will need to remove it!')
+	if os.path.exists(defaults.SRC_DIR):
+		LOG.error('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
 	else:
 		name = raw_input('Enter app name: ')
 		try:
@@ -123,8 +123,8 @@ def development_build():
 	args = parser.parse_args()
 	handle_general_options(args)
 	
-	if not os.path.isdir('user'):
-		LOG.error('Folder "user" does not exist - have you run wm-create yet?')
+	if not os.path.isdir(defaults.SRC_DIR):
+		LOG.error('Source folder "%s" does not exist - have you run wm-create yet?' % defaults.SRC_DIR)
 		return 1
 	
 	config = build_config.load()
@@ -155,7 +155,7 @@ def development_build():
 				raise
 		
 	generator = Generate(defaults.APP_CONFIG_FILE)
-	generator.all('development', defaults.USER_DIR)
+	generator.all('development', defaults.SRC_DIR)
 
 def production_build():
 	'Trigger a new build'

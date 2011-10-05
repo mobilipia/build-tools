@@ -29,7 +29,7 @@ def load(filename=None):
 	return config
 
 def load_app(filename=None):
-	'Read in and JSON parse the per-app configuration file (normall user/config.json)'
+	'Read in and JSON parse the per-app configuration file (normall src/config.json)'
 	if filename is None:
 		filename = defaults.APP_CONFIG_FILE
 	

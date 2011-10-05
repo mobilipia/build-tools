@@ -120,7 +120,8 @@ class TestCreate(TestRemote):
 class TestFetchInitial(TestRemote):
 	@patch('webmynd.remote.zipfile')
 	@patch('webmynd.remote.os')
-	def test_normal(self, os, zipf):
+	@patch('webmynd.remote.shutil')
+	def test_normal(self, shutil, os, zipf):
 		self.remote._authenticate = Mock()
 		mock_open = mock.MagicMock()
 		manager = mock_open.return_value.__enter__.return_value
@@ -131,6 +132,7 @@ class TestFetchInitial(TestRemote):
 		with mock.patch('__builtin__.open', new=mock_open):
 			result = self.remote.fetch_initial('TEST-UUID')
 			
+		shutil.move.assert_called_once_with('user', 'src')
 		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/app/TEST-UUID/initial_files')
 		mock_open.assert_called_once_with('initial.zip', 'wb')
 		manager.write.assert_called_once_with('zipfile contents')

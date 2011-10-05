@@ -207,7 +207,9 @@ class Remote(object):
 			LOG.debug('writing %s' % path.abspath(filename))
 			out_file.write(resp.content)
 		zipf = zipfile.ZipFile(filename)
+		# XXX: shouldn't do the renaming here - need to fix the server to serve up the correct structure
 		zipf.extractall()
+		shutil.move('user', defaults.SRC_DIR)
 		zipf.close()
 		LOG.debug('extracted  initial project template')
 		os.remove(filename)
@@ -299,10 +301,10 @@ class Remote(object):
 			url = urljoin(self.server, url_path)
 			return self._post(url, data=data, files=files)
 			
-		user_dir = defaults.USER_DIR
+		user_dir = defaults.SRC_DIR
 		if template_only or not path.isdir(user_dir):
 			if not path.isdir(user_dir):
-				LOG.warning('no "user" directory found - we will be using the App\'s default code!')
+				LOG.warning('no "%s" directory found - we will be using the App\'s default code!' % defaults.SRC_DIR)
 			resp = build_request()
 		else:
 			filename, orig_dir = 'user.%s.tar.bz2' % time.time(), os.getcwd()
