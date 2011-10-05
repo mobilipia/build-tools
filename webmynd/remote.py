@@ -17,6 +17,12 @@ from webmynd import defaults
 
 LOG = logging.getLogger(__name__)
 
+class RequestError(Exception):
+	'The Forge API responded with an error code'
+	def __init__(self, message, response, *args, **kwargs):
+		super(RequestError, self).__init__(message, *args, **kwargs)
+		self.response = response
+
 class Remote(object):
 	'Wrap remote operations'
 	POLL_DELAY = 10
@@ -80,7 +86,8 @@ class Remote(object):
 					str(resp),
 					getattr(resp, 'content', 'unknown error')
 				)
-			raise Exception(msg)
+
+			raise RequestError(msg, resp)
 		self.cookies.save()
 		return resp
 	def _post(self, url, *args, **kw):
