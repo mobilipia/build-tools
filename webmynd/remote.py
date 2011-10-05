@@ -35,7 +35,7 @@ class Remote(object):
 	def __init__(self, config):
 		'Start new remote WebMynd builds'
 		self.config = config
-		cookie_path = path.join(os.getcwd(), 'cookies.txt')
+		cookie_path = path.join(defaults.FORGE_ROOT, 'cookies.txt')
 		self.cookies = LWPCookieJar(cookie_path)
 		if not os.path.exists(cookie_path):
 			self.cookies.save()
