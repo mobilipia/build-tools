@@ -89,4 +89,10 @@ ECHO.
 
 del %LOG_FILE%
 
+ECHO.
+ECHO Welcome to the Forge development environment!
+ECHO.
+ECHO To get started, change to a fresh directory for your app, then run: wm-create
+ECHO.
+
 cmd /k
