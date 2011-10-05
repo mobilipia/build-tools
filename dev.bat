@@ -35,9 +35,6 @@ pip install -r requirements.txt 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO reqfail
 ECHO Requirements found and installed.
 
-python setup.py install 1>%LOG_FILE% 2>&1
-IF ERRORLEVEL 1 GOTO setupfail
-ECHO WebMynd enviroment initialised.
 :setupcomplete
 
 ECHO WebMynd environment ready, entering command line interface.
