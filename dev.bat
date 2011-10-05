@@ -21,7 +21,12 @@ IF ERRORLEVEL 1 GOTO createvirtualenvfail
 ECHO WebMynd virtual env created.
 
 :virtualenvcreated
+SET FORGE_ROOT=%CD%
 CALL webmynd-environment\Scripts\activate.bat
+
+SET PYTHONPATH=%FORGE_ROOT%;%PYTHONPATH%
+SET PATH=%FORGE_ROOT%\scripts;%PATH%
+
 IF ERRORLEVEL 1 GOTO activatevirtualenvfail
 ECHO Entered WebMynd virtual env.
 
