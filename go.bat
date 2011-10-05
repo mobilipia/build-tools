@@ -74,7 +74,7 @@ GOTO success
 :nopython
 ECHO.
 ECHO Python not found, make sure Python is installed and in your path.
-ECHO you can download it here: http://www.python.org/getit/
+ECHO you can download it here: http://webmynd.com/forge/requirements#Python
 GOTO failure
 
 :failure
