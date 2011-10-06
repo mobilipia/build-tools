@@ -60,9 +60,17 @@ def runAndroid(sdk, jdk, device):
 	args = [sdk+'tools/zipalign', '-v', '4', 'app.apk', 'out.apk']
 	runShell(args)
 	os.remove('app.apk')
+
 	# TODO choose device
-	args = [sdk+'platform-tools/adb', 'devices']
-	proc = Popen(args, stdout=PIPE)
+	adb_location = path.abspath(path.join(sdk,'platform-tools','adb'))
+	args = [adb_location, 'devices']
+	try:
+		proc = Popen(args, stdout=PIPE)
+	except Exception as e:
+		LOG.error("problem finding the android debug bridge at: %s" % adb_location)
+		LOG.error("this probably means you need to run the android SDK manager and download the android platform-tools.")
+		raise ForgeError
+
 	proc_std = proc.communicate()[0]
 	if proc.returncode != 0:
 		raise Exception('failed: %s' % (proc_std))
