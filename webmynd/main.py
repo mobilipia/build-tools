@@ -17,11 +17,36 @@ from webmynd.android import runAndroid
 
 LOG = None
 
+class RunningInForgeRoot(Exception):
+	pass
+
+def _assert_outside_of_forge_root():
+	if os.getcwd() == defaults.FORGE_ROOT:
+		raise RunningInForgeRoot
+
+def _warn_if_subdirectory_of_forge_root():
+	if str(os.getcwd()).startswith(str(defaults.FORGE_ROOT)):
+		# XXX: LOG hasn't been set up when this is called, would be good to do that earlier
+		print
+		print """WARNING: running webmynd commands in a subdirectory of the forge build tools, this is probably a bad idea - please do your app development in a folder outside of the build tools"""
+		print
+
 def with_error_handler(function):
 	def decorated_with_handler(*args, **kwargs):
 		try:
+			_assert_outside_of_forge_root()
+			_warn_if_subdirectory_of_forge_root()
 			function(*args, **kwargs)
+		except RunningInForgeRoot:
+			# XXX: would use logging here, but there's no logging setup at this point - it gets setup
+			# inside the command based on arguments
+			# might be able to setup logging earlier on in this global handler?
+			print
+			print "ERROR: You're trying to run commands in the build tools directory, you need to move to another directory outside of this one first."
 		except Exception as e:
+			print "WHOOPS2"
+			import traceback
+			traceback.print_exc()
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:");
 			LOG.error(e);
@@ -40,7 +65,7 @@ def setup_logging(args):
 		log_level = logging.WARNING
 	else:
 		log_level = logging.INFO
-	logging.basicConfig(level=log_level, format='[%(levelname)7s] %(asctime)s -- %(message)s')
+	logging.basicConfig(level=log_level, format='[%(levelname)7s] %(message)s')
 	LOG = logging.getLogger(__name__)
 	LOG.info('WebMynd tools running at version %s' % webmynd.VERSION)
 
@@ -67,11 +92,23 @@ def _check_for_dir(dirs, fail_msg):
 		raise CouldNotLocate(fail_msg)
 
 def run():
-	parser = argparse.ArgumentParser('Run a built dev app on a particular platform')
+	def not_chrome(text):
+		if text == "chrome":
+			msg = """
+
+Currently it is not possible to launch a Chrome extension via this interface. The required steps are:
+
+	1) Go to chrome:extensions in the Chrome browser
+	2) Make sure "developer mode" is on (top right corner)')
+	3) Use "Load unpacked extension" and browse to ./development/chrome"""
+			raise argparse.ArgumentTypeError(msg)
+		return text
+
+	parser = argparse.ArgumentParser(prog='wm-run', description='Run a built dev app on a particular platform')
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-j', '--jdk', help='Path to the Java JDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
-	parser.add_argument('platform', choices=['android'])
+	parser.add_argument('platform', type=not_chrome, choices=['android'])
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -114,7 +151,7 @@ def run():
 
 def create():
 	'Create a new development environment'
-	parser = argparse.ArgumentParser('Initialises your development environment')
+	parser = argparse.ArgumentParser(prog='wm-create', description='Initialises your development environment')
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -136,13 +173,17 @@ def create():
 		try:
 			uuid = remote.create(name)
 			remote.fetch_initial(uuid)
+			LOG.info('App structure created. To proceed:')
+			LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
+			LOG.info('2) Run wm-dev-build to make a development build')
+			LOG.info('3) Run wm-prod-build to make a production build')
 		except AuthenticationError as e:
 			LOG.error('Failed to login to forge: %s' % e.message)
 
 def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
 	
-	parser = argparse.ArgumentParser('Creates new local, unzipped development add-ons with your source and configuration')
+	parser = argparse.ArgumentParser(prog='wm-dev-build', description='Creates new local, unzipped development add-ons with your source and configuration')
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -185,11 +226,12 @@ def development_build():
 		
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.SRC_DIR)
+	LOG.info("Development build created. Use wm-run to run your app.")
 
 def production_build():
 	'Trigger a new build'
 	# TODO commonality between this and development_build
-	parser = argparse.ArgumentParser('Start a new production build and retrieve the packaged and unpackaged output')
+	parser = argparse.ArgumentParser(prog='wm-prod-build', description='Start a new production build and retrieve the packaged and unpackaged output')
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -206,3 +248,4 @@ def production_build():
 	
 	LOG.info('fetching new WebMynd build')
 	remote.fetch_packaged(build_id, to_dir='production')
+	LOG.info("Production build created. Use wm-run to run your app.")
