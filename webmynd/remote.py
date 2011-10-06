@@ -180,6 +180,9 @@ class Remote(object):
 		'''
 		resp = self._get(urljoin(self.server, 'build/%d/detail/' % build_id))
 		content = json.loads(resp.content)
+		if 'log_output' in content:
+			# too chatty, and already seen this after build completed
+			del content['log_output']
 		LOG.debug('build detail: %s' % content)
 		
 		filenames = []
