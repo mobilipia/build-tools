@@ -67,11 +67,23 @@ def _check_for_dir(dirs, fail_msg):
 		raise CouldNotLocate(fail_msg)
 
 def run():
+	def not_chrome(text):
+		if text == "chrome":
+			msg = """
+
+Currently it is not possible to launch a Chrome extension via this interface. The required steps are:
+
+	1) Go to chrome:extensions in the Chrome browser
+	2) Make sure "developer mode" is on (top right corner)')
+	3) Use "Load unpacked extension" and browse to ./development/chrome"""
+			raise argparse.ArgumentTypeError(msg)
+		return text
+
 	parser = argparse.ArgumentParser(prog='wm-run', description='Run a built dev app on a particular platform')
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-j', '--jdk', help='Path to the Java JDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
-	parser.add_argument('platform', choices=['android'])
+	parser.add_argument('platform', type=not_chrome, choices=['android'])
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
