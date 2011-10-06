@@ -8,6 +8,9 @@ import argparse
 import os
 import time
 
+from subprocess import Popen
+from os import path, devnull
+
 import webmynd
 from webmynd import defaults, build_config, ForgeError
 from webmynd.generate import Generate
@@ -55,9 +58,6 @@ def with_error_handler(function):
 			else:
 				LOG.error(e)
 		except Exception as e:
-			print "WHOOPS2"
-			import traceback
-			traceback.print_exc()
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:");
 			LOG.error(e);
@@ -135,25 +135,26 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		]
 		if args.sdk:
 			possibleSdk.insert(0, args.sdk)
+			
+		# Some sensible places to look for the Java JDK
+		possibleJdk = [
+			"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
+			"C:/Program Files/Java/jdk1.6.0_24/bin/",
+			"C:/Program Files (x86)/Java/jdk1.6.0_25/bin/",
+			"C:/Program Files/Java/jdk1.6.0_25/bin/",
+			"C:/Program Files (x86)/Java/jdk1.6.0_26/bin/",
+			"C:/Program Files/Java/jdk1.6.0_26/bin/",
+			"C:/Program Files (x86)/Java/jdk1.6.0_27/bin/",
+			"C:/Program Files/Java/jdk1.6.0_27/bin/",
+			"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
+			"C:/Program Files/Java/jdk1.7.0/bin/",
+			"/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Commands"
+		]
+		if args.jdk:
+			possibleJdk.insert(0, args.jdk)
 
 		try:
 			sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
-			# Some sensible places to look for the Java JDK
-			possibleJdk = [
-				"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
-				"C:/Program Files/Java/jdk1.6.0_24/bin/",
-				"C:/Program Files (x86)/Java/jdk1.6.0_25/bin/",
-				"C:/Program Files/Java/jdk1.6.0_25/bin/",
-				"C:/Program Files (x86)/Java/jdk1.6.0_26/bin/",
-				"C:/Program Files/Java/jdk1.6.0_26/bin/",
-				"C:/Program Files (x86)/Java/jdk1.6.0_27/bin/",
-				"C:/Program Files/Java/jdk1.6.0_27/bin/",
-				"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
-				"C:/Program Files/Java/jdk1.7.0/bin/",
-				"/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Commands"
-			]
-			if args.jdk:
-				possibleJdk.insert(0, args.jdk)
 			jdk = _check_for_dir(possibleJdk, "No Java JDK found, please specify with the --jdk flag")
 			
 			runAndroid(sdk, jdk, args.device)
@@ -195,6 +196,7 @@ def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
 	
 	parser = argparse.ArgumentParser(prog='wm-dev-build', description='Creates new local, unzipped development add-ons with your source and configuration')
+	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -222,13 +224,31 @@ def development_build():
 		# retrieve results of build
 		templates_dir = manager.fetch_templates(build_id)
 	
-	shutil.rmtree('development', ignore_errors=True)
+	try:
+		# Some sensible places to look for the Android SDK
+		possibleSdk = [
+			"C:/Program Files (x86)/Android/android-sdk/",
+			"C:/Program Files/Android/android-sdk/",
+			"C:/Android/android-sdk/",
+			"C:/Android/android-sdk-windows/",
+			"C:/android-sdk-windows/"
+		]
+		if args.sdk:
+			possibleSdk.insert(0, args.sdk)
+
+		sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
+		
+		proc = Popen([path.abspath(path.join(sdk,'platform-tools','adb')), 'kill-server'], stdout=open(devnull, 'w'), stderr=open(devnull, 'w'))
+	except Exception as e:
+		LOG.debug("Attempting to kill ADB failed, this may cause issues with file locks on Windows. %s" % e)
+
 	# Windows often gives a permission error without a small wait
 	tryAgain = 0
 	while tryAgain < 5:
 		time.sleep(tryAgain)
 		try:
 			tryAgain += 1
+			shutil.rmtree('development', ignore_errors=True)
 			shutil.copytree(templates_dir, 'development')
 			break
 		except Exception, e:

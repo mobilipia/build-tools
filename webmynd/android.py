@@ -1,5 +1,5 @@
 import os
-from os import path
+from os import path, devnull
 import zipfile
 import codecs
 import json
@@ -22,7 +22,9 @@ def runShell(args):
 def runAndroid(sdk, jdk, device):
 	LOG.info('Creating Android .apk file')
 	os.chdir(os.path.join('development', 'android'))
-
+	
+	proc = Popen([path.abspath(path.join(sdk,'platform-tools','adb')), 'start-server'], stdout=open(devnull, 'w'), stderr=open(devnull, 'w'))
+	
 	#zip
 	LOG.info('Zipping files')
 	zipf = zipfile.ZipFile('app.apk', mode='w')
