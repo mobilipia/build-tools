@@ -167,17 +167,19 @@ class TestBuild(object):
 	@mock.patch('webmynd.main.Remote')
 	@mock.patch('webmynd.main.Manager')
 	@mock.patch('webmynd.main.argparse')
-	def test_dev_copy_template_fail(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
+	@mock.patch('webmynd.main.time.sleep')
+	def test_dev_copy_template_fail(self, sleep, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		isdir.return_value = True
 		build_config.load.return_value = dummy_config()
 		
 		def raise_except(*args, **kw):
-			raise Exception("Error");
+			raise Exception("Error")
 
 		shutil.copytree.side_effect = raise_except
 		
 		lib.assert_raises_regexp(Exception, 'Error', main.development_build)
+		eq_(sleep.call_count, 5)
 		
 	@mock.patch('webmynd.main.build_config')
 	@mock.patch('webmynd.main.os.path.isdir')
