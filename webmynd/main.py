@@ -222,3 +222,4 @@ def production_build():
 	
 	LOG.info('fetching new WebMynd build')
 	remote.fetch_packaged(build_id, to_dir='production')
+	LOG.info("Production build created. Use wm-run to run your app.")
