@@ -142,7 +142,12 @@ class Remote(object):
 			LOG.info('authentication successful')
 			self._authenticated = True
 		except RequestError as e:
-			reason = json.loads(e.response.content)['text']
+			try:
+				content = json.loads(e.response.content)
+				reason = content.get('text', 'Unknown error')
+			except ValueError:
+				# didn't get JSON back from server
+				reason = e.response.content
 			raise AuthenticationError(reason)
 
 	def create(self, name):
@@ -175,6 +180,9 @@ class Remote(object):
 		'''
 		resp = self._get(urljoin(self.server, 'build/%d/detail/' % build_id))
 		content = json.loads(resp.content)
+		if 'log_output' in content:
+			# too chatty, and already seen this after build completed
+			del content['log_output']
 		LOG.debug('build detail: %s' % content)
 		
 		filenames = []
