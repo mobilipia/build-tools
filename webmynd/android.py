@@ -1,4 +1,5 @@
 import os
+from os import path
 import zipfile
 import codecs
 import json
@@ -6,6 +7,8 @@ import re
 import logging
 import sys
 from subprocess import Popen, PIPE, STDOUT
+
+from webmynd import defaults, ForgeError
 
 LOG = logging.getLogger(__name__)
 
@@ -19,6 +22,7 @@ def runShell(args):
 def runAndroid(sdk, jdk, device):
 	LOG.info('Creating Android .apk file')
 	os.chdir(os.path.join('development', 'android'))
+
 	#zip
 	LOG.info('Zipping files')
 	zipf = zipfile.ZipFile('app.apk', mode='w')
@@ -32,10 +36,23 @@ def runAndroid(sdk, jdk, device):
 		for f in files:
 			zipf.write(root+f, root+f)
 	zipf.close()
+
 	#sign
 	LOG.info('Signing apk')
-	args = [jdk+'jarsigner', '-verbose', '-keystore', '../../debug.keystore', '-storepass', 'android', 'app.apk', 'androiddebugkey', '-keypass', 'android']
+	args = [
+		jdk+'jarsigner',
+		'-verbose',
+		'-keystore',
+		os.path.join(defaults.FORGE_ROOT, 'debug.keystore'),
+		'-storepass',
+		'android',
+		'app.apk',
+		'androiddebugkey',
+		'-keypass',
+		'android'
+	]
 	runShell(args)
+
 	#align
 	LOG.info('Aligning apk')
 	if os.path.exists('out.apk'):
