@@ -1,18 +1,20 @@
 import logging
 import mock
-from nose.tools import ok_, eq_
+from nose.tools import ok_, eq_, raises
 
 import webmynd
 from webmynd.tests import dummy_config, lib
 from webmynd import main, defaults
+from os import path
 
 @mock.patch('webmynd.main.logging')
 def _logging_test(args, level, logging):
 	main.setup_logging(args)
 	
 	logging.basicConfig.assert_called_once_with(level=getattr(logging, level),
-		format='[%(levelname)7s] %(asctime)s -- %(message)s')
+		format='[%(levelname)7s] %(message)s')
 	logging.getLogger.assert_called_once_with('webmynd.main')
+
 
 def test_verbose():
 	args = mock.Mock()
