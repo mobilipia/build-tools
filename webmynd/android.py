@@ -1,5 +1,4 @@
 import os
-from os import path, devnull
 import zipfile
 import codecs
 import json
@@ -12,11 +11,25 @@ from webmynd import defaults, ForgeError
 
 LOG = logging.getLogger(__name__)
 
+def scrape_available_devices(text):
+	'Scrapes the output of the adb devices command into a list'
+	lines = text.split('\n')
+	available_devices = []
+
+	for line in lines:
+		words = line.split('\t')
+
+		if len(words[0]) > 5 and words[0].find(" ") == -1:
+			available_devices.append(words[0])
+
+	return available_devices
+
 def runShell(args):
 	proc = Popen(args, stdout=PIPE, stderr=STDOUT)
 	proc_std = proc.communicate()[0]
 	if proc.returncode != 0:
-		raise Exception('failed: %s' % (proc_std))
+		LOG.error('failed: %s' % (proc_std))
+		raise ForgeError
 	LOG.debug('Output:\n'+proc_std)
 
 def runAndroid(sdk, jdk, device):
@@ -70,25 +83,43 @@ def runAndroid(sdk, jdk, device):
 		proc = Popen(args, stdout=PIPE)
 	except Exception as e:
 		LOG.error("problem finding the android debug bridge at: %s" % adb_location)
+		# XXX: prompt to run the sdk manager, then retry?
 		LOG.error("this probably means you need to run the android SDK manager and download the android platform-tools.")
 		raise ForgeError
 
 	proc_std = proc.communicate()[0]
 	if proc.returncode != 0:
-		raise Exception('failed: %s' % (proc_std))
-	lines = proc_std.split('\n')
-	chosenDevice = ''
-	for line in lines:
-		words = line.split('\t')
-		if len(words[0]) > 5 and words[0].find(" ") == -1:
-			if chosenDevice == '' or words[0] == device:
-				chosenDevice = words[0]
-			LOG.info('Available Android device: %s' % words[0])
-	LOG.info('Using Android device: %s' % chosenDevice)
+		LOG.error('Communication with adb failed: %s' % (proc_std))
+		raise ForgeError
+
+	available_devices = scrape_available_devices(proc_std)
+
+	if not available_devices:
+		LOG.error('There were no attached android devices')
+		# XXX: prompt to run the sdk manager, then retry?
+		LOG.error('you need to run the android SDK manager and start a virtual android device, or attach a physical android device to the adb')
+		raise ForgeError
+
+	if not device:
+		chosenDevice = available_devices[0]
+		LOG.info('No android device specified, defaulting to %s' % chosenDevice)
+
+	elif device:
+
+		if device in available_devices:
+			chosenDevice = device
+			LOG.info('Using specified android device %s' % chosenDevice)
+		else:
+			LOG.error('No such device "%s"' % device)
+			LOG.error('The available devices are:')
+			LOG.error("\n".join(available_devices))
+			raise ForgeError
+
 	#install
 	LOG.info('Installing apk')
 	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'install', '-r', 'out.apk']
-	runShell(args)
+	runShell(args) 
+
 	#run
 	LOG.info('Running apk')
 	# Get the app config details
@@ -97,6 +128,7 @@ def runAndroid(sdk, jdk, device):
 	package_name = re.sub("[^a-zA-Z0-9]", "", app_config["name"].lower())+'_'+app_config["uuid"];
 	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
 	runShell(args)
+
 	# TODO log output
 	LOG.info('Clearing android log')
 	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', '-c']
