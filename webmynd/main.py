@@ -151,6 +151,7 @@ def create():
 			LOG.info('App structure created. To proceed:')
 			LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
 			LOG.info('2) Run wm-dev-build to make a development build')
+			LOG.info('3) Run wm-prod-build to make a production build')
 		except AuthenticationError as e:
 			LOG.error('Failed to login to forge: %s' % e.message)
 
