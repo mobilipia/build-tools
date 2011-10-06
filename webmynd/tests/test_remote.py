@@ -22,7 +22,6 @@ class Test__Init__(object):
 	def test_cookies_there(self, os, LWPCookieJar):
 		os.path.exists.return_value = True
 		os.getcwd.return_value = '/here'
-		
 		remote = Remote(dummy_config())
 		
 		LWPCookieJar.return_value.load.assert_called_once_with()
@@ -339,3 +338,11 @@ class Test_Get(TestRemote):
 		}
 		self.remote._get('test url')
 		requests.get.assert_called_once_with('test url', cookies=self.remote.cookies, data={}, auth=('test username', 'test password'), headers={'REFERER': 'test url'})
+
+class Test_CheckVersion(TestRemote):
+	def test_update_required(self):
+		get_resp = Mock()
+		get_resp.content = json.dumps({"url": "http://example.com/forge/upgrade/", "message": "you must upgrade to a newer version of the command-line tools", "upgrade": "required", "result": "ok"})
+		self.remote._get = Mock(return_value=get_resp)
+		
+		assert_raises_regexp(Exception, 'An update to these command line tools is required.', self.remote.check_version)

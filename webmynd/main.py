@@ -121,6 +121,12 @@ def create():
 	
 	config = build_config.load()
 	remote = Remote(config)
+	try:
+		remote.check_version()
+	except Exception as e:
+		LOG.error(e)
+		return 1
+
 	manager = Manager(config)
 	
 	if os.path.exists(defaults.SRC_DIR):
@@ -147,6 +153,11 @@ def development_build():
 	
 	config = build_config.load()
 	remote = Remote(config)
+	try:
+		remote.check_version()
+	except Exception as e:
+		LOG.error(e)
+		return 1
 	manager = Manager(config)
 
 	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
@@ -185,7 +196,12 @@ def production_build():
 
 	config = build_config.load()
 	remote = Remote(config)
-	
+	try:
+		remote.check_version()
+	except Exception as e:
+		LOG.error(e)
+		return 1
+
 	build_id = int(remote.build(development=False, template_only=False))
 	
 	LOG.info('fetching new WebMynd build')

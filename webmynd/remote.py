@@ -10,6 +10,7 @@ import time
 from urlparse import urljoin, urlsplit
 import zipfile
 from getpass import getpass
+import webmynd
 
 import requests
 
@@ -42,7 +43,7 @@ class Remote(object):
 		else:
 			self.cookies.load()
 		self._authenticated = False
-		
+
 	@property
 	def server(self):
 		'The URL of the build server to use (default http://www.webmynd.com/api/)'
@@ -193,6 +194,20 @@ class Remote(object):
 			filenames.append(path.abspath(platform))
 		return filenames
 
+	def check_version(self):
+		resp = self._get(urljoin(self.server, 'version_check/%s/' % webmynd.VERSION.replace('.','/')))
+		result = json.loads(resp.content)
+		if result['result'] == 'ok':
+			if result['upgrade']:
+				LOG.info('Update result: %s' % result['message'])
+			else:
+				LOG.debug('Update result: %s' % result['message'])
+			
+			if result['upgrade'] == 'required':
+				raise Exception('An update to these command line tools is required.')
+		else:
+			LOG.info('Upgrade check failed.')
+		
 	def fetch_initial(self, uuid):
 		'''Retrieves the initial project template
 		
