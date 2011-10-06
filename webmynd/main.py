@@ -67,7 +67,7 @@ def _check_for_dir(dirs, fail_msg):
 		raise CouldNotLocate(fail_msg)
 
 def run():
-	parser = argparse.ArgumentParser('Run a built dev app on a particular platform')
+	parser = argparse.ArgumentParser(prog='wm-run', description='Run a built dev app on a particular platform')
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-j', '--jdk', help='Path to the Java JDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
@@ -114,7 +114,7 @@ def run():
 
 def create():
 	'Create a new development environment'
-	parser = argparse.ArgumentParser('Initialises your development environment')
+	parser = argparse.ArgumentParser(prog='wm-create', description='Initialises your development environment')
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -136,13 +136,16 @@ def create():
 		try:
 			uuid = remote.create(name)
 			remote.fetch_initial(uuid)
+			LOG.info('App structure created. To proceed:')
+			LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
+			LOG.info('2) Run wm-dev-build to make a development build')
 		except AuthenticationError as e:
 			LOG.error('Failed to login to forge: %s' % e.message)
 
 def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
 	
-	parser = argparse.ArgumentParser('Creates new local, unzipped development add-ons with your source and configuration')
+	parser = argparse.ArgumentParser(prog='wm-dev-build', description='Creates new local, unzipped development add-ons with your source and configuration')
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -185,11 +188,12 @@ def development_build():
 		
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.SRC_DIR)
+	LOG.info("Development build created. Use wm-run to run your app.")
 
 def production_build():
 	'Trigger a new build'
 	# TODO commonality between this and development_build
-	parser = argparse.ArgumentParser('Start a new production build and retrieve the packaged and unpackaged output')
+	parser = argparse.ArgumentParser(prog='wm-prod-build', description='Start a new production build and retrieve the packaged and unpackaged output')
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
