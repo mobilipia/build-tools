@@ -261,7 +261,7 @@ class TestBuild(object):
 		self._check_common_setup(parser, Remote)
 		
 		Remote.return_value.build.assert_called_once_with(development=False, template_only=False)
-		Remote.return_value.fetch_packaged.assert_called_once_with(Remote.return_value.build.return_value, to_dir='production')
+		Remote.return_value.fetch_unpackaged.assert_called_once_with(Remote.return_value.build.return_value, to_dir='production')
 
 class TestWithErrorHandler(object):
 	@mock.patch('webmynd.main._assert_outside_of_forge_root')

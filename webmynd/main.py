@@ -255,8 +255,12 @@ def production_build():
 		LOG.error(e)
 		return 1
 
+	# build_id = int(remote.build(development=True, template_only=False))
+	# TODO implement server-side packaging
 	build_id = int(remote.build(development=False, template_only=False))
 	
 	LOG.info('fetching new WebMynd build')
-	remote.fetch_packaged(build_id, to_dir='production')
+	# remote.fetch_packaged(build_id, to_dir='production')
+	# TODO implement server-side packaging
+	remote.fetch_unpackaged(build_id, to_dir='production')
 	LOG.info("Production build created. Use wm-run to run your app.")
