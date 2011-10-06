@@ -92,14 +92,20 @@ class Test_Authenticate(TestRemote):
 class Test_CsrfToken(TestRemote):
 	def test_nocsrf(self):
 		cookie = Mock()
+		cookie.domain = 'other domain'
 		self.remote.cookies = [cookie]
 		assert_raises_regexp(Exception, "don't have a CSRF token", self.remote._csrf_token)
 	def test_got_csrf(self):
-		cookie = Mock()
-		cookie.name = 'csrftoken'
-		cookie.value = 'csrf value'
-		self.remote.cookies = [cookie]
-		eq_(self.remote._csrf_token(), 'csrf value')
+		cookie1 = Mock()
+		cookie1.name = 'csrftoken'
+		cookie1.value = 'csrf value 1'
+		cookie1.domain = 'other domain'
+		cookie2 = Mock()
+		cookie2.name = 'csrftoken'
+		cookie2.value = 'csrf value 2'
+		cookie2.domain = 'test.webmynd.com'
+		self.remote.cookies = [cookie1, cookie2]
+		eq_(self.remote._csrf_token(), 'csrf value 2')
 
 class TestLatest(TestRemote):
 	def test_latest(self):

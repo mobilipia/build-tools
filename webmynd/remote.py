@@ -54,7 +54,7 @@ class Remote(object):
 		:raises Exception: if we don't have a CSRF token
 		'''
 		for cookie in self.cookies:
-			if cookie.name == 'csrftoken':
+			if cookie.domain in self.server and cookie.name == 'csrftoken':
 				return cookie.value
 		else:
 			raise Exception("We don't have a CSRF token")
@@ -135,9 +135,9 @@ class Remote(object):
 				'email': email,
 				'password': password
 			}
-
-			self._get(urljoin(self.server, 'auth/hello'))
-				
+			
+			resp = self._get(urljoin(self.server, 'auth/hello'))
+			
 			self._post(urljoin(self.server, 'auth/verify'), data=credentials)
 			LOG.info('authentication successful')
 			self._authenticated = True
