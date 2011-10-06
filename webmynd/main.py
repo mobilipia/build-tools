@@ -9,7 +9,7 @@ import os
 import time
 
 import webmynd
-from webmynd import defaults, build_config
+from webmynd import defaults, build_config, ForgeError
 from webmynd.generate import Generate
 from webmynd.remote import Remote, AuthenticationError
 from webmynd.templates import Manager
@@ -47,6 +47,13 @@ def with_error_handler(function):
 			sys.stdout.write('\n')
 			LOG.info('exiting...')
 			sys.exit(1)
+		except ForgeError as e:
+			# thrown by us, expected
+			# XXX: want to print this out, going to sort out logging here.
+			if LOG is None:
+				print e
+			else:
+				LOG.error(e)
 		except Exception as e:
 			print "WHOOPS2"
 			import traceback
