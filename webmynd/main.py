@@ -48,9 +48,6 @@ def with_error_handler(function):
 			# XXX: want to print this out, going to sort out logging here.
 			pass
 		except Exception as e:
-			print "WHOOPS2"
-			import traceback
-			traceback.print_exc()
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:");
 			LOG.error(e);
