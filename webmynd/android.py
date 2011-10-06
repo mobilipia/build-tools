@@ -37,7 +37,7 @@ def runAndroid(sdk, jdk, device):
 	LOG.info('Creating Android .apk file')
 	os.chdir(os.path.join('development', 'android'))
 	
-	proc = Popen([path.abspath(path.join(sdk,'platform-tools','adb')), 'start-server'], stdout=open(devnull, 'w'), stderr=open(devnull, 'w'))
+	proc = Popen([path.abspath(path.join(sdk,'platform-tools','adb')), 'start-server'], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
 	
 	#zip
 	LOG.info('Zipping files')
