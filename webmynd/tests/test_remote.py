@@ -7,7 +7,7 @@ from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 
 from webmynd import defaults
-from webmynd.remote import Remote
+from webmynd.remote import Remote, AuthenticationError, RequestError
 from webmynd.tests import dummy_config
 from lib import assert_raises_regexp
 
@@ -35,7 +35,7 @@ class Test__Init__(object):
 		
 		LWPCookieJar.return_value.save.assert_called_once_with()
 
-class Test_Authenticated(TestRemote):
+class Test_Authenticate(TestRemote):
 	def test_already_auth(self):
 		self.remote._authenticated = True
 		self.remote._get = Mock()
@@ -79,6 +79,15 @@ class Test_Authenticated(TestRemote):
 		ok_(self.remote._get.call_args_list[1][0][0].endswith('hello'))
 		
 		self.remote._post.assert_called_once_with('https://test.webmynd.com/api/auth/verify', data={'email': 'raw user input', 'password': 'getpass input'})
+	@mock.patch('webmynd.remote.getpass')
+	def test_non_json_response(self, getpass):
+		mock_get = Mock()
+		mock_resp = Mock()
+		mock_resp.content = "This isn't JSON at all!"
+		mock_get.side_effect = RequestError('mock error', mock_resp)
+		self.remote._get = mock_get
+
+		assert_raises_regexp(AuthenticationError, "This isn't JSON at all!", self.remote._authenticate)
 		
 class Test_CsrfToken(TestRemote):
 	def test_nocsrf(self):
