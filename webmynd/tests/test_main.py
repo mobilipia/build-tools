@@ -40,7 +40,7 @@ def test_both():
 
 general_argparse = [
 	(('-v', '--verbose'), {'action': 'store_true'}),
-	(('-q', '--quiet'), {'action': 'store_true'})
+	(('-q', '--quiet'), {'action': 'store_true'}),
 ]
 
 class TestCreate(object):
@@ -153,7 +153,6 @@ class Test_CheckForDir(object):
 
 class TestBuild(object):
 	def _check_common_setup(self, parser, Remote):
-		eq_(parser.add_argument.call_args_list, general_argparse)
 		parser.parse_args.assert_called_once_with()
 		args = parser.parse_args.return_value
 		args.quiet = False
@@ -162,9 +161,15 @@ class TestBuild(object):
 		Remote.assert_called_once_with(dummy_config())
 		
 	def _check_dev_setup(self, parser, Manager, Remote, Generate):
+		eq_(parser.add_argument.call_args_list,
+			[(('-s', '--sdk'), {'help': 'Path to the Android SDK'})] + general_argparse)
+
 		Manager.assert_called_once_with(dummy_config())
 		Generate.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		self._check_common_setup(parser, Remote)
+
+	def _check_prod_setup(self, parser, Remote):
+		eq_(parser.add_argument.call_args_list, general_argparse)
 
 	@mock.patch('webmynd.main.build_config')
 	@mock.patch('webmynd.main.os.path.isdir')
@@ -258,7 +263,7 @@ class TestBuild(object):
 		
 		main.production_build()
 		
-		self._check_common_setup(parser, Remote)
+		self._check_prod_setup(parser, Remote)
 		
 		Remote.return_value.build.assert_called_once_with(development=False, template_only=False)
 		Remote.return_value.fetch_unpackaged.assert_called_once_with(Remote.return_value.build.return_value, to_dir='production')
