@@ -169,7 +169,7 @@ class TestFetchUnpackaged(TestRemote):
 		path.isdir.return_value = False
 		self.remote._authenticate = Mock()
 		get_resp = Mock()
-		get_resp.content = json.dumps({'unpackaged':{'chrome': '/path/chrome url', 'firefox': '/path/firefox url'}})
+		get_resp.content = json.dumps({'unpackaged':{'chrome': '/path/chrome url', 'firefox': '/path/firefox url'}, 'log_output': '1\n2'})
 		self.remote._get = Mock(return_value=get_resp)
 		mock_open = mock.MagicMock()
 		manager = mock_open.return_value.__enter__.return_value
