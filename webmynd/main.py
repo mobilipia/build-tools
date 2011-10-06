@@ -2,11 +2,11 @@
 import logging
 import json
 import shutil
+import sys
 
 import argparse
 import os
 import time
-
 
 import webmynd
 from webmynd import defaults, build_config, ForgeError
@@ -43,10 +43,17 @@ def with_error_handler(function):
 			# might be able to setup logging earlier on in this global handler?
 			print
 			print "ERROR: You're trying to run commands in the build tools directory, you need to move to another directory outside of this one first."
+		except KeyboardInterrupt:
+			sys.stdout.write('\n')
+			LOG.info('exiting...')
+			sys.exit(1)
 		except ForgeError as e:
 			# thrown by us, expected
 			# XXX: want to print this out, going to sort out logging here.
-			pass
+			if LOG is None:
+				print e
+			else:
+				LOG.error(e)
 		except Exception as e:
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:");

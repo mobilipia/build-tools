@@ -262,3 +262,15 @@ class TestBuild(object):
 		
 		Remote.return_value.build.assert_called_once_with(development=False, template_only=False)
 		Remote.return_value.fetch_packaged.assert_called_once_with(Remote.return_value.build.return_value, to_dir='production')
+
+class TestWithErrorHandler(object):
+	@mock.patch('webmynd.main._assert_outside_of_forge_root')
+	@mock.patch('webmynd.main._warn_if_subdirectory_of_forge_root')
+	@mock.patch('webmynd.main.sys')
+	def test_keyboard_interrupt(self, sys, warn_if_subdir, assert_outside):
+		def interrupt():
+			raise KeyboardInterrupt()
+		
+		main.with_error_handler(interrupt)()
+		
+		sys.exit.assert_called_once_with(1)
