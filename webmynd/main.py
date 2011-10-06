@@ -24,17 +24,25 @@ def _assert_outside_of_forge_root():
 	if os.getcwd() == defaults.FORGE_ROOT:
 		raise RunningInForgeRoot
 
+def _warn_if_subdirectory_of_forge_root():
+	if str(os.getcwd()).startswith(str(defaults.FORGE_ROOT)):
+		# XXX: LOG hasn't been set up when this is called, would be good to do that earlier
+		print
+		print """WARNING: running webmynd commands in a subdirectory of the forge build tools, this is probably a bad idea - please do your app development in a folder outside of the build tools"""
+		print
+
 def with_error_handler(function):
 	def decorated_with_handler(*args, **kwargs):
 		try:
 			_assert_outside_of_forge_root()
+			_warn_if_subdirectory_of_forge_root()
 			function(*args, **kwargs)
 		except RunningInForgeRoot:
 			# XXX: would use logging here, but there's no logging setup at this point - it gets setup
 			# inside the command based on arguments
 			# might be able to setup logging earlier on in this global handler?
 			print
-			print "You're trying to run commands in the build tools directory, you need to move to another directory first."
+			print "ERROR: You're trying to run commands in the build tools directory, you need to move to another directory outside of this one first."
 		except Exception as e:
 			print "WHOOPS2"
 			import traceback
