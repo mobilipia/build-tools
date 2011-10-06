@@ -43,6 +43,7 @@ python -V >> $LOG_FILE 2>&1
 if [ $? -ne 0 ]
 then
 	echo 'Python not found.'
+	echo 'You can download it from here: http://webmynd.com/forge/requirements/'
 	failure 
 fi
 
