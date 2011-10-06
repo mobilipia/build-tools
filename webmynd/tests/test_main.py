@@ -113,6 +113,22 @@ class TestRun(object):
 		parser.parse_args.assert_called_once()
 		runAndroid.assert_called_once_with('sdk', 'jdk', 'device')
 
+class Test_AssertOutsideOfForgeRoot(object):
+
+	@mock.patch('webmynd.main.os')
+	@raises(main.RunningInForgeRoot)
+	def test_raises_exception_inside_forge_root(self, os):
+		os.getcwd = mock.Mock()
+		os.getcwd.return_value = defaults.FORGE_ROOT
+		main._assert_outside_of_forge_root()
+
+	@mock.patch('webmynd.main.os')
+	def test_nothing_happens_outside_of_forge_root(self, os):
+		os.getcwd = mock.Mock()
+		os.getcwd.return_value = path.join('some', 'other', 'dir')
+		main._assert_outside_of_forge_root()
+
+
 class Test_CheckForDir(object):
 	def test_no_dirs(self):
 		lib.assert_raises_regexp(Exception, 'dummy', main._check_for_dir, [], 'dummy')

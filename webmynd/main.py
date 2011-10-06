@@ -17,11 +17,28 @@ from webmynd.android import runAndroid
 
 LOG = None
 
+class RunningInForgeRoot(Exception):
+	pass
+
+def _assert_outside_of_forge_root():
+	if os.getcwd() == defaults.FORGE_ROOT:
+		raise RunningInForgeRoot
+
 def with_error_handler(function):
 	def decorated_with_handler(*args, **kwargs):
 		try:
+			_assert_outside_of_forge_root()
 			function(*args, **kwargs)
+		except RunningInForgeRoot:
+			# XXX: would use logging here, but there's no logging setup at this point - it gets setup
+			# inside the command based on arguments
+			# might be able to setup logging earlier on in this global handler?
+			print
+			print "You're trying to run commands in the build tools directory, you need to move to another directory first."
 		except Exception as e:
+			print "WHOOPS2"
+			import traceback
+			traceback.print_exc()
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:");
 			LOG.error(e);
