@@ -40,7 +40,7 @@ def setup_logging(args):
 		log_level = logging.WARNING
 	else:
 		log_level = logging.INFO
-	logging.basicConfig(level=log_level, format='[%(levelname)7s] %(asctime)s -- %(message)s')
+	logging.basicConfig(level=log_level, format='[%(levelname)7s] %(message)s')
 	LOG = logging.getLogger(__name__)
 	LOG.info('WebMynd tools running at version %s' % webmynd.VERSION)
 
