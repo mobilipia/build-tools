@@ -9,7 +9,7 @@ import time
 
 
 import webmynd
-from webmynd import defaults, build_config
+from webmynd import defaults, build_config, ForgeError
 from webmynd.generate import Generate
 from webmynd.remote import Remote, AuthenticationError
 from webmynd.templates import Manager
@@ -43,6 +43,10 @@ def with_error_handler(function):
 			# might be able to setup logging earlier on in this global handler?
 			print
 			print "ERROR: You're trying to run commands in the build tools directory, you need to move to another directory outside of this one first."
+		except ForgeError as e:
+			# thrown by us, expected
+			# XXX: want to print this out, going to sort out logging here.
+			pass
 		except Exception as e:
 			print "WHOOPS2"
 			import traceback
