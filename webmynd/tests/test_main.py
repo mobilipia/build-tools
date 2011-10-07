@@ -113,6 +113,23 @@ class TestRun(object):
 		parser.parse_args.assert_called_once()
 		runAndroid.assert_called_once_with('sdk', 'jdk', 'device')
 
+class Test_AssertNotSubdirectoryOfForgeRoot(object):
+	@mock.patch('webmynd.main.os.getcwd')
+	@raises(main.RunningInForgeRoot)
+	def test_raises_in_subdirectory(self, getcwd):
+		getcwd.return_value = path.join(defaults.FORGE_ROOT, 'dummy')
+		main._assert_not_in_subdirectory_of_forge_root()
+
+	@mock.patch('webmynd.main.os.getcwd')
+	def test_not_confused_by_similar_directory(self, getcwd):
+		getcwd.return_value = path.join(defaults.FORGE_ROOT + '-app', 'dummy')
+		main._assert_not_in_subdirectory_of_forge_root()
+
+	@mock.patch('webmynd.main.os.getcwd')
+	def test_ok_when_not_in_subdirectory(self, getcwd):
+		getcwd.return_value = path.join('not','forge','tools', 'dummy')
+		main._assert_not_in_subdirectory_of_forge_root()
+
 class Test_AssertOutsideOfForgeRoot(object):
 
 	@mock.patch('webmynd.main.os')
