@@ -287,7 +287,7 @@ class TestBuild(object):
 
 class TestWithErrorHandler(object):
 	@mock.patch('webmynd.main._assert_outside_of_forge_root')
-	@mock.patch('webmynd.main._warn_if_subdirectory_of_forge_root')
+	@mock.patch('webmynd.main._assert_not_in_subdirectory_of_forge_root')
 	@mock.patch('webmynd.main.sys')
 	def test_keyboard_interrupt(self, sys, warn_if_subdir, assert_outside):
 		def interrupt():
