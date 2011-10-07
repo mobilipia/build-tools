@@ -129,6 +129,9 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	args = parser.parse_args()
 	handle_general_options(args)
 
+	if not os.path.exists('development'):
+		raise ForgeError("No folder called 'development' found. You're trying to run your app but you haven't built it yet! Try wm-dev-build first.")
+
 	if args.platform == 'android':
 		# Some sensible places to look for the Android SDK
 		possibleSdk = [
