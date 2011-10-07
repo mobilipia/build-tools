@@ -211,7 +211,7 @@ def development_build():
 	
 	if not os.path.isdir(defaults.SRC_DIR):
 		LOG.error('Source folder "%s" does not exist - have you run wm-create yet?' % defaults.SRC_DIR)
-		return 1
+		raise ForgeError
 	
 	config = build_config.load()
 	remote = Remote(config)
@@ -274,6 +274,10 @@ def production_build():
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
+
+	if not os.path.isdir(defaults.SRC_DIR):
+		LOG.error('Source folder "%s" does not exist - have you run wm-create yet?' % defaults.SRC_DIR)
+		raise ForgeError
 
 	config = build_config.load()
 	remote = Remote(config)
