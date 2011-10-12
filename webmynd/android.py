@@ -50,7 +50,9 @@ def runAndroid(sdk, jdk, device):
 			if root[0:2] == './':
 				root = root[2:]
 		for f in files:
-			zipf.write(root+f, root+f)
+			if f != 'app.apk':
+				LOG.debug('zipping: %s' % f)
+				zipf.write(root+f, root+f)
 	zipf.close()
 
 	#sign
