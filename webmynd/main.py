@@ -107,6 +107,11 @@ def _check_for_dir(dirs, fail_msg):
 	else:
 		raise CouldNotLocate(fail_msg)
 
+def _assert_have_development_folder():
+	if not os.path.exists('development'):
+		raise ForgeError("No folder called 'development' found. You're trying to run your app but you haven't built it yet! Try wm-dev-build first.")
+
+
 def run():
 	def not_chrome(text):
 		if text == "chrome":
@@ -129,8 +134,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	args = parser.parse_args()
 	handle_general_options(args)
 
-	if not os.path.exists('development'):
-		raise ForgeError("No folder called 'development' found. You're trying to run your app but you haven't built it yet! Try wm-dev-build first.")
+	_assert_have_development_folder()
 
 	if args.platform == 'android':
 		# Some sensible places to look for the Android SDK
@@ -143,7 +147,8 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		]
 		if args.sdk:
 			possibleSdk.insert(0, args.sdk)
-			
+
+
 		# Some sensible places to look for the Java JDK
 		possibleJdk = [
 			"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
@@ -164,7 +169,15 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		try:
 			sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
 			jdk = _check_for_dir(possibleJdk, "No Java JDK found, please specify with the --jdk flag")
-			
+
+			bad_jdk = [
+				"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
+				"C:/Program Files/Java/jdk1.7.0/bin/",
+			]
+
+			if jdk in bad_jdk:
+				raise ForgeError("Could only find jdk 1.7. This is known to cause problems with signing android APKs. You need to install JDK 1.6")
+
 			runAndroid(sdk, jdk, args.device)
 		except CouldNotLocate as e:
 			LOG.error(e)

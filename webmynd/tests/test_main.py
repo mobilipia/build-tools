@@ -82,7 +82,8 @@ class TestCreate(object):
 
 class TestRun(object):
 	@mock.patch('webmynd.main.argparse')
-	def test_not_android(self, argparse):
+	@mock.patch('webmynd.main._assert_have_development_folder')
+	def test_not_android(self, _assert_have_development_folder, argparse):
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
 		args.platform = 'chrome'
@@ -96,6 +97,7 @@ class TestRun(object):
 	@mock.patch('webmynd.main.runAndroid')
 	@mock.patch('webmynd.main.argparse')
 	def test_found_jdk_and_sdk(self, argparse, runAndroid, _check_for_dir):
+		main._assert_have_development_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
 		args.platform = 'android'
@@ -191,6 +193,7 @@ class TestBuild(object):
 	@mock.patch('webmynd.main.build_config')
 	@mock.patch('webmynd.main.os.path.isdir')
 	@mock.patch('webmynd.main.argparse')
+	@raises(webmynd.ForgeError)
 	def test_user_dir_not_there(self, argparse, isdir, build_config):
 		isdir.return_value = False
 		build_config.load.return_value = dummy_config()
