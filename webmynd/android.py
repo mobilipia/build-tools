@@ -128,7 +128,7 @@ def runAndroid(sdk, jdk, device):
 	# Get the app config details
 	with codecs.open(os.path.join('assets','config.json'), encoding='utf8') as app_config:
 		app_config = json.load(app_config)
-	package_name = re.sub("[^a-zA-Z0-9]", "", app_config["name"].lower())+'_'+app_config["uuid"];
+	package_name = re.sub("[^a-zA-Z0-9]", "", app_config["name"].lower())+app_config["uuid"];
 	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
 	runShell(args)
 
