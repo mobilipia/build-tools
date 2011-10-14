@@ -1,3 +1,9 @@
 'Project-wide default values'
-CONFIG_FILE = 'webmynd_build.json'
-USER_DIR = 'user'
+from os import path
+
+FORGE_ROOT = path.abspath(path.join(__file__, "..", ".."))
+CONFIG_FILE = path.join(FORGE_ROOT, 'webmynd_build.json')
+PASSWORD = "your password"
+
+SRC_DIR = 'src'
+APP_CONFIG_FILE = path.join(SRC_DIR, 'config.json')

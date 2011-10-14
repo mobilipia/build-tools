@@ -13,5 +13,4 @@ WebMynd Build Tools Documentation
   config.rst
   remote.rst
   generate.rst
-  dir_sync.rst
   defaults.rst

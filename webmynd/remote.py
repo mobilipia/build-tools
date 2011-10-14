@@ -1,5 +1,5 @@
 'Operations which require involvement of the remote WebMynd build servers'
-from cookielib import CookieJar
+from cookielib import LWPCookieJar
 import json
 import logging
 import os
@@ -8,14 +8,26 @@ import shutil
 import tarfile
 import time
 from urlparse import urljoin, urlsplit
-from uuid import uuid1
 import zipfile
+from getpass import getpass
+import webmynd
 
 import requests
 
 from webmynd import defaults
 
 LOG = logging.getLogger(__name__)
+
+class RequestError(Exception):
+	'The Forge API responded with an error code'
+	def __init__(self, message, response, *args, **kwargs):
+		super(RequestError, self).__init__(message, *args, **kwargs)
+		self.response = response
+
+class AuthenticationError(Exception):
+	'Authenticating with the Forge API failed'
+	def __init__(self, *args, **kwargs):
+		super(AuthenticationError, self).__init__(*args, **kwargs)
 
 class Remote(object):
 	'Wrap remote operations'
@@ -24,26 +36,30 @@ class Remote(object):
 	def __init__(self, config):
 		'Start new remote WebMynd builds'
 		self.config = config
-		self.cookies = CookieJar()
+		cookie_path = path.join(defaults.FORGE_ROOT, 'cookies.txt')
+		self.cookies = LWPCookieJar(cookie_path)
+		if not os.path.exists(cookie_path):
+			self.cookies.save()
+		else:
+			self.cookies.load()
 		self._authenticated = False
-		self.app_config_file = 'app-%s.json' % self.config.get('main.uuid')
-		
+
 	@property
 	def server(self):
 		'The URL of the build server to use (default http://www.webmynd.com/api/)'
-		return self.config.get('main.server', default='http://www.webmynd.com/api/')
+		return self.config.get('main', {}).get('server', 'http://www.webmynd.com/api/')
 	def _csrf_token(self):
 		'''Return the server-negotiated CSRF token, if we have one
 		
 		:raises Exception: if we don't have a CSRF token
 		'''
 		for cookie in self.cookies:
-			if cookie.name == 'csrftoken':
+			if cookie.domain in self.server and cookie.name == 'csrftoken':
 				return cookie.value
 		else:
 			raise Exception("We don't have a CSRF token")
 		
-	def __get_or_post(self, *args, **kw):
+	def __get_or_post(self, url, *args, **kw):
 		'''Expects ``__method`` and ``__error_message`` entries in :param:`**kw`
 		'''
 		method = kw['__method']
@@ -60,7 +76,14 @@ class Remote(object):
 			data["csrfmiddlewaretoken"] = self._csrf_token()
 			kw["data"] = data
 		kw['cookies'] = self.cookies
-		resp = getattr(requests, method.lower())(*args, **kw)
+		kw['headers'] = {'REFERER': url}
+
+		if self.config.get('main', {}).get('authentication'):
+			kw['auth'] = (
+				self.config['main']['authentication'].get('username'),
+				self.config['main']['authentication'].get('password')
+			)
+		resp = getattr(requests, method.lower())(url, *args, **kw)
 		if not resp.ok:
 			try:
 				msg = error_message % resp.__dict__
@@ -70,50 +93,189 @@ class Remote(object):
 					str(resp),
 					getattr(resp, 'content', 'unknown error')
 				)
-			raise Exception(msg)
+
+			raise RequestError(msg, resp)
+		self.cookies.save()
 		return resp
-	def _post(self, *args, **kw):
+	def _post(self, url, *args, **kw):
 		'''Make a POST request.
 		
-		:param:`*args` and :param:`**kw` are passed through to the
-		:module:`requests` library.
+		:param url: see :module:`requests`
+		:param *args: see :module:`requests`
 		'''
 		kw['__method'] = 'POST'
-		return self.__get_or_post(*args, **kw)
+		return self.__get_or_post(url, *args, **kw)
 
-	def _get(self, *args, **kw):
+	def _get(self, url, *args, **kw):
 		'''Make a GET request.
 		
-		:param:`*args` and :param:`**kw` are passed through to the
-		:module:`requests` library.
+		:param url: see :module:`requests`
+		:param *args: see :module:`requests`
 		'''
 		kw['__method'] = 'GET'
-		return self.__get_or_post(*args, **kw)
+		return self.__get_or_post(url, *args, **kw)
 		
 	def _authenticate(self):
-		'''Authentication handshake with server (if we haven't already')
+		'''Authentication handshake with server (if we haven't already)
 		'''
-		if self._authenticated:
-			LOG.debug('already authenticated - continuing')
-			return
-		LOG.info('authenticating as "%s"' % self.config.get('authentication.username'))
-		credentials = {
-			'username': self.config.get('authentication.username'),
-			'password': self.config.get('authentication.password')
-		}
-		self._get(urljoin(self.server, 'auth/hello'))
+		try:
+			if self._authenticated:
+				LOG.debug('already authenticated - continuing')
+				return
+
+			resp = self._get(urljoin(self.server, 'auth/loggedin'))
+			if json.loads(resp.content)['loggedin']:
+				self._authenticated = True
+				LOG.debug('already authenticated via cookie - continuing')
+				return
+
+			email = raw_input("Your email address: ")
+			password = getpass()
+			LOG.info('authenticating as "%s"' % email)
+			credentials = {
+				'email': email,
+				'password': password
+			}
 			
-		self._post(urljoin(self.server, 'auth/verify'), data=credentials)
-		LOG.info('authentication successful')
-		self._authenticated = True
-		
+			resp = self._get(urljoin(self.server, 'auth/hello'))
+			
+			self._post(urljoin(self.server, 'auth/verify'), data=credentials)
+			LOG.info('authentication successful')
+			self._authenticated = True
+		except RequestError as e:
+			try:
+				content = json.loads(e.response.content)
+				reason = content.get('text', 'Unknown error')
+			except ValueError:
+				# didn't get JSON back from server
+				reason = e.response.content
+			raise AuthenticationError(reason)
+
+	def create(self, name):
+		self._authenticate()
+	
+		data = {
+			'name': name
+		}
+		resp = self._post(urljoin(self.server, 'app/'), data=data)
+		return json.loads(resp.content)['uuid']
+
 	def latest(self):
 		'''Get the ID of the latest completed production build for this app.'''
 		LOG.info('fetching latest build ID')
 		self._authenticate()
 		
-		resp = self._get(urljoin(self.server, 'app/%s/latest/' % self.config.get('main.uuid')))
+		resp = self._get(urljoin(self.server, 'app/%s/latest/' % self.config.get('uuid')))
 		return json.loads(resp.content)['build_id']
+
+	def _fetch_output(self, build_id, to_dir, output_key, post_get_fn):
+		'''Helper function for common file-getting logic of the fetch* methods.
+		
+		:param build_id: primary key of the build
+		:param to_dir: directory name to fetch the files into
+		:param output_key: which section of the build detail to look inside
+			(normally "unpackaged" or "packaged")
+		:param post_get_fn: function to invoke with two parameters: the name of the current
+			platform and the name of the downloaded file. Will be invoked in the same directory
+			as the file was downloaded to.
+		'''
+		resp = self._get(urljoin(self.server, 'build/%d/detail/' % build_id))
+		content = json.loads(resp.content)
+		if 'log_output' in content:
+			# too chatty, and already seen this after build completed
+			del content['log_output']
+		LOG.debug('build detail: %s' % content)
+		
+		filenames = []
+		if not path.isdir(to_dir):
+			LOG.warning('creating output directory "%s"' % to_dir)
+			os.mkdir(to_dir)
+		os.chdir(to_dir)
+		locations = content[output_key]
+		available_platforms = [plat for plat, url in locations.iteritems() if url]
+		for platform in available_platforms:
+			filename = urlsplit(locations[platform]).path.split('/')[-1]
+			resp = self._get(locations[platform])
+			with open(filename, 'wb') as out_file:
+				LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
+				out_file.write(resp.content)
+			post_get_fn(platform, filename)
+			filenames.append(path.abspath(platform))
+		return filenames
+
+	def check_version(self):
+		resp = self._get(urljoin(self.server, 'version_check/%s/' % webmynd.VERSION.replace('.','/')))
+		result = json.loads(resp.content)
+		if result['result'] == 'ok':
+			if result['upgrade']:
+				LOG.info('Update result: %s' % result['message'])
+			else:
+				LOG.debug('Update result: %s' % result['message'])
+			
+			if result['upgrade'] == 'required':
+				raise Exception('An update to these command line tools is required.')
+		else:
+			LOG.info('Upgrade check failed.')
+		
+	def fetch_initial(self, uuid):
+		'''Retrieves the initial project template
+		
+		:param uuid: project uuid
+		'''
+		LOG.info('fetching initial project template')
+		self._authenticate()
+		
+		filename = 'initial.zip'
+		resp = self._get(urljoin(self.server, 'app/%s/initial_files' % uuid))
+		with open(filename, 'wb') as out_file:
+			LOG.debug('writing %s' % path.abspath(filename))
+			out_file.write(resp.content)
+		zipf = zipfile.ZipFile(filename)
+		# XXX: shouldn't do the renaming here - need to fix the server to serve up the correct structure
+		zipf.extractall()
+		shutil.move('user', defaults.SRC_DIR)
+		zipf.close()
+		LOG.debug('extracted  initial project template')
+		os.remove(filename)
+		LOG.debug('removed downloaded file "%s"' % filename)
+		
+	def _handle_packaged(self, platform, filename):
+		'No-op'
+		pass
+
+	def _handle_unpackaged(self, platform, filename):
+		'''De-compress a built output tree.
+		
+		:param platform: e.g. "chrome", "ios" - we expect the contents of the ZIP file to
+			contain a directory named after the relevant platform
+		:param filename: the ZIP file to extract
+		'''
+		zipf = zipfile.ZipFile(filename)
+		shutil.rmtree(platform, ignore_errors=True)
+		LOG.debug('removed "%s" directory' % platform)
+		zipf.extractall()
+		zipf.close()
+		LOG.debug('extracted unpackaged build for %s' % platform)
+		os.remove(filename)
+		LOG.debug('removed downloaded file "%s"' % filename)
+
+	def fetch_packaged(self, build_id, to_dir='production'):
+		'''Retrieves the packaged artefacts for a particular build.
+		
+		:param build_id: primary key of the build
+		:param to_dir: directory that will hold the packaged output
+		'''
+		LOG.info('fetching packaged artefacts for build %s into "%s"' % (build_id, to_dir))
+		self._authenticate()
+
+		orig_dir = os.getcwd()
+		try:
+			filenames = self._fetch_output(build_id, to_dir, 'packaged', self._handle_packaged)
+		finally:
+			os.chdir(orig_dir)
+
+		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
+		return filenames
 		
 	def fetch_unpackaged(self, build_id, to_dir='development'):
 		'''Retrieves the unpackaged artefacts for a particular build.
@@ -123,37 +285,13 @@ class Remote(object):
 		'''
 		LOG.info('fetching unpackaged artefacts for build %s into "%s"' % (build_id, to_dir))
 		self._authenticate()
-		
-		resp = self._get(urljoin(self.server, 'build/%d/detail/' % build_id))
-		content = json.loads(resp.content)
-		
-		filenames = []
+
 		orig_dir = os.getcwd()
-		if not path.isdir(to_dir):
-			LOG.warning('creating output directory "%s"' % to_dir)
-			os.mkdir(to_dir)
 		try:
-			os.chdir(to_dir)
-			unpackaged = content['unpackaged']
-			available_platforms = [plat for plat, url in unpackaged.iteritems() if url]
-			for platform in available_platforms:
-				filename = urlsplit(unpackaged[platform]).path.split('/')[-1]
-				resp = self._get(unpackaged[platform])
-				with open(filename, 'w') as out_file:
-					LOG.debug('writing %s to %s' % (unpackaged[platform], path.abspath(filename)))
-					out_file.write(resp.content)
-				# unzip source trees to directories named after platforms
-				zipf = zipfile.ZipFile(filename)
-				shutil.rmtree(platform, ignore_errors=True)
-				LOG.debug('removed "%s" directory' % platform)
-				zipf.extractall()
-				LOG.debug('extracted unpackaged build for %s' % platform)
-				os.remove(filename)
-				LOG.debug('removed downloaded file "%s"' % filename)
-				filenames.append(path.abspath(platform))
+			filenames = self._fetch_output(build_id, to_dir, 'unpackaged', self._handle_unpackaged)
 		finally:
 			os.chdir(orig_dir)
-		
+			
 		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
 		return filenames
 	
@@ -174,23 +312,23 @@ class Remote(object):
 		self._authenticate()
 		
 		data = {}
-		if path.isfile(self.app_config_file):
-			with open(self.app_config_file) as app_config:
+		if path.isfile(defaults.APP_CONFIG_FILE):
+			with open(defaults.APP_CONFIG_FILE) as app_config:
 				data['config'] = app_config.read()
 		def build_request(files=None):
 			'build the URL to start a build, then POST it'
 			url_path = 'app/%s/%s/%s' % (
-				self.config.get('main.uuid'),
+				self.config.get('uuid'),
 				'template' if template_only else 'build',
 				'development' if development else ''
 			)
 			url = urljoin(self.server, url_path)
 			return self._post(url, data=data, files=files)
 			
-		user_dir = defaults.USER_DIR
+		user_dir = defaults.SRC_DIR
 		if template_only or not path.isdir(user_dir):
 			if not path.isdir(user_dir):
-				LOG.warning('no "user" directory found - we will be using the App\'s default code!')
+				LOG.warning('no "%s" directory found - we will be using the App\'s default code!' % defaults.SRC_DIR)
 			resp = build_request()
 		else:
 			filename, orig_dir = 'user.%s.tar.bz2' % time.time(), os.getcwd()
@@ -204,7 +342,7 @@ class Remote(object):
 				os.chdir(orig_dir)
 				user_comp.close()
 		
-				with open(filename, mode='r') as user_files:
+				with open(filename, mode='rb') as user_files:
 					resp = build_request({'user.tar.bz2': user_files})
 			finally:
 				try:
@@ -230,52 +368,3 @@ class Remote(object):
 			return build_id
 		else:
 			raise Exception('build failed: %s' % content['log_output'])
-	
-	def get_app_config(self, build_id):
-		'''Fetch remote App configuration and save to local file
-		
-		:param build_id: primary key of the build to consider
-		:return: the location of the newly-downloaded app configuration
-		'''
-		LOG.info('fetching remote App configuration for build %s' % build_id)
-		self._authenticate()
-		resp = self._get(urljoin(self.server, 'build/%d/config/' % build_id))
-		config = json.loads(json.loads(resp.content)['config'])
-		with open(self.app_config_file, 'w') as out_file:
-			out_file.write(json.dumps(config, indent=4))
-		LOG.info('wrote App configuration for build %d to "%s"' % (build_id, self.app_config_file))
-		return self.app_config_file
-		
-	def get_latest_user_code(self, to_dir=defaults.USER_DIR):
-		'''Fetch the customer's code archive attached to this app
-		
-		:param to_dir: directory to place the user code into
-		:raises Exception: if the :param:`to_dir` already exists
-		'''
-		LOG.info('fetching customer code')
-		if path.exists(to_dir):
-			raise Exception('"%s" directory already exists: cannot continue' % to_dir)
-		self._authenticate()
-		
-		resp = self._get(urljoin(self.server, 'app/%s/code/' % self.config.get('main.uuid')))
-		code_url = json.loads(resp.content)['code_url']
-		LOG.debug('customer code is at %s' % code_url)
-		resp = self._get(code_url)
-		
-		tmp_filename = path.abspath(uuid1().hex)
-		with open(tmp_filename, 'w') as tmp_file:
-			tmp_file.write(resp.read())
-		os.mkdir(to_dir)
-		orig_dir = os.getcwd()
-		try:
-			os.chdir(to_dir)
-			tar_file = None
-			tar_file = tarfile.open(tmp_filename)
-			LOG.info('extracting customer code')
-			tar_file.extractall()
-		finally:
-			os.chdir(orig_dir)
-			if tar_file is not None:
-				tar_file.close()
-			LOG.debug('removing temporary file %s' % tmp_filename)
-			os.remove(tmp_filename)
