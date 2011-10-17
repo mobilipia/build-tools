@@ -11,6 +11,7 @@ from urlparse import urljoin, urlsplit
 import zipfile
 from getpass import getpass
 import webmynd
+from webmynd import ForgeError
 
 import requests
 
@@ -212,7 +213,10 @@ class Remote(object):
 				LOG.debug('Update result: %s' % result['message'])
 			
 			if result['upgrade'] == 'required':
-				raise Exception('An update to these command line tools is required.')
+				raise ForgeError("""An update to these command line tools is required
+
+The newest tools can be obtained from https://webmynd.com/forge/upgrade/
+""")
 		else:
 			LOG.info('Upgrade check failed.')
 		
