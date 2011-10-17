@@ -228,11 +228,8 @@ def development_build():
 	
 	config = build_config.load()
 	remote = Remote(config)
-	try:
-		remote.check_version()
-	except Exception as e:
-		LOG.error(e)
-		return 1
+	remote.check_version()
+
 	manager = Manager(config)
 
 	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
