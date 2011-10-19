@@ -197,10 +197,12 @@ class TestUnzipWithPermissions(TestRemote):
 
 class TestFetchUnpackaged(TestRemote):
 	# TODO refactor tests to go after _fetch_output directly
+	@patch('webmynd.remote.subprocess.call')
 	@patch('webmynd.remote.zipfile')
 	@patch('webmynd.remote.path')
 	@patch('webmynd.remote.os')
-	def test_fetch_unpackaged(self, os, path, zipf):
+	def test_fetch_unpackaged(self, os, path, zipf, call):
+		call.side_effect = OSError("cant find unzip")
 		output_dir = 'output dir'
 		path.abspath.side_effect = lambda x: '/absolute/path/'+x
 		path.isdir.return_value = False
