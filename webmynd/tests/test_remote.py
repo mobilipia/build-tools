@@ -172,7 +172,29 @@ class TestFetchPackaged(TestRemote):
 class Test_HandlePackaged(TestRemote):
 	def test_normal(self):
 		self.remote._handle_packaged('platform', 'filename')
-		
+
+class TestUnzipWithPermissions(TestRemote):
+
+	@patch('webmynd.remote.subprocess.call')
+	def test_when_system_has_unzip_should_call_unzip(self, call):
+		self.remote._unzip_with_permissions('dummy archive.zip')
+		call.assert_called_with(["unzip", "dummy archive.zip"])
+		eq_(call.call_count, 2)
+
+	@patch('webmynd.remote.subprocess.call')
+	@patch('webmynd.remote.zipfile.ZipFile')
+	def test_when_system_doesnt_have_unzip_should_use_zipfile(self, ZipFile, call):
+		call.side_effect = OSError("cant find unzip")
+		zip_object = mock.Mock()
+		ZipFile.return_value = zip_object
+
+		self.remote._unzip_with_permissions('dummy archive.zip')
+
+		eq_(call.call_count, 1)
+		ZipFile.assert_called_once_with('dummy archive.zip')
+		zip_object.extractall.assert_called_once_with()
+		zip_object.close.assert_called_once_with()
+
 class TestFetchUnpackaged(TestRemote):
 	# TODO refactor tests to go after _fetch_output directly
 	@patch('webmynd.remote.zipfile')
@@ -196,9 +218,11 @@ class TestFetchUnpackaged(TestRemote):
 		os.mkdir.assert_called_once_with(output_dir)
 		eq_(os.chdir.call_args_list[0][0][0], output_dir)
 		eq_(manager.write.call_args_list, [((get_resp.content,), {})] * 2)
+
 		ok_(zipf.ZipFile.call_args_list[0][0][0].endswith('chrome url'))
 		ok_(zipf.ZipFile.call_args_list[1][0][0].endswith('firefox url'))
 		eq_(zipf.ZipFile.return_value.extractall.call_count, 2)
+
 		ok_(resp[0].endswith('chrome'))
 		ok_(resp[1].endswith('firefox'))
 		eq_(os.chdir.call_args_list[-1][0][0], os.getcwd.return_value)

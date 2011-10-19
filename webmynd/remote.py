@@ -10,11 +10,11 @@ import time
 from urlparse import urljoin, urlsplit
 import zipfile
 from getpass import getpass
+import requests
+import subprocess
+
 import webmynd
 from webmynd import ForgeError
-
-import requests
-
 from webmynd import defaults
 
 LOG = logging.getLogger(__name__)
@@ -247,6 +247,19 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		'No-op'
 		pass
 
+	@staticmethod
+	def _unzip_with_permissions(filename):
+		try:
+			retcode = subprocess.call(["unzip"])
+		except OSError:
+			LOG.debug("'unzip' not available, falling back on python ZipFile, this will strip certain permissions from files")
+			zip_to_extract = zipfile.ZipFile(filename)
+			zip_to_extract.extractall()
+			zip_to_extract.close()
+		else:
+			LOG.debug("unzip is available, using it")
+			subprocess.call(["unzip", filename])
+
 	def _handle_unpackaged(self, platform, filename):
 		'''De-compress a built output tree.
 		
@@ -254,12 +267,12 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			contain a directory named after the relevant platform
 		:param filename: the ZIP file to extract
 		'''
-		zipf = zipfile.ZipFile(filename)
 		shutil.rmtree(platform, ignore_errors=True)
 		LOG.debug('removed "%s" directory' % platform)
-		zipf.extractall()
-		zipf.close()
+
+		self._unzip_with_permissions(filename)
 		LOG.debug('extracted unpackaged build for %s' % platform)
+
 		os.remove(filename)
 		LOG.debug('removed downloaded file "%s"' % filename)
 
