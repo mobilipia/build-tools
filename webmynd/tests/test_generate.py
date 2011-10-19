@@ -106,6 +106,6 @@ class TestSafari(object):
 		self.generate.safari('dummy target dir', 'dummy user dir')
 		
 		shutil.copy.assert_called_once_with(
-			"dummy user dir/icon32.png",
-			"dummy target dir/webmynd.safariextension/icon-32.png",
+			path.join("dummy user dir","icon32.png"),
+			path.join("dummy target dir","webmynd.safariextension", "icon-32.png"),
 		)

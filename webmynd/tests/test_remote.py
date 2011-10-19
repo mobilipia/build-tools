@@ -360,4 +360,4 @@ class Test_CheckVersion(TestRemote):
 		get_resp.content = json.dumps({"url": "http://example.com/forge/upgrade/", "message": "you must upgrade to a newer version of the command-line tools", "upgrade": "required", "result": "ok"})
 		self.remote._get = Mock(return_value=get_resp)
 		
-		assert_raises_regexp(Exception, 'An update to these command line tools is required.', self.remote.check_version)
+		assert_raises_regexp(Exception, 'An update to these command line tools is required', self.remote.check_version)
