@@ -5,6 +5,11 @@ IF EXIST %LOG_FILE% del %LOG_FILE%
 rem
 rem LOCATE PYTHON AND STICK IT IN OUR PATH (the python installer doesn't do that...)
 rem
+
+rem
+rem ATTEMPT TO LOOKUP REGISTRY KEYS
+rem
+
 SET WINCURVERKEY=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion
 REG QUERY "%WINCURVERKEY%" /v "ProgramFilesDir (x86)" >nul 2>nul
 if %ERRORLEVEL% EQU 0 (
@@ -43,25 +48,45 @@ if "%PYTHONVERSION%" EQU "" (
   )
 )
 
-if "%PYTHONVERSION%" EQU "" (
-  REG QUERY "%PYTHONKEY%\2.5\InstallPath" /ve >nul 2>nul
-  if %ERRORLEVEL% EQU 0 (
-    SET PYTHONVERSION=2.5
-	if "%PYTHONVERSION%" NEQ "" (
-		FOR /F "tokens=3* skip=1 delims=	 " %%A IN ('REG QUERY "%PYTHONKEY%\%PYTHONVERSION%\InstallPath" /ve') DO SET "PYTHONINSTALL=%%A"
+rem
+rem GUESS!
+rem
+
+if "%PYTHONINSTALL%" EQU "" (
+	if EXIST "C:\Python27\python.exe" (
+		set PYTHONINSTALL="C:\Python27"
+		set PYTHONVERSION=2.7
+		goto foundpython
 	)
-  )
+	if EXIST "C:\Program Files\Python27\python.exe" (
+		set PYTHONINSTALL="C:\Program Files\Python27"
+		set PYTHONVERSION=2.7
+		goto foundpython
+	)
+	if EXIST "C:\Program Files (x86)\Python27\python.exe" (
+		set PYTHONINSTALL="C:\Program Files (x86)\Python27"
+		set PYTHONVERSION=2.7
+		goto foundpython
+	)
+
+	if EXIST "C:\Python26\python.exe" (
+		set PYTHONINSTALL="C:\Python26"
+		set PYTHONVERSION=2.6
+		goto foundpython
+	)
+	if EXIST "C:\Program Files\Python26\python.exe" (
+		set PYTHONINSTALL="C:\Program Files\Python26"
+		set PYTHONVERSION=2.6
+		goto foundpython
+	)
+	if EXIST "C:\Program Files (x86)\Python26\python.exe" (
+		set PYTHONINSTALL="C:\Program Files (x86)\Python26"
+		set PYTHONVERSION=2.6
+		goto foundpython
+	)
 )
 
-if "%PYTHONVERSION%" EQU "" (
-  REG QUERY "%PYTHONKEY%\2.4\InstallPath" /ve >nul 2>nul
-  if %ERRORLEVEL% EQU 0 (
-    SET PYTHONVERSION=2.4
-	if "%PYTHONVERSION%" NEQ "" (
-		FOR /F "tokens=3* skip=1 delims=	 " %%A IN ('REG QUERY "%PYTHONKEY%\%PYTHONVERSION%\InstallPath" /ve') DO SET "PYTHONINSTALL=%%A"
-	)
-  )
-)
+:foundpython
 
 if "%PYTHONINSTALL%" NEQ "" (
   SET "PATH=%PATH%;%PYTHONINSTALL%"
