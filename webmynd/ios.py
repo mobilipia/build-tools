@@ -5,6 +5,8 @@ import signal
 from os import path
 import time
 
+from webmynd import ForgeError
+
 LOG = logging.getLogger(__name__)
 
 class IOSRunner(object):
@@ -12,7 +14,7 @@ class IOSRunner(object):
 		self.sdk = '/Developer/Platforms/iPhoneSimulator.platform/Developer/Applications/iPhone Simulator.app/Contents/MacOS'
 
 		if not path.exists(self.sdk):
-			raise ForgeError("Couldn't find the iPhone sdk at: %s")
+			raise ForgeError("Couldn't find the iPhone sdk at: %s" % self.sdk)
 
 	def run_iphone_simulator_with(self, file):
 		try:
