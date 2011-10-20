@@ -18,6 +18,7 @@ import tempfile
 from glob import glob
 
 from webmynd import build_config
+from webmynd.lib import walk2
 
 LOG = logging.getLogger(__name__)
 
@@ -101,13 +102,12 @@ class Generate(object):
 					path.join(target_dir, 'webmynd.safariextension', 'icon-32.png'))
 
 	def ios(self, target_dir, user_dir):
-		uuid = self.app_config['uuid']
 		assets_folders = glob('./development/ios/*/assets')
 
 		LOG.debug("Copying user source to iOS folders")
 		for folder in assets_folders:
 			find = "<head>"
-			replace = "<head><script src='./webmynd/all.js'></script>"
+			replace = "<head><script src='%swebmynd/all.js'></script>"
 
 			self._recursive_replace(user_dir, folder, ('html',), find, replace)
 
@@ -141,15 +141,27 @@ class Generate(object):
 		:param suffixes: a collection of string suffixes of files to consider when replacing :param:`find` with :param:`replace`
 		:param find: string to look for in the text
 		:param replace: what to replace :param:`find` with before writing the output
+
+		*NB* if replace contains a %s then it will have the path to the root of the user code substituted in there
+		this is basically for iOS and firefox.
 		'''
-		for root, _, files in os.walk(parent):
+		for root, _, files, depth in walk2(parent):
 			for file_ in files:
 				out_dir = output_root + root[len(parent):]
 				if not os.path.exists(out_dir):
 					os.makedirs(out_dir)
 				
 				if file_.rpartition('.')[2] in suffixes:
-					self._replace_and_write_file(path.join(root, file_), path.join(out_dir, file_), find, replace)
+					try:
+						if depth == 0:
+							replace_with_fixed_path = replace % "./"
+						else:
+							replace_with_fixed_path = replace % "../" * depth
+					except TypeError:
+						# not everything will need relative paths
+						replace_with_fixed_path = replace
+
+					self._replace_and_write_file(path.join(root, file_), path.join(out_dir, file_), find, replace_with_fixed_path)
 				else:
 					shutil.copyfile(path.join(root, file_), path.join(out_dir, file_))
 
