@@ -191,8 +191,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 
 		config = build_config.load_app()
 		runner = IOSRunner()
-		path_to_app = glob('./development/ios/simulator-*/%s' % config['name'])[0]
-		runner.run_iphone_simulator_with(path_to_app)
+		runner.run_iphone_simulator_with(config['name'])
 
 def create():
 	'Create a new development environment'
