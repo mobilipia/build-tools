@@ -10,6 +10,7 @@ import time
 
 from subprocess import Popen
 from os import path, devnull
+from glob import glob
 
 import webmynd
 from webmynd import defaults, build_config, ForgeError
@@ -17,6 +18,7 @@ from webmynd.generate import Generate
 from webmynd.remote import Remote, AuthenticationError
 from webmynd.templates import Manager
 from webmynd.android import runAndroid
+from webmynd.ios import IOSRunner
 
 LOG = None
 
@@ -129,7 +131,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-j', '--jdk', help='Path to the Java JDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
-	parser.add_argument('platform', type=not_chrome, choices=['android'])
+	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios'])
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -181,6 +183,11 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 			runAndroid(sdk, jdk, args.device)
 		except CouldNotLocate as e:
 			LOG.error(e)
+	elif args.platform == 'ios':
+		config = build_config.load_app()
+		runner = IOSRunner()
+		path_to_app = glob('./production/ios/simulator-*/%s' % config['name'])[0]
+		runner.run_iphone_simulator_with(path_to_app)
 
 def create():
 	'Create a new development environment'
