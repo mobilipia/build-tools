@@ -15,6 +15,7 @@ import os
 from os import path
 import shutil
 import tempfile
+from glob import glob
 
 from webmynd import build_config
 
@@ -50,6 +51,8 @@ class Generate(object):
 			self.safari(target_dir, user_dir)
 		if path.isdir(path.join(target_dir, 'android')):
 			self.android(target_dir, user_dir)
+		if path.isdir(path.join(target_dir, 'ios')):
+			self.ios(target_dir, user_dir)
 
 	def firefox(self, target_dir, user_dir):
 		'''Re-create overlay.js for Firefox from source files.
@@ -96,7 +99,18 @@ class Generate(object):
 			if "32" in self.app_config["icons"]:
 				shutil.copy(path.join(user_dir, self.app_config["icons"]["32"]),
 					path.join(target_dir, 'webmynd.safariextension', 'icon-32.png'))
-	
+
+	def ios(self, target_dir, user_dir):
+		uuid = self.app_config['uuid']
+		assets_folders = glob('./development/ios/*/assets')
+
+		LOG.debug("Copying user source to iOS folders")
+		for folder in assets_folders:
+			find = "<head>"
+			replace = "<head><script src='./webmynd/all.js'></script>"
+
+			self._recursive_replace(user_dir, folder, ('html',), find, replace)
+
 	def chrome(self, target_dir, user_dir):
 		uuid = self.app_config['uuid']
 		chrome_user_dir = path.join(target_dir, 'chrome', uuid)

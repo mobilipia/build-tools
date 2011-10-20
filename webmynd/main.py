@@ -187,11 +187,11 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		except CouldNotLocate as e:
 			LOG.error(e)
 	elif args.platform == 'ios':
-		_assert_have_production_folder()
+		_assert_have_development_folder()
 
 		config = build_config.load_app()
 		runner = IOSRunner()
-		path_to_app = glob('./production/ios/simulator-*/%s' % config['name'])[0]
+		path_to_app = glob('./development/ios/simulator-*/%s' % config['name'])[0]
 		runner.run_iphone_simulator_with(path_to_app)
 
 def create():
