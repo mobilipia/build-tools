@@ -56,42 +56,14 @@ class Generate(object):
 			self.ios(target_dir, user_dir)
 
 	def firefox(self, target_dir, user_dir):
-		'''Re-create overlay.js for Firefox from source files.
+		uuid = self.app_config['uuid']
+		firefox_user_dir = path.join(target_dir, 'firefox', 'resources', uuid+'-at-jetpack-f-data', uuid)
+		LOG.debug("Copying user dir to android")
+	
+		find = "<head>"
+		replace = "<head><script src='%swebmynd/all.js'></script>"
 		
-		Firefox expects all "privileged" files to be present in one mega-script:
-		we will combine the user-defined files together into one.
-		
-		:param target_dir: the output directory
-		:param user_dir: the directory to read the source files from
-		'''
-		background_files = self.app_config['background_files']
-		
-		overlay_filename = path.join(target_dir, 'firefox', 'content', 'overlay.js')
-		LOG.debug('reading in "%s"' % overlay_filename)
-		overlay = _read_encoded_file(overlay_filename)
-		
-		all_bg_files = StringIO()
-		for bg_filename in background_files:
-			if bg_filename.startswith('http://') or bg_filename.startswith('https://'):
-				# ignore remote script - pointed at elsewhere
-				___a = 1 # trigger coverage
-				continue
-			bg_filename = path.join(user_dir, bg_filename.lstrip('/'))
-			if not path.isfile(bg_filename):
-				raise Exception('Your "background_files" settings points at "%s", '
-					'but it doesn\'t exist' % bg_filename)
-			LOG.debug('reading in "%s"' % bg_filename)
-			bg_file_s = _read_encoded_file(bg_filename)
-			all_bg_files.write('\n'+bg_file_s)
-		
-		marker = 'window.__WEBMYND_MARKER=1;'
-		LOG.debug("replacing %s with %s" % (marker, 'concatenated background files'))
-		
-		new_overlay = overlay.replace(marker, all_bg_files.getvalue())
-		
-		with codecs.open(overlay_filename, 'w', encoding='utf8') as out_file:
-			out_file.write(new_overlay)
-		LOG.info('re-generated overlay.js')
+		self._recursive_replace(user_dir, firefox_user_dir, ('html',), find, replace)
 
 	def safari(self, target_dir, user_dir):
 		'''Copy over icons if they exist'''
@@ -122,7 +94,6 @@ class Generate(object):
 		self._recursive_replace(user_dir, chrome_user_dir, ('html',), find, replace)
 
 	def android(self, target_dir, user_dir):
-		uuid = self.app_config['uuid']
 		android_user_dir = path.join(target_dir, 'android', 'assets')
 		LOG.debug("Copying user dir to android")
 	
