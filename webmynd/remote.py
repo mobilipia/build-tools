@@ -250,7 +250,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 	@staticmethod
 	def _unzip_with_permissions(filename):
 		try:
-			retcode = subprocess.call(["unzip"])
+			subprocess.Popen(["unzip"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		except OSError:
 			LOG.debug("'unzip' not available, falling back on python ZipFile, this will strip certain permissions from files")
 			zip_to_extract = zipfile.ZipFile(filename)
@@ -258,7 +258,10 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			zip_to_extract.close()
 		else:
 			LOG.debug("unzip is available, using it")
-			subprocess.call(["unzip", filename])
+			zip_process = subprocess.Popen(["unzip", filename], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+			output = zip_process.communicate()[0]
+			LOG.debug("unzip output")
+			LOG.debug(output)
 
 	def _handle_unpackaged(self, platform, filename):
 		'''De-compress a built output tree.
