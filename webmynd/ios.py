@@ -31,6 +31,8 @@ class IOSRunner(object):
 				if parent_pid == target_parent_pid:
 					child_pids.append(pid)
 
+		return child_pids
+
 	def run_iphone_simulator_with(self, file):
 		try:
 			path_to_simulator = path.join(self.sdk, "iPhone Simulator")
@@ -49,8 +51,8 @@ class IOSRunner(object):
 				child_processes = self.get_child_processes(simulator.pid)
 
 				if child_processes:
-					LOG.info("pid for iPhone app is: %s" % app_pid)
 					app_pid = child_processes[0]
+					LOG.info("pid for iPhone app is: %s" % app_pid)
 					break
 
 				if app_pid is None:
