@@ -113,6 +113,9 @@ def _assert_have_development_folder():
 	if not os.path.exists('development'):
 		raise ForgeError("No folder called 'development' found. You're trying to run your app but you haven't built it yet! Try wm-dev-build first.")
 
+def _assert_have_production_folder():
+	if not os.path.exists('production'):
+		raise ForgeError("No folder called 'production' found. You're trying to run your app but you haven't built it yet! Try wm-prod-build first.")
 
 def run():
 	def not_chrome(text):
@@ -136,9 +139,9 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	args = parser.parse_args()
 	handle_general_options(args)
 
-	_assert_have_development_folder()
-
 	if args.platform == 'android':
+		_assert_have_development_folder()
+
 		# Some sensible places to look for the Android SDK
 		possibleSdk = [
 			"C:/Program Files (x86)/Android/android-sdk/",
@@ -184,6 +187,8 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		except CouldNotLocate as e:
 			LOG.error(e)
 	elif args.platform == 'ios':
+		_assert_have_production_folder()
+
 		config = build_config.load_app()
 		runner = IOSRunner()
 		path_to_app = glob('./production/ios/simulator-*/%s' % config['name'])[0]
