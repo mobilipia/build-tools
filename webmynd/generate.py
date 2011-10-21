@@ -57,7 +57,7 @@ class Generate(object):
 
 	def firefox(self, target_dir, user_dir):
 		uuid = self.app_config['uuid']
-		firefox_user_dir = path.join(target_dir, 'firefox', 'resources', uuid+'-at-jetpack-f-data', uuid)
+		firefox_user_dir = path.join(target_dir, 'firefox', 'resources', uuid+'-at-jetpack-f-data', 'src')
 		LOG.debug("Copying user dir to android")
 	
 		find = "<head>"
@@ -78,6 +78,7 @@ class Generate(object):
 
 		LOG.debug("Copying user source to iOS folders")
 		for folder in assets_folders:
+			folder = path.join(folder, 'src');
 			find = "<head>"
 			replace = "<head><script src='%swebmynd/all.js'></script>"
 
@@ -85,7 +86,7 @@ class Generate(object):
 
 	def chrome(self, target_dir, user_dir):
 		uuid = self.app_config['uuid']
-		chrome_user_dir = path.join(target_dir, 'chrome', uuid)
+		chrome_user_dir = path.join(target_dir, 'chrome', 'src')
 		LOG.debug("Copying user dir to chrome")
 		
 		find = "<head>"
@@ -94,7 +95,7 @@ class Generate(object):
 		self._recursive_replace(user_dir, chrome_user_dir, ('html',), find, replace)
 
 	def android(self, target_dir, user_dir):
-		android_user_dir = path.join(target_dir, 'android', 'assets')
+		android_user_dir = path.join(target_dir, 'android', 'assets', 'src')
 		LOG.debug("Copying user dir to android")
 	
 		find = "<head>"
