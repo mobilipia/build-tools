@@ -125,10 +125,7 @@ class Generate(object):
 				
 				if file_.rpartition('.')[2] in suffixes:
 					try:
-						if depth == 0:
-							replace_with_fixed_path = replace % "./"
-						else:
-							replace_with_fixed_path = replace % "../" * depth
+							replace_with_fixed_path = replace % "../" * (depth+1)
 					except TypeError:
 						# not everything will need relative paths
 						replace_with_fixed_path = replace

@@ -1,5 +1,6 @@
 'Entry points for the WebMynd build tools'
 import logging
+import codecs
 import json
 import shutil
 import sys
@@ -19,6 +20,7 @@ from webmynd.remote import Remote, AuthenticationError
 from webmynd.templates import Manager
 from webmynd.android import runAndroid
 from webmynd.ios import IOSRunner
+from cuddlefish.runner import run_app
 
 LOG = None
 
@@ -134,7 +136,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-j', '--jdk', help='Path to the Java JDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
-	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios'])
+	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox'])
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -192,6 +194,17 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		config = build_config.load_app()
 		runner = IOSRunner()
 		runner.run_iphone_simulator_with(config['name'])
+	elif args.platform == 'firefox':
+		shutil.move(os.path.join('development', 'firefox', 'harness-options.json'),
+			os.path.join('development', 'firefox', 'harness-options-bak.json'))
+		try:
+			with codecs.open(os.path.join('development', 'firefox', 'harness-options-bak.json'), encoding='utf8') as harness_file:
+				harness_config = json.load(harness_file)
+			run_app(os.path.join('development', 'firefox'), harness_config, "firefox", verbose=True)
+		finally:
+			shutil.move(os.path.join('development', 'firefox', 'harness-options-bak.json'),
+				os.path.join('development', 'firefox', 'harness-options.json'))
+			
 
 def create():
 	'Create a new development environment'
