@@ -4,6 +4,7 @@ import os
 import signal
 from os import path
 import time
+from glob import glob
 
 from webmynd import ForgeError
 
@@ -11,6 +12,7 @@ LOG = logging.getLogger(__name__)
 
 class IOSRunner(object):
 	def __init__(self):
+		self.log_process = None
 		self.sdk = '/Developer/Platforms/iPhoneSimulator.platform/Developer/Applications/iPhone Simulator.app/Contents/MacOS'
 
 		if not path.exists(self.sdk):
@@ -33,10 +35,15 @@ class IOSRunner(object):
 
 		return child_pids
 
-	def run_iphone_simulator_with(self, file):
+	def start_piping_system_log(self, app_name, pid):
+		LOG.info('Showing log output:')
+		self.log_process = subprocess.Popen(r"tail -f /var/log/system.log | grep --line-buffered '\[%s' | sed -E 's/([^ ]+ [^ ]+ [^ ]+).*\]: (.*)/[\1] \2/'" % pid, shell=True)
+
+	def run_iphone_simulator_with(self, app_name):
 		try:
+			path_to_app = glob('./development/ios/simulator-*/%s' % app_name)[0]
 			path_to_simulator = path.join(self.sdk, "iPhone Simulator")
-			path_to_file = path.abspath(file)
+			path_to_file = path.abspath(path_to_app)
 
 			LOG.debug('trying to run app %s' % path_to_file)
 			simulator = subprocess.Popen([path_to_simulator, "-SimulateApplication", path_to_file])
@@ -62,6 +69,7 @@ class IOSRunner(object):
 					LOG.info("failed to get pid for the app being simulated. This means we can't kill it on shutdown, so you may have to kill it yourself using Activity Monitor")
 					break
 
+			self.start_piping_system_log(app_name, app_pid)
 			simulator.communicate()
 
 		finally:
