@@ -34,4 +34,7 @@ def load_app(filename=None):
 		filename = defaults.APP_CONFIG_FILE
 	
 	with codecs.open(filename, encoding='utf8') as app_config:
-		return json.load(app_config)
+		try:
+			return json.load(app_config)
+		except ValueError as e:
+			raise webmynd.ForgeError("Your configuration file ({0}) is malformed:\n{1}".format(filename, e))
