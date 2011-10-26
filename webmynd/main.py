@@ -18,7 +18,7 @@ from webmynd import defaults, build_config, ForgeError
 from webmynd.generate import Generate
 from webmynd.remote import Remote, AuthenticationError
 from webmynd.templates import Manager
-from webmynd.android import runAndroid
+from webmynd.android import runAndroid, check_for_android_sdk
 from webmynd.ios import IOSRunner
 from cuddlefish.runner import run_app
 
@@ -101,16 +101,6 @@ def handle_general_options(args):
 class CouldNotLocate(Exception):
 	pass
 
-def _check_for_dir(dirs, fail_msg):
-	for directory in dirs:
-		if (os.path.isdir(directory)):
-			if directory.endswith('/'):
-				return directory
-			else:
-				return directory+'/'
-	else:
-		raise CouldNotLocate(fail_msg)
-
 def _assert_have_development_folder():
 	if not os.path.exists('development'):
 		raise ForgeError("No folder called 'development' found. You're trying to run your app but you haven't built it yet! Try wm-dev-build first.")
@@ -143,19 +133,8 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	if args.platform == 'android':
 		_assert_have_development_folder()
 
-		# Some sensible places to look for the Android SDK
-		possibleSdk = [
-			"C:/Program Files (x86)/Android/android-sdk/",
-			"C:/Program Files/Android/android-sdk/",
-			"C:/Android/android-sdk/",
-			"C:/Android/android-sdk-windows/",
-			"C:/android-sdk-windows/"
-		]
-		if args.sdk:
-			possibleSdk.insert(0, args.sdk)
-
 		try:
-			sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
+			sdk = check_for_android_sdk(args.sdk)
 
 			runAndroid(sdk, args.device)
 		except CouldNotLocate as e:
@@ -239,18 +218,7 @@ def development_build():
 		templates_dir = manager.fetch_templates(build_id)
 	
 	try:
-		# Some sensible places to look for the Android SDK
-		possibleSdk = [
-			"C:/Program Files (x86)/Android/android-sdk/",
-			"C:/Program Files/Android/android-sdk/",
-			"C:/Android/android-sdk/",
-			"C:/Android/android-sdk-windows/",
-			"C:/android-sdk-windows/"
-		]
-		if args.sdk:
-			possibleSdk.insert(0, args.sdk)
-
-		sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
+		sdk = check_for_android_sdk(args.sdk)
 		
 		proc = Popen([path.abspath(path.join(sdk,'platform-tools','adb')), 'kill-server'], stdout=open(devnull, 'w'), stderr=open(devnull, 'w'))
 	except Exception as e:

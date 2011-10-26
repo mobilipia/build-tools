@@ -6,11 +6,85 @@ import json
 import re
 import logging
 import sys
+import tempfile
+import shutil
+import urllib
+import time
 from subprocess import Popen, PIPE, STDOUT
 
 from webmynd import defaults, ForgeError
 
 LOG = logging.getLogger(__name__)
+
+def check_for_android_sdk(dir):
+	# Some sensible places to look for the Android SDK
+	possibleSdk = [
+		"C:/Program Files (x86)/Android/android-sdk/",
+		"C:/Program Files/Android/android-sdk/",
+		"C:/Android/android-sdk/",
+		"C:/Android/android-sdk-windows/",
+		"C:/android-sdk-windows/"
+	]
+	if dir:
+		possibleSdk.insert(0, dir)
+
+	for directory in possibleSdk:
+		if (os.path.isdir(directory)):
+			if directory.endswith('/'):
+				return directory
+			else:
+				return directory+'/'
+	else:
+		# No SDK found - will the user let us install one?
+		if sys.platform.startswith('win'):
+			path = "C:\\android-sdk-windows"
+		#elif sys.platform.startswith('linux'):
+		#	path = "/opt/android-sdk-linux"
+		#elif sys.platform.startswith('darwin'):
+		#	path = "/SOMEWHERE"
+			
+		if not path:
+			raise CouldNotLocate("No Android SDK found, please specify with the --sdk flag")		
+		
+		prompt = raw_input('\nNo Android SDK found, would you like to:\n(1) Attempt to download and install the SDK automatically to '+path+', or,\n(2) Install the SDK yourself and rerun this command with the --sdk option to specify its location.\nPlease enter 1 or 2: ')
+		
+		if not prompt == "1":
+			raise CouldNotLocate("No Android SDK found, please specify with the --sdk flag")
+		else:
+			# Attempt download
+			orig_dir = os.getcwd()
+			temp_d = tempfile.mkdtemp()
+			try:
+				os.chdir(temp_d)
+				LOG.info('Downloading Android SDK (about 30MB, may take some time)')
+				
+				if sys.platform.startswith('win'):
+					urllib.urlretrieve("http://dl.google.com/android/android-sdk_r14-windows.zip", "sdk.zip")
+
+					LOG.info('Download complete, extracting SDK')
+					zip_to_extract = zipfile.ZipFile("sdk.zip")
+					zip_to_extract.extractall("C:\\")
+					zip_to_extract.close()
+					
+					android_path = "C:\\android-sdk-windows\\tools\\android.bat"
+					adb_path = "C:\\android-sdk-windows\\platform-tools\\adb"
+				
+				LOG.info('Extracted, updating SDK and downloading required Android platform (about 90MB, may take some time)')
+				android_process = Popen([android_path, "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
+				while android_process.poll() == None:
+					time.sleep(5)
+					try:
+						Popen([adb_path, "kill-server"], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
+					except:
+						pass
+
+				LOG.info('Android SDK update complete')
+				return check_for_android_sdk(None)
+			finally:
+				os.chdir(orig_dir)
+				shutil.rmtree(temp_d, ignore_errors=True)
+
+			raise CouldNotLocate("Automatic SDK download failed, please install manually and specify with the --sdk flag")
 
 def scrape_available_devices(text):
 	'Scrapes the output of the adb devices command into a list'
