@@ -33,7 +33,7 @@ def runShell(args):
 		raise ForgeError
 	LOG.debug('Output:\n'+proc_std)
 
-def runAndroid(sdk, jdk, device):
+def runAndroid(sdk, device):
 	LOG.info('Creating Android .apk file')
 	os.chdir(os.path.join('development', 'android'))
 	
@@ -58,16 +58,20 @@ def runAndroid(sdk, jdk, device):
 	#sign
 	LOG.info('Signing apk')
 	args = [
-		jdk+'jarsigner',
-		'-verbose',
-		'-keystore',
+		'java',
+		'-jar',
+		os.path.join(defaults.FORGE_ROOT, 'webmynd', 'apk-signer.jar'),
+		'--keystore',
 		os.path.join(defaults.FORGE_ROOT, 'debug.keystore'),
-		'-storepass',
+		'--storepass',
 		'android',
-		'app.apk',
+		'--keyalias',
 		'androiddebugkey',
-		'-keypass',
-		'android'
+		'--keypass',
+		'android',
+		'--out',
+		'signed-app.apk',
+		'app.apk'
 	]
 	runShell(args)
 
@@ -75,9 +79,10 @@ def runAndroid(sdk, jdk, device):
 	LOG.info('Aligning apk')
 	if os.path.exists('out.apk'):
 		os.remove('out.apk')
-	args = [sdk+'tools/zipalign', '-v', '4', 'app.apk', 'out.apk']
+	args = [sdk+'tools/zipalign', '-v', '4', 'signed-app.apk', 'out.apk']
 	runShell(args)
 	os.remove('app.apk')
+	os.remove('signed-app.apk')
 
 	# TODO choose device
 	adb_location = path.abspath(path.join(sdk,'platform-tools','adb'))

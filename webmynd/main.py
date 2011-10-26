@@ -134,7 +134,6 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 
 	parser = argparse.ArgumentParser(prog='wm-run', description='Run a built dev app on a particular platform')
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
-	parser.add_argument('-j', '--jdk', help='Path to the Java JDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
 	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox'])
 	add_general_options(parser)
@@ -155,37 +154,10 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		if args.sdk:
 			possibleSdk.insert(0, args.sdk)
 
-
-		# Some sensible places to look for the Java JDK
-		possibleJdk = [
-			"C:/Program Files (x86)/Java/jdk1.6.0_24/bin/",
-			"C:/Program Files/Java/jdk1.6.0_24/bin/",
-			"C:/Program Files (x86)/Java/jdk1.6.0_25/bin/",
-			"C:/Program Files/Java/jdk1.6.0_25/bin/",
-			"C:/Program Files (x86)/Java/jdk1.6.0_26/bin/",
-			"C:/Program Files/Java/jdk1.6.0_26/bin/",
-			"C:/Program Files (x86)/Java/jdk1.6.0_27/bin/",
-			"C:/Program Files/Java/jdk1.6.0_27/bin/",
-			"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
-			"C:/Program Files/Java/jdk1.7.0/bin/",
-			"/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Commands"
-		]
-		if args.jdk:
-			possibleJdk.insert(0, args.jdk)
-
 		try:
 			sdk = _check_for_dir(possibleSdk, "No Android SDK found, please specify with the --sdk flag")
-			jdk = _check_for_dir(possibleJdk, "No Java JDK found, please specify with the --jdk flag")
 
-			bad_jdk = [
-				"C:/Program Files (x86)/Java/jdk1.7.0/bin/",
-				"C:/Program Files/Java/jdk1.7.0/bin/",
-			]
-
-			if jdk in bad_jdk:
-				raise ForgeError("Could only find jdk 1.7. This is known to cause problems with signing android APKs. You need to install JDK 1.6")
-
-			runAndroid(sdk, jdk, args.device)
+			runAndroid(sdk, args.device)
 		except CouldNotLocate as e:
 			LOG.error(e)
 	elif args.platform == 'ios':
