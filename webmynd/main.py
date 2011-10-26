@@ -193,6 +193,8 @@ def development_build():
 	
 	parser = argparse.ArgumentParser(prog='wm-dev-build', description='Creates new local, unzipped development add-ons with your source and configuration')
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
+	parser.add_argument('-f', '--full', action='store_true', help='Force a complete rebuild on the forge server')
+
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
@@ -208,10 +210,13 @@ def development_build():
 	manager = Manager(config)
 
 	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
-	if templates_dir:
+	if templates_dir and not args.full:
 		LOG.info('configuration is unchanged: using existing templates')
 	else:
-		LOG.info('configuration has changed: creating new templates')
+		if args.full:
+			LOG.info('forcing rebuild of templates')
+		else:
+			LOG.info('configuration has changed: creating new templates')
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
