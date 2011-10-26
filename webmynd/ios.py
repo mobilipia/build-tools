@@ -40,6 +40,8 @@ class IOSRunner(object):
 		self.log_process = subprocess.Popen(r"tail -f /var/log/system.log | grep --line-buffered '\[%s' | sed -E 's/([^ ]+ [^ ]+ [^ ]+).*\]: (.*)/[\1] \2/'" % pid, shell=True)
 
 	def run_iphone_simulator_with(self, app_name):
+		app_pid = None
+
 		try:
 			path_to_app = glob('./development/ios/simulator-*/%s' % app_name)[0]
 			path_to_simulator = path.join(self.sdk, "iPhone Simulator")
@@ -50,7 +52,6 @@ class IOSRunner(object):
 			LOG.info('simulator pid is %s' % simulator.pid)
 
 			# XXX: race condition, the app may not have started yet, so we try a few times.
-			app_pid = None
 			attempts = 0
 
 			while app_pid is None:
