@@ -42,8 +42,13 @@ class IOSRunner(object):
 	def run_iphone_simulator_with(self, app_name):
 		app_pid = None
 
+		possible_apps = glob('./development/ios/simulator-*/%s' % app_name)
+		if not possible_apps:
+			raise ForgeError("Couldn't find iOS app to run it in the simulator, you may need to enable iOS builds run wm-dev-build --full to fetch a new build")
+		
+		path_to_app = possible_apps[0]
+
 		try:
-			path_to_app = glob('./development/ios/simulator-*/%s' % app_name)[0]
 			path_to_simulator = path.join(self.sdk, "iPhone Simulator")
 			path_to_file = path.abspath(path_to_app)
 
