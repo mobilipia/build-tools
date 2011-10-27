@@ -106,13 +106,109 @@ def runShell(args):
 		LOG.error('failed: %s' % (proc_std))
 		raise ForgeError
 	LOG.debug('Output:\n'+proc_std)
+	return proc_std
+
+def runBackground(args):
+	if sys.platform.startswith('win'):
+		# Windows only
+		DETACHED_PROCESS = 0x00000008
+		Popen(args, creationflags=DETACHED_PROCESS)
+	else:
+		os.system(" ".join(args)+" &")
 
 def runAndroid(sdk, device):
-	LOG.info('Creating Android .apk file')
+	LOG.info('Looking for Android device')
+	orig_dir = os.getcwd()
 	os.chdir(os.path.join('development', 'android'))
 	
-	proc = Popen([path.abspath(path.join(sdk,'platform-tools','adb')), 'start-server'], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
+	adb_location = path.abspath(path.join(sdk,'platform-tools','adb'))
 	
+	runBackground([adb_location, 'start-server'])
+	time.sleep(1)
+	
+	args = [adb_location, 'devices']
+	try:
+		proc = Popen(args, stdout=PIPE)
+	except Exception as e:
+		LOG.error("problem finding the android debug bridge at: %s" % adb_location)
+		# XXX: prompt to run the sdk manager, then retry?
+		LOG.error("this probably means you need to run the android SDK manager and download the android platform-tools.")
+		raise ForgeError
+
+	proc_std = proc.communicate()[0]
+	if proc.returncode != 0:
+		LOG.error('Communication with adb failed: %s' % (proc_std))
+		raise ForgeError
+
+	available_devices = scrape_available_devices(proc_std)
+
+	if not available_devices:
+		# Prompt to automatically (create and) run an AVD
+		prompt = raw_input('\nNo active Android device found, would you like to:\n(1) Attempt to automatically launch the Android emulator\n(2) Attempt to find the device again (choose this option after plugging in an Android device or launching the emulator).\nPlease enter 1 or 2: ')
+		if not prompt == "1":
+			os.chdir(orig_dir)
+			return runAndroid(sdk, device)
+		else:
+			pass
+
+		# Create avd
+		if os.path.isdir(os.path.join(sdk, 'forge-avd')):
+			LOG.info('Existing AVD found')
+		else:
+			LOG.info('Creating AVD')
+			args = [
+				os.path.join(sdk, "tools", "android.bat"),
+				"create",
+				"avd",
+				"-n", "forge",
+				"-t", "android-8",
+				"--skin", "HVGA",
+				"-p", os.path.join(sdk, 'forge-avd'),
+				#"-a",
+				"-c", "32M"
+			]
+			proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+			time.sleep(0.1)
+			proc_std = proc.communicate(input='\n')[0]
+			if proc.returncode != 0:
+				LOG.error('failed: %s' % (proc_std))
+				raise ForgeError
+			LOG.debug('Output:\n'+proc_std)
+
+		# Launch
+		runBackground([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"])
+		
+		LOG.info("Started emulator, waiting for device to boot")
+		args = [
+			adb_location,
+			"wait-for-device"
+		]
+		runShell(args)
+		args = [
+			adb_location,
+			"shell", "pm", "path", "android"
+		]
+		output = "Error:"
+		while output.startswith("Error:"):
+			output = runShell(args)
+		os.chdir(orig_dir)
+		return runAndroid(sdk, device)
+
+	if not device:
+		chosenDevice = available_devices[0]
+		LOG.info('No android device specified, defaulting to %s' % chosenDevice)
+
+	elif device:
+		if device in available_devices:
+			chosenDevice = device
+			LOG.info('Using specified android device %s' % chosenDevice)
+		else:
+			LOG.error('No such device "%s"' % device)
+			LOG.error('The available devices are:')
+			LOG.error("\n".join(available_devices))
+			raise ForgeError
+	
+	LOG.info('Creating Android .apk file')
 	#zip
 	LOG.info('Zipping files')
 	zipf = zipfile.ZipFile('app.apk', mode='w')
@@ -158,45 +254,6 @@ def runAndroid(sdk, device):
 	os.remove('app.apk')
 	os.remove('signed-app.apk')
 
-	# TODO choose device
-	adb_location = path.abspath(path.join(sdk,'platform-tools','adb'))
-	args = [adb_location, 'devices']
-	try:
-		proc = Popen(args, stdout=PIPE)
-	except Exception as e:
-		LOG.error("problem finding the android debug bridge at: %s" % adb_location)
-		# XXX: prompt to run the sdk manager, then retry?
-		LOG.error("this probably means you need to run the android SDK manager and download the android platform-tools.")
-		raise ForgeError
-
-	proc_std = proc.communicate()[0]
-	if proc.returncode != 0:
-		LOG.error('Communication with adb failed: %s' % (proc_std))
-		raise ForgeError
-
-	available_devices = scrape_available_devices(proc_std)
-
-	if not available_devices:
-		LOG.error('There were no attached android devices')
-		# XXX: prompt to run the sdk manager, then retry?
-		LOG.error('you need to run the android SDK manager and start a virtual android device, or attach a physical android device to the adb')
-		raise ForgeError
-
-	if not device:
-		chosenDevice = available_devices[0]
-		LOG.info('No android device specified, defaulting to %s' % chosenDevice)
-
-	elif device:
-
-		if device in available_devices:
-			chosenDevice = device
-			LOG.info('Using specified android device %s' % chosenDevice)
-		else:
-			LOG.error('No such device "%s"' % device)
-			LOG.error('The available devices are:')
-			LOG.error("\n".join(available_devices))
-			raise ForgeError
-
 	#install
 	LOG.info('Installing apk')
 	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'install', '-r', 'out.apk']
@@ -220,4 +277,3 @@ def runAndroid(sdk, device):
 	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', 'WebCore:D', package_name+':D', '*:S']
 	proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
 	proc.wait()
-	
