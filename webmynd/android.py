@@ -16,6 +16,9 @@ from webmynd import defaults, ForgeError
 
 LOG = logging.getLogger(__name__)
 
+class CouldNotLocate(Exception):
+	pass
+
 def check_for_android_sdk(dir):
 	# Some sensible places to look for the Android SDK
 	possibleSdk = [
@@ -23,7 +26,8 @@ def check_for_android_sdk(dir):
 		"C:/Program Files/Android/android-sdk/",
 		"C:/Android/android-sdk/",
 		"C:/Android/android-sdk-windows/",
-		"C:/android-sdk-windows/"
+		"C:/android-sdk-windows/",
+		"/Applications/android-sdk-macosx"
 	]
 	if dir:
 		possibleSdk.insert(0, dir)
@@ -36,12 +40,14 @@ def check_for_android_sdk(dir):
 				return directory+'/'
 	else:
 		# No SDK found - will the user let us install one?
+		path = None
+		
 		if sys.platform.startswith('win'):
 			path = "C:\\android-sdk-windows"
 		#elif sys.platform.startswith('linux'):
 		#	path = "/opt/android-sdk-linux"
-		#elif sys.platform.startswith('darwin'):
-		#	path = "/SOMEWHERE"
+		elif sys.platform.startswith('darwin'):
+			path = "/Applications/android-sdk-macosx"
 			
 		if not path:
 			raise CouldNotLocate("No Android SDK found, please specify with the --sdk flag")		
@@ -68,7 +74,18 @@ def check_for_android_sdk(dir):
 					
 					android_path = "C:\\android-sdk-windows\\tools\\android.bat"
 					adb_path = "C:\\android-sdk-windows\\platform-tools\\adb"
-				
+				elif sys.platform.startswith('darwin'):
+					urllib.urlretrieve("http://dl.google.com/android/android-sdk_r14-macosx.zip", "sdk.zip")
+	
+					LOG.info('Download complete, extracting SDK')
+					zip_process = Popen(["unzip", "sdk.zip", '-d', "/Applications"], stdout=PIPE, stderr=STDOUT)
+					output = zip_process.communicate()[0]
+					LOG.debug("unzip output")
+					LOG.debug(output)
+					
+					android_path = "/Applications/android-sdk-macosx/tools/android"
+					adb_path = "/Applications/android-sdk-macosx/platform-tools/adb"
+					
 				LOG.info('Extracted, updating SDK and downloading required Android platform (about 90MB, may take some time)')
 				android_process = Popen([android_path, "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
 				while android_process.poll() == None:
@@ -108,13 +125,16 @@ def runShell(args):
 	LOG.debug('Output:\n'+proc_std)
 	return proc_std
 
-def runBackground(args):
+def runBackground(args, detach=False):
 	if sys.platform.startswith('win'):
 		# Windows only
 		DETACHED_PROCESS = 0x00000008
 		Popen(args, creationflags=DETACHED_PROCESS)
 	else:
-		os.system(" ".join(args)+" &")
+		if detach:
+			os.system("osascript -e 'tell application \"Terminal\" to do script \""+" ".join(args)+"\"'")
+		else:
+			os.system(" ".join(args)+" &")
 
 def runAndroid(sdk, device):
 	LOG.info('Looking for Android device')
@@ -122,7 +142,11 @@ def runAndroid(sdk, device):
 	os.chdir(os.path.join('development', 'android'))
 	
 	adb_location = path.abspath(path.join(sdk,'platform-tools','adb'))
-	
+	if sys.platform.startswith('win'):
+		android_path = path.abspath(path.join(sdk,'tools','android.bat'))
+	else:
+		android_path = path.abspath(path.join(sdk,'tools','android'))
+
 	runBackground([adb_location, 'start-server'])
 	time.sleep(1)
 	
@@ -157,7 +181,7 @@ def runAndroid(sdk, device):
 		else:
 			LOG.info('Creating AVD')
 			args = [
-				os.path.join(sdk, "tools", "android.bat"),
+				android_path,
 				"create",
 				"avd",
 				"-n", "forge",
@@ -176,7 +200,7 @@ def runAndroid(sdk, device):
 			LOG.debug('Output:\n'+proc_std)
 
 		# Launch
-		runBackground([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"])
+		runBackground([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
 		
 		LOG.info("Started emulator, waiting for device to boot")
 		args = [

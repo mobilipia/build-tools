@@ -18,7 +18,7 @@ from webmynd import defaults, build_config, ForgeError
 from webmynd.generate import Generate
 from webmynd.remote import Remote, AuthenticationError
 from webmynd.templates import Manager
-from webmynd.android import runAndroid, check_for_android_sdk
+from webmynd.android import runAndroid, check_for_android_sdk, CouldNotLocate
 from webmynd.ios import IOSRunner
 
 LOG = None
@@ -96,9 +96,6 @@ def add_general_options(parser):
 def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	setup_logging(args)
-
-class CouldNotLocate(Exception):
-	pass
 
 def _assert_have_development_folder():
 	if not os.path.exists('development'):
