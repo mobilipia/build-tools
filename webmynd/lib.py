@@ -48,3 +48,12 @@ def walk2(top, topdown=True, onerror=None, deeplevel=0): # fix 0
 	if not topdown:
 		yield top, dirs, nondirs, deeplevel # fix 3
 
+@contextmanager
+def cd(target_dir):
+	'Change directory to :param:`target_dir` as a context manager - i.e. rip off Fabric'
+	old_dir = os.getcwd()
+	try:
+		os.chdir(target_dir)
+		yield target_dir
+	finally:
+		os.chdir(old_dir)

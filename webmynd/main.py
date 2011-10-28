@@ -206,6 +206,7 @@ def development_build():
 
 	manager = Manager(config)
 
+	instructions_dir = defaults.INSTRUCTIONS_DIR
 	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
 	if templates_dir and not args.full:
 		LOG.info('configuration is unchanged: using existing templates')
@@ -218,7 +219,10 @@ def development_build():
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
 		templates_dir = manager.fetch_templates(build_id)
-	
+		
+		# have templates - now fetch injection instructions
+		remote.fetch_generate_instructions(build_id, instructions_dir)
+		
 	try:
 		sdk = check_for_android_sdk(args.sdk)
 		
@@ -238,7 +242,8 @@ def development_build():
 		except Exception, e:
 			if try_again == 5:
 				raise
-		
+	
+	# have templates and instructions - inject code
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.SRC_DIR)
 	LOG.info("Development build created. Use wm-run to run your app.")

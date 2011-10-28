@@ -161,14 +161,6 @@ class Remote(object):
 		resp = self._post(urljoin(self.server, 'app/'), data=data)
 		return json.loads(resp.content)['uuid']
 
-	def latest(self):
-		'''Get the ID of the latest completed production build for this app.'''
-		LOG.info('fetching latest build ID')
-		self._authenticate()
-		
-		resp = self._get(urljoin(self.server, 'app/%s/latest/' % self.config.get('uuid')))
-		return json.loads(resp.content)['build_id']
-
 	def _fetch_output(self, build_id, to_dir, output_key, post_get_fn):
 		'''Helper function for common file-getting logic of the fetch* methods.
 		
@@ -315,7 +307,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
 		return filenames
 	
-	def fetch_generate_instructions(self, build_id, to_dir=None):
+	def fetch_generate_instructions(self, build_id, to_dir):
 		'''Retreive the generation instructions for a particular build.
 		
 		Rather than hard-coding these instructions - how to inject customer
@@ -326,23 +318,23 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		:param build_id: primary key of the build to get instructions for
 		:param to_dir: where the instructions will be put (default .template/generate_dynamic)
 		'''
-		if to_dir is None:
-			to_dir = path.join(".template", "generate_dynamic")
 		LOG.info("fetching generation instructions for build {build_id} into {to_dir}".format(**locals()))
 		
 		self._authenticate()
 		
-		resp = self._get(urljoin(self.server, 'app/{build_id}/generate_instructions/'.format(build_id=build_id)))
+		resp = self._get(
+			urljoin(self.server, 'build/{build_id}/generate_instructions/'.format(build_id=build_id))
+		)
 		
 		orig_dir = os.getcwd()
 		archive = None
+		temp_instructions_file = 'instructions.tar.bz2'
 		try:
 			os.makedirs(to_dir)
 			os.chdir(to_dir)
-			temp_instructions_file = 'instructions.tar.bz2'
-			with open(temp_instructions_file, 'wb') as out_tar:
+			with open(temp_instructions_file, mode='wb') as out_tar:
 				out_tar.write(resp.content)
-			archive = tarfile.open(temp_instructions_file, 'r')
+			archive = tarfile.open(temp_instructions_file, mode='r')
 			archive.extractall()
 		finally:
 			os.chdir(orig_dir)
@@ -351,22 +343,9 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 					archive.close()
 				except Exception:
 					pass
-					
-		
-		# filename = 'initial.zip'
-		# resp = self._get(urljoin(self.server, 'app/%s/initial_files' % uuid))
-		# with open(filename, 'wb') as out_file:
-		# 	LOG.debug('writing %s' % path.abspath(filename))
-		# 	out_file.write(resp.content)
-		# zipf = zipfile.ZipFile(filename)
-		# # XXX: shouldn't do the renaming here - need to fix the server to serve up the correct structure
-		# zipf.extractall()
-		# shutil.move('user', defaults.SRC_DIR)
-		# zipf.close()
-		# LOG.debug('extracted  initial project template')
-		# os.remove(filename)
-		# LOG.debug('removed downloaded file "%s"' % filename)
-
+			if os.isfile(temp_instructions_file):
+				os.remove(temp_instructions_file)
+		return to_dir
 	
 	def build(self, development=True, template_only=False):
 		'''Start a build on the remote server.

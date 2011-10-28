@@ -107,17 +107,6 @@ class Test_CsrfToken(TestRemote):
 		self.remote.cookies = [cookie1, cookie2]
 		eq_(self.remote._csrf_token(), 'csrf value 2')
 
-class TestLatest(TestRemote):
-	def test_latest(self):
-		self.remote._authenticate = Mock()
-		get_resp = Mock()
-		get_resp.content = json.dumps({'build_id': -1})
-		self.remote._get = Mock(return_value=get_resp)
-		resp = self.remote.latest()
-		eq_(resp, -1)
-		self.remote._authenticate.assert_called_once_with( )
-		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/app/TEST-UUID/latest/')
-
 class TestCreate(TestRemote):
 	def test_normal(self):
 		self.remote._authenticate = Mock()
@@ -409,8 +398,8 @@ class TestGenerateInstructions(TestRemote):
 		with mock.patch('__builtin__.open', new=mock_open):
 			self.remote.fetch_generate_instructions(1, 'my/path')
 		
-		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/app/1/generate_instructions/')
+		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/build/1/generate_instructions/')
 		mock_open.assert_called_once_with('instructions.tar.bz2', mode='wb')
 		tarfile.open.assert_called_once_with('instructions.tar.bz2', mode='r')
 		eq_(os.chdir.call_args_list[0][0][0], 'my/path')
-		tarfile.extractall.assert_called_once_with()
+		tarfile.open.return_value.extractall.assert_called_once_with()

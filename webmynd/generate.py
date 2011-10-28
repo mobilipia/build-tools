@@ -59,7 +59,6 @@ class Generate(object):
 			if directory in directory_to_platform:
 				enabled_platforms.append(directory_to_platform[directory])
 		
-		import pdb; pdb.set_trace()
 		from generate_dynamic import build, customer_phases, customer_tasks, predicates
 		build_to_run = build.Build(self.app_config, user_dir, target_dir, enabled_platforms=enabled_platforms)
 		
