@@ -1,17 +1,17 @@
 'Operations which require involvement of the remote WebMynd build servers'
 from cookielib import LWPCookieJar
+from getpass import getpass
 import json
 import logging
 import os
 from os import path
+import requests
 import shutil
+import subprocess
 import tarfile
 import time
 from urlparse import urljoin, urlsplit
 import zipfile
-from getpass import getpass
-import requests
-import subprocess
 
 import webmynd
 from webmynd import ForgeError
@@ -315,6 +315,59 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
 		return filenames
 	
+	def fetch_generate_instructions(self, build_id, to_dir=None):
+		'''Retreive the generation instructions for a particular build.
+		
+		Rather than hard-coding these instructions - how to inject customer
+		code into the apps - they are loaded dynamically from the server to
+		allow for different platforms versions to work with a larger number
+		of build-tools versions.
+		
+		:param build_id: primary key of the build to get instructions for
+		:param to_dir: where the instructions will be put (default .template/generate_dynamic)
+		'''
+		if to_dir is None:
+			to_dir = path.join(".template", "generate_dynamic")
+		LOG.info("fetching generation instructions for build {build_id} into {to_dir}".format(**locals()))
+		
+		self._authenticate()
+		
+		resp = self._get(urljoin(self.server, 'app/{build_id}/generate_instructions/'.format(build_id=build_id)))
+		
+		orig_dir = os.getcwd()
+		archive = None
+		try:
+			os.makedirs(to_dir)
+			os.chdir(to_dir)
+			temp_instructions_file = 'instructions.tar.bz2'
+			with open(temp_instructions_file, 'wb') as out_tar:
+				out_tar.write(resp.content)
+			archive = tarfile.open(temp_instructions_file, 'r')
+			archive.extractall()
+		finally:
+			os.chdir(orig_dir)
+			if archive is not None:
+				try:
+					archive.close()
+				except Exception:
+					pass
+					
+		
+		# filename = 'initial.zip'
+		# resp = self._get(urljoin(self.server, 'app/%s/initial_files' % uuid))
+		# with open(filename, 'wb') as out_file:
+		# 	LOG.debug('writing %s' % path.abspath(filename))
+		# 	out_file.write(resp.content)
+		# zipf = zipfile.ZipFile(filename)
+		# # XXX: shouldn't do the renaming here - need to fix the server to serve up the correct structure
+		# zipf.extractall()
+		# shutil.move('user', defaults.SRC_DIR)
+		# zipf.close()
+		# LOG.debug('extracted  initial project template')
+		# os.remove(filename)
+		# LOG.debug('removed downloaded file "%s"' % filename)
+
+	
 	def build(self, development=True, template_only=False):
 		'''Start a build on the remote server.
 		
@@ -346,11 +399,13 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			return self._post(url, data=data, files=files)
 			
 		user_dir = defaults.SRC_DIR
-		if template_only or not path.isdir(user_dir):
-			if not path.isdir(user_dir):
-				LOG.warning('no "%s" directory found - we will be using the App\'s default code!' % defaults.SRC_DIR)
+		if not path.isdir(user_dir):
+			raise ForgeError("no {0} directory found: are you currently in the right directory?".format(user_dir))
+		
+		if template_only:
 			resp = build_request()
 		else:
+			# need to send up customer's code - compress it and add to request
 			filename, orig_dir = 'user.%s.tar.bz2' % time.time(), os.getcwd()
 			try:
 				user_comp = None
@@ -387,4 +442,4 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			LOG.debug(content['log_output'])
 			return build_id
 		else:
-			raise Exception('build failed: %s' % content['log_output'])
+			raise ForgeError('build failed: %s' % content['log_output'])

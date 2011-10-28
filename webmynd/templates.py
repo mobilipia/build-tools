@@ -15,7 +15,7 @@ LOG = logging.getLogger(__name__)
 
 class Manager(object):
 	'Handles the fetching, updating and management of generic templates'
-	__DEFAULT_TMPL_DIR = '.template'
+	
 	
 	def __init__(self, config, tmpl_dir=None):
 		'''Operations on the locally stored template code
@@ -25,7 +25,7 @@ class Manager(object):
 		:param tmpl_dir: directory name in which the templates will be sat
 		'''
 		if tmpl_dir is None:
-			self._tmpl_dir = self.__DEFAULT_TMPL_DIR
+			self._tmpl_dir = defaults.TEMPLATE_DIR
 		else:
 			self._tmpl_dir = tmpl_dir
 		self._config = config

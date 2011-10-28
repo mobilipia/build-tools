@@ -7,3 +7,4 @@ PASSWORD = "your password"
 
 SRC_DIR = 'src'
 APP_CONFIG_FILE = path.join(SRC_DIR, 'config.json')
+TEMPLATE_DIR = '.template'

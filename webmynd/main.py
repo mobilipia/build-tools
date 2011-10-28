@@ -20,7 +20,6 @@ from webmynd.remote import Remote, AuthenticationError
 from webmynd.templates import Manager
 from webmynd.android import runAndroid, check_for_android_sdk
 from webmynd.ios import IOSRunner
-from cuddlefish.runner import run_app
 
 LOG = None
 
@@ -151,6 +150,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		try:
 			with codecs.open(os.path.join('development', 'firefox', 'harness-options-bak.json'), encoding='utf8') as harness_file:
 				harness_config = json.load(harness_file)
+			from cuddlefish.runner import run_app
 			run_app(os.path.join('development', 'firefox'), harness_config, "firefox", verbose=True)
 		finally:
 			shutil.move(os.path.join('development', 'firefox', 'harness-options-bak.json'),
@@ -230,16 +230,16 @@ def development_build():
 		LOG.debug("Attempting to kill ADB failed, this may cause issues with file locks on Windows. %s" % e)
 
 	# Windows often gives a permission error without a small wait
-	tryAgain = 0
-	while tryAgain < 5:
-		time.sleep(tryAgain)
+	try_again = 0
+	while try_again < 5:
+		time.sleep(try_again)
 		try:
-			tryAgain += 1
+			try_again += 1
 			shutil.rmtree('development', ignore_errors=True)
 			shutil.copytree(templates_dir, 'development')
 			break
 		except Exception, e:
-			if tryAgain == 5:
+			if try_again == 5:
 				raise
 		
 	generator = Generate(defaults.APP_CONFIG_FILE)

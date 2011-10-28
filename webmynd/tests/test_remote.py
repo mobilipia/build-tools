@@ -6,7 +6,7 @@ import mock
 from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 
-from webmynd import defaults
+from webmynd import defaults, ForgeError
 from webmynd.remote import Remote, AuthenticationError, RequestError
 from webmynd.tests import dummy_config
 from lib import assert_raises_regexp
@@ -387,3 +387,30 @@ class Test_CheckVersion(TestRemote):
 		self.remote._get = Mock(return_value=get_resp)
 		
 		assert_raises_regexp(Exception, 'An update to these command line tools is required', self.remote.check_version)
+
+class TestGenerateInstructions(TestRemote):
+	@raises(RequestError)
+	@patch('webmynd.remote.requests')
+	def test_not_found_build(self, requests):
+		self.remote._authenticate = Mock()
+		requests.get.return_value.ok = False
+		requests.get.return_value.status_code = 404
+		
+		self.remote.fetch_generate_instructions(1)
+		
+	@patch('webmynd.remote.tarfile')
+	@patch('webmynd.remote.os')
+	def test_normal(self, os, tarfile):
+		self.remote._authenticate = Mock()
+		self.remote._get = Mock()
+		self.remote._get.return_value.content = 'zip file contents'
+		mock_open = mock.MagicMock()
+		
+		with mock.patch('__builtin__.open', new=mock_open):
+			self.remote.fetch_generate_instructions(1, 'my/path')
+		
+		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/app/1/generate_instructions/')
+		mock_open.assert_called_once_with('instructions.tar.bz2', mode='wb')
+		tarfile.open.assert_called_once_with('instructions.tar.bz2', mode='r')
+		eq_(os.chdir.call_args_list[0][0][0], 'my/path')
+		tarfile.extractall.assert_called_once_with()

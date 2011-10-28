@@ -93,10 +93,9 @@ class TestRun(object):
 		
 		parser.parse_args.assert_called_once()
 
-	@mock.patch('webmynd.main._check_for_dir')
 	@mock.patch('webmynd.main.runAndroid')
 	@mock.patch('webmynd.main.argparse')
-	def test_found_jdk_and_sdk(self, argparse, runAndroid, _check_for_dir):
+	def test_found_jdk_and_sdk(self, argparse, runAndroid):
 		main._assert_have_development_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
@@ -108,8 +107,6 @@ class TestRun(object):
 		def get_dir(*args, **kw):
 			return values.pop()
 
-		_check_for_dir.side_effect = get_dir
-		
 		main.run()
 		
 		parser.parse_args.assert_called_once()
@@ -147,29 +144,6 @@ class Test_AssertOutsideOfForgeRoot(object):
 		os.getcwd.return_value = path.join('some', 'other', 'dir')
 		main._assert_outside_of_forge_root()
 
-
-class Test_CheckForDir(object):
-	def test_no_dirs(self):
-		lib.assert_raises_regexp(Exception, 'dummy', main._check_for_dir, [], 'dummy')
-		
-	@mock.patch('webmynd.main.os.path.isdir')
-	def test_no_slash(self, isdir):
-		isdir.return_value = True
-		
-		result = main._check_for_dir(['dir name'], 'dummy')
-		
-		eq_(result, 'dir name/')
-		isdir.assert_called_once
-		
-	@mock.patch('webmynd.main.os.path.isdir')
-	def test_slash(self, isdir):
-		isdir.return_value = True
-		
-		result = main._check_for_dir(['dir name/'], 'dummy')
-		
-		eq_(result, 'dir name/')
-		isdir.assert_called_once
-
 class TestBuild(object):
 	def _check_common_setup(self, parser, Remote):
 		parser.parse_args.assert_called_once_with()
@@ -181,7 +155,10 @@ class TestBuild(object):
 		
 	def _check_dev_setup(self, parser, Manager, Remote, Generate):
 		eq_(parser.add_argument.call_args_list,
-			[(('-s', '--sdk'), {'help': 'Path to the Android SDK'})] + general_argparse)
+			[
+				(('-s', '--sdk'), {'help': 'Path to the Android SDK'}),
+				(('-f', '--full'), {'action': 'store_true', 'help': 'Force a complete rebuild on the forge server'})
+			] + general_argparse)
 
 		Manager.assert_called_once_with(dummy_config())
 		Generate.assert_called_once_with(defaults.APP_CONFIG_FILE)
@@ -233,6 +210,8 @@ class TestBuild(object):
 	@mock.patch('webmynd.main.argparse')
 	def test_dev_no_conf_change(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
+		args = parser.parse_args.return_value
+		args.full = False
 		isdir.return_value = True
 		build_config.load.return_value = dummy_config()
 		

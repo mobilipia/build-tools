@@ -29,7 +29,7 @@ def check_for_android_sdk(dir):
 		possibleSdk.insert(0, dir)
 
 	for directory in possibleSdk:
-		if (os.path.isdir(directory)):
+		if os.path.isdir(directory):
 			if directory.endswith('/'):
 				return directory
 			else:
