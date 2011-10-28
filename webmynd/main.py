@@ -189,7 +189,6 @@ def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
 	
 	parser = argparse.ArgumentParser(prog='wm-dev-build', description='Creates new local, unzipped development add-ons with your source and configuration')
-	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-f', '--full', action='store_true', help='Force a complete rebuild on the forge server')
 
 	add_general_options(parser)
@@ -219,13 +218,6 @@ def development_build():
 		# retrieve results of build
 		templates_dir = manager.fetch_templates(build_id)
 	
-	try:
-		sdk = check_for_android_sdk(args.sdk)
-		
-		proc = Popen([path.abspath(path.join(sdk,'platform-tools','adb')), 'kill-server'], stdout=open(devnull, 'w'), stderr=open(devnull, 'w'))
-	except Exception as e:
-		LOG.debug("Attempting to kill ADB failed, this may cause issues with file locks on Windows. %s" % e)
-
 	# Windows often gives a permission error without a small wait
 	tryAgain = 0
 	while tryAgain < 5:
