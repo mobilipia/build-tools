@@ -7,6 +7,8 @@ import hashlib
 import logging
 from os import path
 import shutil
+import subprocess
+import sys
 
 from webmynd import defaults
 from webmynd.remote import Remote
@@ -77,6 +79,12 @@ class Manager(object):
 		# grab templated platform
 		LOG.info('fetching new WebMynd templates')
 		remote.fetch_unpackaged(build_id, to_dir=self._tmpl_dir)
+		if sys.platform == 'win32':
+			try:
+				subprocess.call(['attrib', '+h', self._tmpl_dir])
+			except:
+				# don't care if we fail to set the templates dir as hidden
+				pass
 		
 		with open(path.join(self._tmpl_dir, config_hash+'.hash'), 'w') as marker:
 			marker.write(str(datetime.utcnow()))
