@@ -152,7 +152,7 @@ def runBackground(args, detach=False):
 			os.system(" ".join(args)+" &")
 	else:
 		if detach:
-			os.system("xterm -e "+" ".join(args)+" &")
+			os.system("bash -i -c '"+" ".join(args)+" &' &")
 		else:
 			os.system(" ".join(args)+" &")
 
