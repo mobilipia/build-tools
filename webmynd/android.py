@@ -27,7 +27,8 @@ def check_for_android_sdk(dir):
 		"C:/Android/android-sdk/",
 		"C:/Android/android-sdk-windows/",
 		"C:/android-sdk-windows/",
-		"/Applications/android-sdk-macosx"
+		"/Applications/android-sdk-macosx",
+		os.path.expanduser("~/.forge/android-sdk-linux")
 	]
 	if dir:
 		possibleSdk.insert(0, dir)
@@ -44,8 +45,8 @@ def check_for_android_sdk(dir):
 		
 		if sys.platform.startswith('win'):
 			path = "C:\\android-sdk-windows"
-		#elif sys.platform.startswith('linux'):
-		#	path = "/opt/android-sdk-linux"
+		elif sys.platform.startswith('linux'):
+			path = os.path.expanduser("~/.forge/android-sdk-linux")
 		elif sys.platform.startswith('darwin'):
 			path = "/Applications/android-sdk-macosx"
 			
@@ -65,7 +66,7 @@ def check_for_android_sdk(dir):
 				LOG.info('Downloading Android SDK (about 30MB, may take some time)')
 				
 				if sys.platform.startswith('win'):
-					urllib.urlretrieve("http://dl.google.com/android/android-sdk_r14-windows.zip", "sdk.zip")
+					urllib.urlretrieve("http://webmynd.com/redirect/android/windows", "sdk.zip")
 
 					LOG.info('Download complete, extracting SDK')
 					zip_to_extract = zipfile.ZipFile("sdk.zip")
@@ -75,7 +76,7 @@ def check_for_android_sdk(dir):
 					android_path = "C:\\android-sdk-windows\\tools\\android.bat"
 					adb_path = "C:\\android-sdk-windows\\platform-tools\\adb"
 				elif sys.platform.startswith('darwin'):
-					urllib.urlretrieve("http://dl.google.com/android/android-sdk_r14-macosx.zip", "sdk.zip")
+					urllib.urlretrieve("http://webmynd.com/redirect/android/macosx", "sdk.zip")
 	
 					LOG.info('Download complete, extracting SDK')
 					zip_process = Popen(["unzip", "sdk.zip", '-d', "/Applications"], stdout=PIPE, stderr=STDOUT)
@@ -85,6 +86,20 @@ def check_for_android_sdk(dir):
 					
 					android_path = "/Applications/android-sdk-macosx/tools/android"
 					adb_path = "/Applications/android-sdk-macosx/platform-tools/adb"
+				elif sys.platform.startswith('linux'):
+					urllib.urlretrieve("http://webmynd.com/redirect/android/linux", "sdk.tgz")
+	
+					LOG.info('Download complete, extracting SDK')
+					if not os.path.isdir(os.path.expanduser("~/.forge")):
+						os.mkdir(os.path.expanduser("~/.forge"))
+					
+					zip_process = Popen(["tar", "zxf", "sdk.tgz", "-C", os.path.expanduser("~/.forge")], stdout=PIPE, stderr=STDOUT)
+					output = zip_process.communicate()[0]
+					LOG.debug("unzip output")
+					LOG.debug(output)
+					
+					android_path = os.path.expanduser("~/.forge/android-sdk-linux/tools/android")
+					adb_path = os.path.expanduser("~/.forge/android-sdk-linux/platform-tools/adb")
 					
 				LOG.info('Extracted, updating SDK and downloading required Android platform (about 90MB, may take some time)')
 				android_process = Popen([android_path, "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
@@ -132,11 +147,24 @@ def runBackground(args, detach=False):
 		Popen(args, creationflags=DETACHED_PROCESS)
 	else:
 		if detach:
-			os.system("osascript -e 'tell application \"Terminal\" to do script \""+" ".join(args)+"\"'")
+			os.system("bash -i -c '"+" ".join(args)+" &' &")
 		else:
 			os.system(" ".join(args)+" &")
 
+def checkForJava():
+	try:
+		proc = Popen(['java', '-version'], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
+		proc_std = proc.communicate()[0]
+		if proc.returncode != 0:
+			return False
+		return True
+	except:
+		return False
+
 def runAndroid(sdk, device):
+	if not checkForJava():
+		raise ForgeError("Java not found, java is required to be installed and available in your path in order to run Android")
+
 	try:
 		LOG.info('Looking for Android device')
 		orig_dir = os.getcwd()
@@ -190,7 +218,8 @@ def runAndroid(sdk, device):
 					"--skin", "HVGA",
 					"-p", os.path.join(sdk, 'forge-avd'),
 					#"-a",
-					"-c", "32M"
+					"-c", "32M",
+					"--force"
 				]
 				proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 				time.sleep(0.1)
@@ -293,7 +322,6 @@ def runAndroid(sdk, device):
 		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
 		runShell(args)
 	
-		# TODO log output
 		LOG.info('Clearing android log')
 		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', '-c']
 		proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
