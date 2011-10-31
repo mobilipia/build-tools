@@ -157,166 +157,169 @@ def runBackground(args, detach=False):
 			os.system(" ".join(args)+" &")
 
 def runAndroid(sdk, device):
-	LOG.info('Looking for Android device')
-	orig_dir = os.getcwd()
-	os.chdir(os.path.join('development', 'android'))
-	
-	adb_location = path.abspath(path.join(sdk,'platform-tools','adb'))
-	if sys.platform.startswith('win'):
-		android_path = path.abspath(path.join(sdk,'tools','android.bat'))
-	else:
-		android_path = path.abspath(path.join(sdk,'tools','android'))
-
-	runBackground([adb_location, 'start-server'])
-	time.sleep(1)
-	
-	args = [adb_location, 'devices']
 	try:
-		proc = Popen(args, stdout=PIPE)
-	except Exception as e:
-		LOG.error("problem finding the android debug bridge at: %s" % adb_location)
-		# XXX: prompt to run the sdk manager, then retry?
-		LOG.error("this probably means you need to run the android SDK manager and download the android platform-tools.")
-		raise ForgeError
-
-	proc_std = proc.communicate()[0]
-	if proc.returncode != 0:
-		LOG.error('Communication with adb failed: %s' % (proc_std))
-		raise ForgeError
-
-	available_devices = scrape_available_devices(proc_std)
-
-	if not available_devices:
-		# Prompt to automatically (create and) run an AVD
-		prompt = raw_input('\nNo active Android device found, would you like to:\n(1) Attempt to automatically launch the Android emulator\n(2) Attempt to find the device again (choose this option after plugging in an Android device or launching the emulator).\nPlease enter 1 or 2: ')
-		if not prompt == "1":
-			os.chdir(orig_dir)
-			return runAndroid(sdk, device)
-		else:
-			pass
-
-		# Create avd
-		if os.path.isdir(os.path.join(sdk, 'forge-avd')):
-			LOG.info('Existing AVD found')
-		else:
-			LOG.info('Creating AVD')
-			args = [
-				android_path,
-				"create",
-				"avd",
-				"-n", "forge",
-				"-t", "android-8",
-				"--skin", "HVGA",
-				"-p", os.path.join(sdk, 'forge-avd'),
-				#"-a",
-				"-c", "32M"
-			]
-			proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-			time.sleep(0.1)
-			proc_std = proc.communicate(input='\n')[0]
-			if proc.returncode != 0:
-				LOG.error('failed: %s' % (proc_std))
-				raise ForgeError
-			LOG.debug('Output:\n'+proc_std)
-
-		# Launch
-		runBackground([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
+		LOG.info('Looking for Android device')
+		orig_dir = os.getcwd()
+		os.chdir(os.path.join('development', 'android'))
 		
-		LOG.info("Started emulator, waiting for device to boot")
-		args = [
-			adb_location,
-			"wait-for-device"
-		]
-		runShell(args)
-		args = [
-			adb_location,
-			"shell", "pm", "path", "android"
-		]
-		output = "Error:"
-		while output.startswith("Error:"):
-			output = runShell(args)
-		os.chdir(orig_dir)
-		return runAndroid(sdk, device)
-
-	if not device:
-		chosenDevice = available_devices[0]
-		LOG.info('No android device specified, defaulting to %s' % chosenDevice)
-
-	elif device:
-		if device in available_devices:
-			chosenDevice = device
-			LOG.info('Using specified android device %s' % chosenDevice)
+		adb_location = path.abspath(path.join(sdk,'platform-tools','adb'))
+		if sys.platform.startswith('win'):
+			android_path = path.abspath(path.join(sdk,'tools','android.bat'))
 		else:
-			LOG.error('No such device "%s"' % device)
-			LOG.error('The available devices are:')
-			LOG.error("\n".join(available_devices))
+			android_path = path.abspath(path.join(sdk,'tools','android'))
+	
+		runBackground([adb_location, 'start-server'])
+		time.sleep(1)
+		
+		args = [adb_location, 'devices']
+		try:
+			proc = Popen(args, stdout=PIPE)
+		except Exception as e:
+			LOG.error("problem finding the android debug bridge at: %s" % adb_location)
+			# XXX: prompt to run the sdk manager, then retry?
+			LOG.error("this probably means you need to run the android SDK manager and download the android platform-tools.")
 			raise ForgeError
 	
-	LOG.info('Creating Android .apk file')
-	#zip
-	LOG.info('Zipping files')
-	zipf = zipfile.ZipFile('app.apk', mode='w')
-	for root, _, files in os.walk('.'):
-		if root == '.':
-			root = ''
-		else: 
-			root = root.replace('\\', '/')+"/"
-			if root[0:2] == './':
-				root = root[2:]
-		for f in files:
-			if f != 'app.apk':
-				LOG.debug('zipping: %s' % f)
-				zipf.write(root+f, root+f)
-	zipf.close()
-
-	#sign
-	LOG.info('Signing apk')
-	args = [
-		'java',
-		'-jar',
-		os.path.join(defaults.FORGE_ROOT, 'webmynd', 'apk-signer.jar'),
-		'--keystore',
-		os.path.join(defaults.FORGE_ROOT, 'debug.keystore'),
-		'--storepass',
-		'android',
-		'--keyalias',
-		'androiddebugkey',
-		'--keypass',
-		'android',
-		'--out',
-		'signed-app.apk',
-		'app.apk'
-	]
-	runShell(args)
-
-	#align
-	LOG.info('Aligning apk')
-	if os.path.exists('out.apk'):
-		os.remove('out.apk')
-	args = [sdk+'tools/zipalign', '-v', '4', 'signed-app.apk', 'out.apk']
-	runShell(args)
-	os.remove('app.apk')
-	os.remove('signed-app.apk')
-
-	#install
-	LOG.info('Installing apk')
-	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'install', '-r', 'out.apk']
-	runShell(args) 
-
-	#run
-	LOG.info('Running apk')
-	# Get the app config details
-	with codecs.open(os.path.join('..', '..', 'src', 'config.json'), encoding='utf8') as app_config:
-		app_config = json.load(app_config)
-	package_name = re.sub("[^a-zA-Z0-9]", "", app_config["name"].lower())+app_config["uuid"];
-	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
-	runShell(args)
-
-	LOG.info('Clearing android log')
-	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', '-c']
-	proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
-	proc.wait()
-	LOG.info('Showing android log')
-	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', 'WebCore:D', package_name+':D', '*:S']
-	proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
-	proc.wait()
+		proc_std = proc.communicate()[0]
+		if proc.returncode != 0:
+			LOG.error('Communication with adb failed: %s' % (proc_std))
+			raise ForgeError
+	
+		available_devices = scrape_available_devices(proc_std)
+	
+		if not available_devices:
+			# Prompt to automatically (create and) run an AVD
+			prompt = raw_input('\nNo active Android device found, would you like to:\n(1) Attempt to automatically launch the Android emulator\n(2) Attempt to find the device again (choose this option after plugging in an Android device or launching the emulator).\nPlease enter 1 or 2: ')
+			if not prompt == "1":
+				os.chdir(orig_dir)
+				return runAndroid(sdk, device)
+			else:
+				pass
+	
+			# Create avd
+			if os.path.isdir(os.path.join(sdk, 'forge-avd')):
+				LOG.info('Existing AVD found')
+			else:
+				LOG.info('Creating AVD')
+				args = [
+					android_path,
+					"create",
+					"avd",
+					"-n", "forge",
+					"-t", "android-8",
+					"--skin", "HVGA",
+					"-p", os.path.join(sdk, 'forge-avd'),
+					#"-a",
+					"-c", "32M"
+				]
+				proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+				time.sleep(0.1)
+				proc_std = proc.communicate(input='\n')[0]
+				if proc.returncode != 0:
+					LOG.error('failed: %s' % (proc_std))
+					raise ForgeError
+				LOG.debug('Output:\n'+proc_std)
+	
+			# Launch
+			runBackground([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
+			
+			LOG.info("Started emulator, waiting for device to boot")
+			args = [
+				adb_location,
+				"wait-for-device"
+			]
+			runShell(args)
+			args = [
+				adb_location,
+				"shell", "pm", "path", "android"
+			]
+			output = "Error:"
+			while output.startswith("Error:"):
+				output = runShell(args)
+			os.chdir(orig_dir)
+			return runAndroid(sdk, device)
+	
+		if not device:
+			chosenDevice = available_devices[0]
+			LOG.info('No android device specified, defaulting to %s' % chosenDevice)
+	
+		elif device:
+			if device in available_devices:
+				chosenDevice = device
+				LOG.info('Using specified android device %s' % chosenDevice)
+			else:
+				LOG.error('No such device "%s"' % device)
+				LOG.error('The available devices are:')
+				LOG.error("\n".join(available_devices))
+				raise ForgeError
+		
+		LOG.info('Creating Android .apk file')
+		#zip
+		LOG.info('Zipping files')
+		zipf = zipfile.ZipFile('app.apk', mode='w')
+		for root, _, files in os.walk('.'):
+			if root == '.':
+				root = ''
+			else: 
+				root = root.replace('\\', '/')+"/"
+				if root[0:2] == './':
+					root = root[2:]
+			for f in files:
+				if f != 'app.apk':
+					LOG.debug('zipping: %s' % f)
+					zipf.write(root+f, root+f)
+		zipf.close()
+	
+		#sign
+		LOG.info('Signing apk')
+		args = [
+			'java',
+			'-jar',
+			os.path.join(defaults.FORGE_ROOT, 'webmynd', 'apk-signer.jar'),
+			'--keystore',
+			os.path.join(defaults.FORGE_ROOT, 'debug.keystore'),
+			'--storepass',
+			'android',
+			'--keyalias',
+			'androiddebugkey',
+			'--keypass',
+			'android',
+			'--out',
+			'signed-app.apk',
+			'app.apk'
+		]
+		runShell(args)
+	
+		#align
+		LOG.info('Aligning apk')
+		if os.path.exists('out.apk'):
+			os.remove('out.apk')
+		args = [sdk+'tools/zipalign', '-v', '4', 'signed-app.apk', 'out.apk']
+		runShell(args)
+		os.remove('app.apk')
+		os.remove('signed-app.apk')
+	
+		#install
+		LOG.info('Installing apk')
+		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'install', '-r', 'out.apk']
+		runShell(args) 
+	
+		#run
+		LOG.info('Running apk')
+		# Get the app config details
+		with codecs.open(os.path.join('..', '..', 'src', 'config.json'), encoding='utf8') as app_config:
+			app_config = json.load(app_config)
+		package_name = re.sub("[^a-zA-Z0-9]", "", app_config["name"].lower())+app_config["uuid"];
+		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
+		runShell(args)
+	
+		LOG.info('Clearing android log')
+		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', '-c']
+		proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
+		proc.wait()
+		LOG.info('Showing android log')
+		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', 'WebCore:D', package_name+':D', '*:S']
+		proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
+		proc.wait()
+	finally:
+		runBackground([adb_location, 'kill-server'])
