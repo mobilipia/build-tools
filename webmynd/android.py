@@ -66,7 +66,7 @@ def check_for_android_sdk(dir):
 				LOG.info('Downloading Android SDK (about 30MB, may take some time)')
 				
 				if sys.platform.startswith('win'):
-					urllib.urlretrieve("http://dl.google.com/android/android-sdk_r14-windows.zip", "sdk.zip")
+					urllib.urlretrieve("http://webmynd.com/redirect/android/windows", "sdk.zip")
 
 					LOG.info('Download complete, extracting SDK')
 					zip_to_extract = zipfile.ZipFile("sdk.zip")
@@ -76,7 +76,7 @@ def check_for_android_sdk(dir):
 					android_path = "C:\\android-sdk-windows\\tools\\android.bat"
 					adb_path = "C:\\android-sdk-windows\\platform-tools\\adb"
 				elif sys.platform.startswith('darwin'):
-					urllib.urlretrieve("http://dl.google.com/android/android-sdk_r14-macosx.zip", "sdk.zip")
+					urllib.urlretrieve("http://webmynd.com/redirect/android/macosx", "sdk.zip")
 	
 					LOG.info('Download complete, extracting SDK')
 					zip_process = Popen(["unzip", "sdk.zip", '-d', "/Applications"], stdout=PIPE, stderr=STDOUT)
@@ -87,7 +87,7 @@ def check_for_android_sdk(dir):
 					android_path = "/Applications/android-sdk-macosx/tools/android"
 					adb_path = "/Applications/android-sdk-macosx/platform-tools/adb"
 				elif sys.platform.startswith('linux'):
-					urllib.urlretrieve("http://dl.google.com/android/android-sdk_r14-linux.tgz", "sdk.tgz")
+					urllib.urlretrieve("http://webmynd.com/redirect/android/linux", "sdk.tgz")
 	
 					LOG.info('Download complete, extracting SDK')
 					if not os.path.isdir(os.path.expanduser("~/.forge")):
