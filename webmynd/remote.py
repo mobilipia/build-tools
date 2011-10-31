@@ -230,8 +230,7 @@ class Remote(object):
 		data = {
 			'name': name
 		}
-		resp = self._api_post('app/', data=data)
-		return json.loads(resp.content)['uuid']
+		return self._api_post('app/', data=data)['uuid']
 
 	def latest(self):
 		'''Get the ID of the latest completed production build for this app.'''
@@ -307,7 +306,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		LOG.info('fetching initial project template')
 		self._authenticate()
 		
-		resp = self._get('app/{uuid}/initial_files'.format(uuid=uuid))
+		resp = self._get(urljoin(self.server, 'app/{uuid}/initial_files'.format(uuid=uuid)))
 
 		filename = 'initial.zip'
 		with open(filename, 'wb') as out_file:
