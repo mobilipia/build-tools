@@ -218,7 +218,8 @@ def runAndroid(sdk, device):
 					"--skin", "HVGA",
 					"-p", os.path.join(sdk, 'forge-avd'),
 					#"-a",
-					"-c", "32M"
+					"-c", "32M",
+					"--force"
 				]
 				proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
 				time.sleep(0.1)
