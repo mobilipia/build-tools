@@ -19,6 +19,19 @@ LOG = logging.getLogger(__name__)
 class CouldNotLocate(Exception):
 	pass
 
+def _look_for_dir(directories):
+	for directory in directories:
+		if os.path.exists(directory):
+			return directory
+
+def _look_for_java():
+	possible_jre_locations = [
+		"C:\Program Files\Java\jre6",
+		"C:\Program Files\Java\jre7",
+	]
+	
+	return _look_for_dir(possible_jre_locations)
+
 def check_for_android_sdk(dir):
 	# Some sensible places to look for the Android SDK
 	possibleSdk = [
@@ -132,6 +145,7 @@ def scrape_available_devices(text):
 	return available_devices
 
 def runShell(args):
+	LOG.debug("Running: {cmd}".format(cmd=" ".join(args)))
 	proc = Popen(args, stdout=PIPE, stderr=STDOUT)
 	proc_std = proc.communicate()[0]
 	if proc.returncode != 0:
@@ -162,8 +176,13 @@ def checkForJava():
 		return False
 
 def runAndroid(sdk, device):
+	jre = ""
+
 	if not checkForJava():
-		raise ForgeError("Java not found, java is required to be installed and available in your path in order to run Android")
+		jre = _look_for_java()
+		if not jre:
+			raise ForgeError("Java not found, java is required to be installed and available in your path in order to run Android")
+		jre = path.join(jre, 'bin')
 
 	try:
 		LOG.info('Looking for Android device')
@@ -278,11 +297,11 @@ def runAndroid(sdk, device):
 					LOG.debug('zipping: %s' % f)
 					zipf.write(root+f, root+f)
 		zipf.close()
-	
+		
 		#sign
 		LOG.info('Signing apk')
 		args = [
-			'java',
+			path.join(jre,'java'),
 			'-jar',
 			os.path.join(defaults.FORGE_ROOT, 'webmynd', 'apk-signer.jar'),
 			'--keystore',
