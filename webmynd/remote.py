@@ -25,6 +25,8 @@ class RequestError(ForgeError):
 def _check_api_response_for_error(url, method, resp, error_message=None):
 	'''Check an API response from the website to see if there was an error. Checks for one of the following:
 
+	No status code, as in, no valid response from the server.
+	
 	HTTP status code is not 200 but get a JSON response
 	HTTP status code is not 200 and the response is not a valid JSON response
 
@@ -77,6 +79,11 @@ def _check_api_response_for_error(url, method, resp, error_message=None):
 			reason = 'Server meant to respond with JSON, but response content was: %s' % resp.content
 			error_message = error_template.format(reason=reason, url=url)
 			raise RequestError(reason)
+
+
+def _check_response_for_error(url, method, resp):
+	if not resp.ok:
+		raise RequestError("Request to {url} went wrong, error code: {code}".format(url=url, code=resp.status_code))
 
 class Remote(object):
 	'Wrap remote operations'
@@ -175,7 +182,9 @@ class Remote(object):
 		:param *args: see :module:`requests`
 		'''
 		kw['__method'] = 'GET'
-		return self.__get_or_post(url, *args, **kw)
+		resp = self.__get_or_post(url, *args, **kw)
+		_check_response_for_error(url, 'GET', resp)
+		return resp
 
 	def _post(self, url, *args, **kw):
 		'''Make a GET request.
@@ -184,7 +193,9 @@ class Remote(object):
 		:param *args: see :module:`requests`
 		'''
 		kw['__method'] = 'POST'
-		return self.__get_or_post(url, *args, **kw)
+		resp = self.__get_or_post(url, *args, **kw)
+		_check_response_for_error(url, 'POST', resp)
+		return resp
 
 	def _authenticate(self):
 		'''Authentication handshake with server (if we haven't already)
