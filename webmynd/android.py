@@ -151,7 +151,20 @@ def runBackground(args, detach=False):
 		else:
 			os.system(" ".join(args)+" &")
 
+def checkForJava():
+	try:
+		proc = Popen(['java', '-version'], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
+		proc_std = proc.communicate()[0]
+		if proc.returncode != 0:
+			return False
+		return True
+	except:
+		return False
+
 def runAndroid(sdk, device):
+	if not checkForJava():
+		raise ForgeError("Java not found, java is required to be installed and available in your path in order to run Android")
+
 	try:
 		LOG.info('Looking for Android device')
 		orig_dir = os.getcwd()
