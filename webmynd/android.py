@@ -145,11 +145,6 @@ def runBackground(args, detach=False):
 		# Windows only
 		DETACHED_PROCESS = 0x00000008
 		Popen(args, creationflags=DETACHED_PROCESS)
-	elif sys.platform.startswith('darwin'):
-		if detach:
-			os.system("osascript -e 'tell application \"Terminal\" to do script \""+" ".join(args)+"\"'")
-		else:
-			os.system(" ".join(args)+" &")
 	else:
 		if detach:
 			os.system("bash -i -c '"+" ".join(args)+" &' &")
