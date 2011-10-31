@@ -27,7 +27,8 @@ def check_for_android_sdk(dir):
 		"C:/Android/android-sdk/",
 		"C:/Android/android-sdk-windows/",
 		"C:/android-sdk-windows/",
-		"/Applications/android-sdk-macosx"
+		"/Applications/android-sdk-macosx",
+		os.path.expanduser("~/.forge/android-sdk-linux")
 	]
 	if dir:
 		possibleSdk.insert(0, dir)
@@ -44,8 +45,8 @@ def check_for_android_sdk(dir):
 		
 		if sys.platform.startswith('win'):
 			path = "C:\\android-sdk-windows"
-		#elif sys.platform.startswith('linux'):
-		#	path = "/opt/android-sdk-linux"
+		elif sys.platform.startswith('linux'):
+			path = os.path.expanduser("~/.forge/android-sdk-linux")
 		elif sys.platform.startswith('darwin'):
 			path = "/Applications/android-sdk-macosx"
 			
@@ -85,6 +86,20 @@ def check_for_android_sdk(dir):
 					
 					android_path = "/Applications/android-sdk-macosx/tools/android"
 					adb_path = "/Applications/android-sdk-macosx/platform-tools/adb"
+				elif sys.platform.startswith('linux'):
+					urllib.urlretrieve("http://dl.google.com/android/android-sdk_r14-linux.tgz", "sdk.tgz")
+	
+					LOG.info('Download complete, extracting SDK')
+					if not os.path.isdir(os.path.expanduser("~/.forge")):
+						os.mkdir(os.path.expanduser("~/.forge"))
+					
+					zip_process = Popen(["tar", "zxf", "sdk.tgz", "-C", os.path.expanduser("~/.forge")], stdout=PIPE, stderr=STDOUT)
+					output = zip_process.communicate()[0]
+					LOG.debug("unzip output")
+					LOG.debug(output)
+					
+					android_path = os.path.expanduser("~/.forge/android-sdk-linux/tools/android")
+					adb_path = os.path.expanduser("~/.forge/android-sdk-linux/platform-tools/adb")
 					
 				LOG.info('Extracted, updating SDK and downloading required Android platform (about 90MB, may take some time)')
 				android_process = Popen([android_path, "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
@@ -130,9 +145,14 @@ def runBackground(args, detach=False):
 		# Windows only
 		DETACHED_PROCESS = 0x00000008
 		Popen(args, creationflags=DETACHED_PROCESS)
-	else:
+	elif sys.platform.startswith('darwin'):
 		if detach:
 			os.system("osascript -e 'tell application \"Terminal\" to do script \""+" ".join(args)+"\"'")
+		else:
+			os.system(" ".join(args)+" &")
+	else:
+		if detach:
+			os.system("xterm -e "+" ".join(args)+" &")
 		else:
 			os.system(" ".join(args)+" &")
 
@@ -292,7 +312,6 @@ def runAndroid(sdk, device):
 	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
 	runShell(args)
 
-	# TODO log output
 	LOG.info('Clearing android log')
 	args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', '-c']
 	proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
