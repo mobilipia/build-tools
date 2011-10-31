@@ -21,13 +21,15 @@ class CouldNotLocate(Exception):
 
 def _look_for_dir(directories):
 	for directory in directories:
-		if os.path.exists(directory):
+		if os.path.isdir(directory):
 			return directory
 
 def _look_for_java():
 	possible_jre_locations = [
-		"C:\Program Files\Java\jre6",
-		"C:\Program Files\Java\jre7",
+		r"C:\Program Files\Java\jre7",
+		r"C:\Program Files\Java\jre6",
+		r"C:\Program Files (x86)\Java\jre7",
+		r"C:\Program Files (x86)\Java\jre6",
 	]
 	
 	return _look_for_dir(possible_jre_locations)
@@ -190,6 +192,7 @@ def runAndroid(sdk, device):
 		os.chdir(os.path.join('development', 'android'))
 		
 		adb_location = path.abspath(path.join(sdk,'platform-tools','adb'))
+		
 		if sys.platform.startswith('win'):
 			android_path = path.abspath(path.join(sdk,'tools','android.bat'))
 		else:
