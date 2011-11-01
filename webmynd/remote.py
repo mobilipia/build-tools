@@ -415,7 +415,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			os.chdir(to_dir)
 			with open(temp_instructions_file, mode='wb') as out_tar:
 				out_tar.write(resp.content)
-			archive = tarfile.open(temp_instructions_file, mode='r')
+			archive = zipfile.ZipFile(temp_instructions_file, mode='r')
 			archive.extractall()
 		finally:
 			os.chdir(orig_dir)
