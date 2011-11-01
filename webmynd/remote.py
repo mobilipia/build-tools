@@ -130,6 +130,7 @@ class Remote(object):
 		if method == "POST":
 			# must have CSRF token
 			data = kw.get("data", {})
+			data['build_tools_version'] = webmynd.VERSION
 			data["csrfmiddlewaretoken"] = self._csrf_token()
 			kw["data"] = data
 		kw['cookies'] = self.cookies
