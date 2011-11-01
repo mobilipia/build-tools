@@ -504,8 +504,4 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			return build_id
 
 		else:
-<<<<<<< HEAD
-			raise ForgeError('build failed: %s' % content['log_output'])
-=======
-			raise Exception('build failed: %s' % build['log_output'])
->>>>>>> e091d8e1dca30550f7149e9262bcfa82956beb86
+			raise ForgeError('build failed: %s' % build['log_output'])
