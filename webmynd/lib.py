@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from os.path import join, isdir, islink
 from os import error, listdir
 

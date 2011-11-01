@@ -343,7 +343,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 					archive.close()
 				except Exception:
 					pass
-			if os.isfile(temp_instructions_file):
+			if path.isfile(temp_instructions_file):
 				os.remove(temp_instructions_file)
 		return to_dir
 	

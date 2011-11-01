@@ -230,6 +230,7 @@ def development_build():
 			try_again += 1
 			shutil.rmtree('development', ignore_errors=True)
 			shutil.copytree(templates_dir, 'development')
+			shutil.rmtree(path.join('development', 'generate_dynamic'), ignore_errors=True)
 			break
 		except Exception, e:
 			if try_again == 5:
