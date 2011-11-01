@@ -7,7 +7,7 @@ from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 
 from webmynd import defaults, ForgeError
-from webmynd.remote import Remote, AuthenticationError, RequestError
+from webmynd.remote import Remote, RequestError
 from webmynd.tests import dummy_config
 from lib import assert_raises_regexp
 
@@ -248,23 +248,29 @@ class TestBuild(TestRemote):
 		eq_(self.remote._get.call_args_list,
 			[(('https://test.webmynd.com/api/build/-1/detail/',), {})] * 3
 		)
+	@patch('webmynd.remote.os.listdir')
 	@patch('webmynd.remote.path')
-	def test_data(self, mock_path):
+	def test_data(self, mock_path, listdir):
 		mock_open = MagicMock()
 		manager = mock_open.return_value.__enter__.return_value
 		app_config = {'test': 'config'}
 		manager.read.return_value = json.dumps(app_config)
 		mock_path.isfile.return_value = True
-		mock_path.isdir.return_value = False
+		mock_path.isdir.return_value = True
+		self.remote._api_post = Mock()
+		self.remote._api_post.return_value = {"build_id": -1}
+		self.remote._api_get = Mock()
+		self.remote._api_get.return_value = {"state": "complete", "log_output": "dummy log output"}
 		
 		with patch('__builtin__.open', new=mock_open):
-			resp = self.remote.build()
+			resp = self.remote.build(template_only=True)
+			
 		eq_(resp, -1)
-		self.remote._post.assert_called_once_with(
-			'https://test.webmynd.com/api/app/TEST-UUID/build/development',
+		self.remote._api_post.assert_called_once_with(
+			'app/TEST-UUID/template/development',
 			files=None, data={'config': json.dumps(app_config)}
 		)
-		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/build/-1/detail/')
+		self.remote._api_get.assert_called_once_with('build/-1/detail/')
 		# Fails on windows
 		#mock_open.assert_called_once_with('user/config.json')
 	

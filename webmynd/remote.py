@@ -472,11 +472,10 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			try:
 				user_comp = None
 				user_comp = tarfile.open(filename, mode='w:bz2')
-				os.chdir(user_dir)
-				for user_file in os.listdir('.'):
-					user_comp.add(user_file)
-					LOG.debug('added "%s" to user archive' % user_file)
-				os.chdir(orig_dir)
+				with webmynd.lib.cd(user_dir):
+					for user_file in os.listdir('.'):
+						user_comp.add(user_file)
+						LOG.debug('added "%s" to user archive' % user_file)
 				user_comp.close()
 		
 				with open(filename, mode='rb') as user_files:
@@ -487,7 +486,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 				except OSError:
 					# wasn't created
 					pass
-					
+		
 		build_id = resp['build_id']
 		LOG.info('build %s started...' % build_id)
 		

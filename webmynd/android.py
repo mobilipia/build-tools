@@ -36,7 +36,7 @@ def _look_for_java():
 
 def check_for_android_sdk(dir):
 	# Some sensible places to look for the Android SDK
-	possibleSdk = [
+	possible_sdk = [
 		"C:/Program Files (x86)/Android/android-sdk/",
 		"C:/Program Files/Android/android-sdk/",
 		"C:/Android/android-sdk/",
@@ -46,9 +46,9 @@ def check_for_android_sdk(dir):
 		os.path.expanduser("~/.forge/android-sdk-linux")
 	]
 	if dir:
-		possibleSdk.insert(0, dir)
+		possible_sdk.insert(0, dir)
 
-	for directory in possibleSdk:
+	for directory in possible_sdk:
 		if os.path.isdir(directory):
 			if directory.endswith('/'):
 				return directory
@@ -68,7 +68,12 @@ def check_for_android_sdk(dir):
 		if not path:
 			raise CouldNotLocate("No Android SDK found, please specify with the --sdk flag")		
 		
-		prompt = raw_input('\nNo Android SDK found, would you like to:\n(1) Attempt to download and install the SDK automatically to '+path+', or,\n(2) Install the SDK yourself and rerun this command with the --sdk option to specify its location.\nPlease enter 1 or 2: ')
+		prompt = raw_input('''
+No Android SDK found, would you like to:
+(1) Attempt to download and install the SDK automatically to {path}, or,
+(2) Install the SDK yourself and rerun this command with the --sdk option to specify its location.
+
+Please enter 1 or 2: '''.format(path=path))
 		
 		if not prompt == "1":
 			raise CouldNotLocate("No Android SDK found, please specify with the --sdk flag")
@@ -122,7 +127,7 @@ def check_for_android_sdk(dir):
 					time.sleep(5)
 					try:
 						Popen([adb_path, "kill-server"], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
-					except:
+					except Exception:
 						pass
 
 				LOG.info('Android SDK update complete')
@@ -146,7 +151,7 @@ def scrape_available_devices(text):
 
 	return available_devices
 
-def runShell(args):
+def run_shell(args):
 	LOG.debug("Running: {cmd}".format(cmd=" ".join(args)))
 	proc = Popen(args, stdout=PIPE, stderr=STDOUT)
 	proc_std = proc.communicate()[0]
@@ -156,7 +161,7 @@ def runShell(args):
 	LOG.debug('Output:\n'+proc_std)
 	return proc_std
 
-def runBackground(args, detach=False):
+def run_background(args, detach=False):
 	if sys.platform.startswith('win'):
 		# Windows only
 		DETACHED_PROCESS = 0x00000008
@@ -167,7 +172,7 @@ def runBackground(args, detach=False):
 		else:
 			os.system(" ".join(args)+" &")
 
-def checkForJava():
+def check_for_java():
 	try:
 		proc = Popen(['java', '-version'], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
 		proc_std = proc.communicate()[0]
@@ -177,10 +182,10 @@ def checkForJava():
 	except:
 		return False
 
-def runAndroid(sdk, device):
+def run_android(sdk, device):
 	jre = ""
 
-	if not checkForJava():
+	if not check_for_java():
 		jre = _look_for_java()
 		if not jre:
 			raise ForgeError("Java not found, java is required to be installed and available in your path in order to run Android")
@@ -198,7 +203,7 @@ def runAndroid(sdk, device):
 		else:
 			android_path = path.abspath(path.join(sdk,'tools','android'))
 	
-		runBackground([adb_location, 'start-server'])
+		run_background([adb_location, 'start-server'])
 		time.sleep(1)
 		
 		args = [adb_location, 'devices']
@@ -222,7 +227,7 @@ def runAndroid(sdk, device):
 			prompt = raw_input('\nNo active Android device found, would you like to:\n(1) Attempt to automatically launch the Android emulator\n(2) Attempt to find the device again (choose this option after plugging in an Android device or launching the emulator).\nPlease enter 1 or 2: ')
 			if not prompt == "1":
 				os.chdir(orig_dir)
-				return runAndroid(sdk, device)
+				return run_android(sdk, device)
 			else:
 				pass
 	
@@ -252,32 +257,32 @@ def runAndroid(sdk, device):
 				LOG.debug('Output:\n'+proc_std)
 	
 			# Launch
-			runBackground([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
+			run_background([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
 			
 			LOG.info("Started emulator, waiting for device to boot")
 			args = [
 				adb_location,
 				"wait-for-device"
 			]
-			runShell(args)
+			run_shell(args)
 			args = [
 				adb_location,
 				"shell", "pm", "path", "android"
 			]
 			output = "Error:"
 			while output.startswith("Error:"):
-				output = runShell(args)
+				output = run_shell(args)
 			os.chdir(orig_dir)
-			return runAndroid(sdk, device)
+			return run_android(sdk, device)
 	
 		if not device:
-			chosenDevice = available_devices[0]
-			LOG.info('No android device specified, defaulting to %s' % chosenDevice)
+			chosen_device = available_devices[0]
+			LOG.info('No android device specified, defaulting to %s' % chosen_device)
 	
 		elif device:
 			if device in available_devices:
-				chosenDevice = device
-				LOG.info('Using specified android device %s' % chosenDevice)
+				chosen_device = device
+				LOG.info('Using specified android device %s' % chosen_device)
 			else:
 				LOG.error('No such device "%s"' % device)
 				LOG.error('The available devices are:')
@@ -319,21 +324,21 @@ def runAndroid(sdk, device):
 			'signed-app.apk',
 			'app.apk'
 		]
-		runShell(args)
+		run_shell(args)
 	
 		#align
 		LOG.info('Aligning apk')
 		if os.path.exists('out.apk'):
 			os.remove('out.apk')
 		args = [sdk+'tools/zipalign', '-v', '4', 'signed-app.apk', 'out.apk']
-		runShell(args)
+		run_shell(args)
 		os.remove('app.apk')
 		os.remove('signed-app.apk')
 	
 		#install
 		LOG.info('Installing apk')
-		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'install', '-r', 'out.apk']
-		runShell(args) 
+		args = [sdk+'platform-tools/adb', '-s', chosen_device, 'install', '-r', 'out.apk']
+		run_shell(args) 
 	
 		#run
 		LOG.info('Running apk')
@@ -341,16 +346,16 @@ def runAndroid(sdk, device):
 		with codecs.open(os.path.join('..', '..', 'src', 'config.json'), encoding='utf8') as app_config:
 			app_config = json.load(app_config)
 		package_name = re.sub("[^a-zA-Z0-9]", "", app_config["name"].lower())+app_config["uuid"];
-		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
-		runShell(args)
+		args = [sdk+'platform-tools/adb', '-s', chosen_device, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
+		run_shell(args)
 	
 		LOG.info('Clearing android log')
-		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', '-c']
+		args = [sdk+'platform-tools/adb', '-s', chosen_device, 'logcat', '-c']
 		proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
 		proc.wait()
 		LOG.info('Showing android log')
-		args = [sdk+'platform-tools/adb', '-s', chosenDevice, 'logcat', 'WebCore:D', package_name+':D', '*:S']
+		args = [sdk+'platform-tools/adb', '-s', chosen_device, 'logcat', 'WebCore:D', package_name+':D', '*:S']
 		proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
 		proc.wait()
 	finally:
-		runBackground([adb_location, 'kill-server'])
+		run_background([adb_location, 'kill-server'])
