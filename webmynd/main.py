@@ -11,14 +11,13 @@ import time
 
 from subprocess import Popen
 from os import path, devnull
-from glob import glob
 
 import webmynd
 from webmynd import defaults, build_config, ForgeError
 from webmynd.generate import Generate
-from webmynd.remote import Remote, AuthenticationError
+from webmynd.remote import Remote
 from webmynd.templates import Manager
-from webmynd.android import runAndroid, check_for_android_sdk, CouldNotLocate
+from webmynd.android import check_for_android_sdk, CouldNotLocate, runAndroid
 from webmynd.ios import IOSRunner
 
 LOG = None
@@ -34,6 +33,7 @@ def _assert_not_in_subdirectory_of_forge_root():
 	cwd = str(os.getcwd())
 	if cwd.startswith(defaults.FORGE_ROOT + os.sep):
 		raise RunningInForgeRoot
+
 
 def with_error_handler(function):
 	def decorated_with_handler(*args, **kwargs):
@@ -159,6 +159,7 @@ def create():
 	parser = argparse.ArgumentParser(prog='wm-create', description='Initialises your development environment')
 	add_general_options(parser)
 	args = parser.parse_args()
+
 	handle_general_options(args)
 	
 	config = build_config.load()
@@ -175,15 +176,12 @@ def create():
 		LOG.error('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
 	else:
 		name = raw_input('Enter app name: ')
-		try:
-			uuid = remote.create(name)
-			remote.fetch_initial(uuid)
-			LOG.info('App structure created. To proceed:')
-			LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
-			LOG.info('2) Run wm-dev-build to make a development build')
-			LOG.info('3) Run wm-prod-build to make a production build')
-		except AuthenticationError as e:
-			LOG.error('Failed to login to forge: %s' % e.message)
+		uuid = remote.create(name)
+		remote.fetch_initial(uuid)
+		LOG.info('App structure created. To proceed:')
+		LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
+		LOG.info('2) Run wm-dev-build to make a development build')
+		LOG.info('3) Run wm-prod-build to make a production build')
 
 def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'

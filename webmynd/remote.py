@@ -19,21 +19,76 @@ from webmynd import defaults
 
 LOG = logging.getLogger(__name__)
 
-class RequestError(Exception):
-	'The Forge API responded with an error code'
-	def __init__(self, message, response, *args, **kwargs):
-		super(RequestError, self).__init__(message, *args, **kwargs)
-		self.response = response
+class RequestError(ForgeError):
+	pass
 
-class AuthenticationError(Exception):
-	'Authenticating with the Forge API failed'
-	def __init__(self, *args, **kwargs):
-		super(AuthenticationError, self).__init__(*args, **kwargs)
+def _check_api_response_for_error(url, method, resp, error_message=None):
+	'''Check an API response from the website to see if there was an error. Checks for one of the following:
+
+	No status code, as in, no valid response from the server.
+	
+	HTTP status code is not 200 but get a JSON response
+	HTTP status code is not 200 and the response is not a valid JSON response
+
+	Code 200 with a valid JSON response and the 'result' property is set to 'error'
+	Code 200 with no JSON response
+
+	:param url: The API url used in the request
+	:param method: The HTTP method used in the request (e.g. GET or POST)
+	:param resp: The response from the API call
+	:raises: RequestException if the response is an error or malformed
+	'''
+	if error_message is None:
+		error_message = method +' to %(url)s failed: status code %(status_code)s\n%(content)s'
+
+	LOG.debug("checking API response for success or error")
+
+	error_template = "Forge API call to {url} went wrong: {reason}"
+
+	if not resp.ok:
+		if resp.status_code is None:
+			raise RequestError("Request to {url} got no response".format(url=url))
+		try:
+			content_dict = json.loads(resp.content)
+			if content_dict['result'] == 'error':
+				reason = content_dict.get('text', 'Unknown error')
+				error_message = error_template.format(url=url, reason=reason)
+				raise RequestError(error_message)
+
+		except ValueError:
+			try:
+				msg = error_message % resp.__dict__
+			except KeyError: # in case error_message is looking for something resp doesn't have
+				msg = method+' to %s failed: %s' % (
+					url,
+					str(resp),
+
+					# XXX: seems way too chatty, would be good to have as debug output though
+					#getattr(resp, 'content', 'unknown error')[:25]
+				)
+			raise RequestError(msg)
+	else:
+		try:
+			content_dict = json.loads(resp.content)
+			if content_dict['result'] == 'error':
+				reason = content_dict.get('text', 'unknown error')
+				error_message = error_template.format(reason=reason, url=url)
+				raise RequestError(error_message)
+
+		except ValueError:
+			reason = 'Server meant to respond with JSON, but response content was: %s' % resp.content
+			error_message = error_template.format(reason=reason, url=url)
+			raise RequestError(reason)
+
+
+def _check_response_for_error(url, method, resp):
+	if not resp.ok:
+		raise RequestError("Request to {url} went wrong, error code: {code}".format(url=url, code=resp.status_code))
 
 class Remote(object):
 	'Wrap remote operations'
 	POLL_DELAY = 10
-	
+
 	def __init__(self, config):
 		'Start new remote WebMynd builds'
 		self.config = config
@@ -49,6 +104,7 @@ class Remote(object):
 	def server(self):
 		'The URL of the build server to use (default http://www.webmynd.com/api/)'
 		return self.config.get('main', {}).get('server', 'http://www.webmynd.com/api/')
+
 	def _csrf_token(self):
 		'''Return the server-negotiated CSRF token, if we have one
 		
@@ -59,7 +115,7 @@ class Remote(object):
 				return cookie.value
 		else:
 			raise Exception("We don't have a CSRF token")
-		
+
 	def __get_or_post(self, url, *args, **kw):
 		'''Expects ``__method`` and ``__error_message`` entries in :param:`**kw`
 		'''
@@ -70,10 +126,11 @@ class Remote(object):
 			del kw['__error_message']
 		else:
 			error_message = method+' to %(url)s failed: status code %(status_code)s\n%(content)s'
-		
+
 		if method == "POST":
 			# must have CSRF token
 			data = kw.get("data", {})
+			data['build_tools_version'] = webmynd.VERSION
 			data["csrfmiddlewaretoken"] = self._csrf_token()
 			kw["data"] = data
 		kw['cookies'] = self.cookies
@@ -84,28 +141,40 @@ class Remote(object):
 				self.config['main']['authentication'].get('username'),
 				self.config['main']['authentication'].get('password')
 			)
+		LOG.debug('{method} {url}'.format(method=method.upper(), url=url))
 		resp = getattr(requests, method.lower())(url, *args, **kw)
-		if not resp.ok:
-			try:
-				msg = error_message % resp.__dict__
-			except KeyError: # in case error_message is looking for something resp doesn't have
-				msg = method+' to %s failed %s: %s' % (
-					getattr(resp, 'url', 'unknown URL'),
-					str(resp),
-					getattr(resp, 'content', 'unknown error')
-				)
 
-			raise RequestError(msg, resp)
 		self.cookies.save()
+		# XXX: response is definitely json at this point?
+		# guaranteed if we're only making calls to the api
 		return resp
-	def _post(self, url, *args, **kw):
+
+	def _api_post(self, url, *args, **kw):
 		'''Make a POST request.
 		
 		:param url: see :module:`requests`
 		:param *args: see :module:`requests`
 		'''
 		kw['__method'] = 'POST'
-		return self.__get_or_post(url, *args, **kw)
+
+		absolute_url = urljoin(self.server, url)
+		resp = self.__get_or_post(absolute_url, *args, **kw)
+		_check_api_response_for_error(url, 'POST', resp)
+
+		return json.loads(resp.content)
+
+	def _api_get(self, url, *args, **kw):
+		'''Make a GET request.
+		
+		:param url: see :module:`requests`
+		:param *args: see :module:`requests`
+		'''
+		kw['__method'] = 'GET'
+		absolute_url = urljoin(self.server, url)
+		resp = self.__get_or_post(absolute_url, *args, **kw)
+		_check_api_response_for_error(url, 'GET', resp)
+
+		return json.loads(resp.content)
 
 	def _get(self, url, *args, **kw):
 		'''Make a GET request.
@@ -114,43 +183,47 @@ class Remote(object):
 		:param *args: see :module:`requests`
 		'''
 		kw['__method'] = 'GET'
-		return self.__get_or_post(url, *args, **kw)
+		resp = self.__get_or_post(url, *args, **kw)
+		_check_response_for_error(url, 'GET', resp)
+		return resp
+
+	def _post(self, url, *args, **kw):
+		'''Make a GET request.
 		
+		:param url: see :module:`requests`
+		:param *args: see :module:`requests`
+		'''
+		kw['__method'] = 'POST'
+		resp = self.__get_or_post(url, *args, **kw)
+		_check_response_for_error(url, 'POST', resp)
+		return resp
+
 	def _authenticate(self):
 		'''Authentication handshake with server (if we haven't already)
 		'''
-		try:
-			if self._authenticated:
-				LOG.debug('already authenticated - continuing')
-				return
+		if self._authenticated:
+			LOG.debug('already authenticated - continuing')
+			return
 
-			resp = self._get(urljoin(self.server, 'auth/loggedin'))
-			if json.loads(resp.content)['loggedin']:
-				self._authenticated = True
-				LOG.debug('already authenticated via cookie - continuing')
-				return
-
-			email = raw_input("Your email address: ")
-			password = getpass()
-			LOG.info('authenticating as "%s"' % email)
-			credentials = {
-				'email': email,
-				'password': password
-			}
-			
-			resp = self._get(urljoin(self.server, 'auth/hello'))
-			
-			self._post(urljoin(self.server, 'auth/verify'), data=credentials)
-			LOG.info('authentication successful')
+		resp = self._api_get('auth/loggedin')
+		if resp.get('loggedin'):
 			self._authenticated = True
-		except RequestError as e:
-			try:
-				content = json.loads(e.response.content)
-				reason = content.get('text', 'Unknown error')
-			except ValueError:
-				# didn't get JSON back from server
-				reason = e.response.content
-			raise AuthenticationError(reason)
+			LOG.debug('already authenticated via cookie - continuing')
+			return
+
+		email = raw_input("Your email address: ")
+		password = getpass()
+		LOG.info('authenticating as "%s"' % email)
+		credentials = {
+			'email': email,
+			'password': password
+		}
+
+		self._api_get('auth/hello')
+		
+		self._api_post('auth/verify', data=credentials)
+		LOG.info('authentication successful')
+		self._authenticated = True
 
 	def create(self, name):
 		self._authenticate()
@@ -158,8 +231,7 @@ class Remote(object):
 		data = {
 			'name': name
 		}
-		resp = self._post(urljoin(self.server, 'app/'), data=data)
-		return json.loads(resp.content)['uuid']
+		return self._api_post('app/', data=data)['uuid']
 
 	def _fetch_output(self, build_id, to_dir, output_key, post_get_fn):
 		'''Helper function for common file-getting logic of the fetch* methods.
@@ -172,40 +244,47 @@ class Remote(object):
 			platform and the name of the downloaded file. Will be invoked in the same directory
 			as the file was downloaded to.
 		'''
-		resp = self._get(urljoin(self.server, 'build/%d/detail/' % build_id))
-		content = json.loads(resp.content)
-		if 'log_output' in content:
+		build = self._api_get('build/{id}/detail/'.format(id=build_id))
+		if 'log_output' in build:
 			# too chatty, and already seen this after build completed
-			del content['log_output']
-		LOG.debug('build detail: %s' % content)
+			del build['log_output']
+		LOG.debug('build detail: %s' % build)
 		
 		filenames = []
 		if not path.isdir(to_dir):
 			LOG.warning('creating output directory "%s"' % to_dir)
 			os.mkdir(to_dir)
+
 		os.chdir(to_dir)
-		locations = content[output_key]
+		locations = build[output_key]
 		available_platforms = [plat for plat, url in locations.iteritems() if url]
+
 		for platform in available_platforms:
 			filename = urlsplit(locations[platform]).path.split('/')[-1]
+
 			resp = self._get(locations[platform])
+
 			with open(filename, 'wb') as out_file:
 				LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
 				out_file.write(resp.content)
+
 			post_get_fn(platform, filename)
+
 			filenames.append(path.abspath(platform))
 		return filenames
 
 	def check_version(self):
-		resp = self._get(urljoin(self.server, 'version_check/%s/' % webmynd.VERSION.replace('.','/')))
-		result = json.loads(resp.content)
+		result = self._api_get(
+			'version_check/{version}/'.format(version=webmynd.VERSION.replace('.','/'))
+		)
+
 		if result['result'] == 'ok':
-			if result['upgrade']:
+			if 'upgrade' in result:
 				LOG.info('Update result: %s' % result['message'])
 			else:
 				LOG.debug('Update result: %s' % result['message'])
 			
-			if result['upgrade'] == 'required':
+			if result.get('upgrade') == 'required':
 				raise ForgeError("""An update to these command line tools is required
 
 The newest tools can be obtained from https://webmynd.com/forge/upgrade/
@@ -221,17 +300,19 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		LOG.info('fetching initial project template')
 		self._authenticate()
 		
+		resp = self._get(urljoin(self.server, 'app/{uuid}/initial_files'.format(uuid=uuid)))
+
 		filename = 'initial.zip'
-		resp = self._get(urljoin(self.server, 'app/%s/initial_files' % uuid))
 		with open(filename, 'wb') as out_file:
 			LOG.debug('writing %s' % path.abspath(filename))
 			out_file.write(resp.content)
+
 		zipf = zipfile.ZipFile(filename)
 		# XXX: shouldn't do the renaming here - need to fix the server to serve up the correct structure
 		zipf.extractall()
 		shutil.move('user', defaults.SRC_DIR)
 		zipf.close()
-		LOG.debug('extracted  initial project template')
+		LOG.debug('extracted initial project template')
 		os.remove(filename)
 		LOG.debug('removed downloaded file "%s"' % filename)
 		
@@ -364,18 +445,20 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		self._authenticate()
 		
 		data = {}
+
 		if path.isfile(defaults.APP_CONFIG_FILE):
 			with open(defaults.APP_CONFIG_FILE) as app_config:
 				data['config'] = app_config.read()
+				pass
+
 		def build_request(files=None):
 			'build the URL to start a build, then POST it'
-			url_path = 'app/%s/%s/%s' % (
+			url = 'app/%s/%s/%s' % (
 				self.config.get('uuid'),
 				'template' if template_only else 'build',
 				'development' if development else ''
 			)
-			url = urljoin(self.server, url_path)
-			return self._post(url, data=data, files=files)
+			return self._api_post(url, data=data, files=files)
 			
 		user_dir = defaults.SRC_DIR
 		if not path.isdir(user_dir):
@@ -405,20 +488,24 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 					# wasn't created
 					pass
 					
-		build_id = json.loads(resp.content)['build_id']
+		build_id = resp['build_id']
 		LOG.info('build %s started...' % build_id)
 		
-		resp = self._get(urljoin(self.server, 'build/%d/detail/' % build_id))
-		content = json.loads(resp.content)
-		while content['state'] in ('pending', 'working'):
-			LOG.debug('build %s is %s...' % (build_id, content['state']))
+		build = self._api_get('build/{id}/detail/'.format(id=build_id))
+
+		while build['state'] in ('pending', 'working'):
+			LOG.debug('build {id} is {state}...'.format(id=build_id, state=build['state']))
 			time.sleep(self.POLL_DELAY)
-			resp = self._get(urljoin(self.server, 'build/%d/detail/' % build_id))
-			content = json.loads(resp.content)
-			
-		if content['state'] in ('complete',):
+			build = self._api_get('build/{id}/detail'.format(id=build_id))
+
+		if build['state'] in ('complete',):
 			LOG.info('build completed successfully')
-			LOG.debug(content['log_output'])
+			LOG.debug(build['log_output'])
 			return build_id
+
 		else:
+<<<<<<< HEAD
 			raise ForgeError('build failed: %s' % content['log_output'])
+=======
+			raise Exception('build failed: %s' % build['log_output'])
+>>>>>>> e091d8e1dca30550f7149e9262bcfa82956beb86
