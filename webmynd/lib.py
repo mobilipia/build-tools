@@ -3,6 +3,7 @@ import os
 from os.path import join, isdir, islink
 from os import error, listdir
 import os
+import time
 
 # modified os.walk() function from Python 2.4 standard library
 def walk2(top, topdown=True, onerror=None, deeplevel=0): # fix 0
@@ -50,6 +51,18 @@ def walk2(top, topdown=True, onerror=None, deeplevel=0): # fix 0
 				yield x
 	if not topdown:
 		yield top, dirs, nondirs, deeplevel # fix 3
+
+def try_a_few_times(f):
+	try_again = 0
+	while try_again < 5:
+		time.sleep(try_again)
+		try:
+			try_again += 1
+			f()
+			break
+		except:
+			if try_again == 5:
+				raise
 
 @contextmanager
 def cd(target_dir):
