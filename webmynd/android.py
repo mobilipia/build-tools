@@ -1,16 +1,17 @@
-import os
-from os import path
-import zipfile
+from collections import namedtuple
 import codecs
 import json
-import re
 import logging
+import os
+from os import path
+import re
+import shutil
+from subprocess import Popen, PIPE, STDOUT
 import sys
 import tempfile
-import shutil
-import urllib
 import time
-from subprocess import Popen, PIPE, STDOUT
+import urllib
+import zipfile
 
 from webmynd import defaults, ForgeError
 from webmynd.lib import cd
@@ -20,10 +21,7 @@ LOG = logging.getLogger(__name__)
 class CouldNotLocate(Exception):
 	pass
 
-def _look_for_dir(directories):
-	for directory in directories:
-		if os.path.isdir(directory):
-			return directory
+PathInfo = namedtuple('PathInfo', 'android adb')
 
 def _look_for_java():
 	possible_jre_locations = [
@@ -33,9 +31,87 @@ def _look_for_java():
 		r"C:\Program Files (x86)\Java\jre6",
 	]
 	
-	return _look_for_dir(possible_jre_locations)
+	return [directory for directory in possible_jre_locations if path.isdir(directory)]
 
-def check_for_android_sdk(dir):
+def _download_sdk_for_windows():
+	urllib.urlretrieve("http://webmynd.com/redirect/android/windows", "sdk.zip")
+
+	LOG.info('Download complete, extracting SDK')
+	zip_to_extract = zipfile.ZipFile("sdk.zip")
+	zip_to_extract.extractall("C:\\")
+	zip_to_extract.close()
+	
+	return PathInfo(android=r"C:\android-sdk-windows\tools\android.bat", adb=r"C:\android-sdk-windows\platform-tools\adb")
+
+def _download_sdk_for_mac():
+	urllib.urlretrieve("http://webmynd.com/redirect/android/macosx", "sdk.zip")
+
+	LOG.info('Download complete, extracting SDK')
+	zip_process = Popen(["unzip", "sdk.zip", '-d', "/Applications"], stdout=PIPE, stderr=STDOUT)
+	output = zip_process.communicate()[0]
+	LOG.debug("unzip output")
+	LOG.debug(output)
+	
+	return PathInfo(android="/Applications/android-sdk-macosx/tools/android", adb="/Applications/android-sdk-macosx/platform-tools/adb")
+
+def _download_sdk_for_linux():
+	urllib.urlretrieve("http://webmynd.com/redirect/android/linux", "sdk.tgz")
+
+	LOG.info('Download complete, extracting SDK')
+	if not path.isdir(path.expanduser("~/.forge")):
+		os.mkdir(path.expanduser("~/.forge"))
+	
+	zip_process = Popen(["tar", "zxf", "sdk.tgz", "-C", path.expanduser("~/.forge")], stdout=PIPE, stderr=STDOUT)
+	output = zip_process.communicate()[0]
+	LOG.debug("unzip output")
+	LOG.debug(output)
+	
+	return PathInfo(
+		android=path.expanduser("~/.forge/android-sdk-linux/tools/android"),
+		adb=path.expanduser("~/.forge/android-sdk-linux/platform-tools/adb")
+	)
+
+
+def _install_sdk_automatically():
+	# Attempt download
+	orig_dir = os.getcwd()
+	temp_d = tempfile.mkdtemp()
+	try:
+		os.chdir(temp_d)
+		LOG.info('Downloading Android SDK (about 30MB, may take some time)')
+		
+		if sys.platform.startswith('win'):
+			path_info = _download_sdk_for_windows()
+		elif sys.platform.startswith('darwin'):
+			path_info = _download_sdk_for_mac()
+		elif sys.platform.startswith('linux'):
+			path_info = _download_sdk_for_linux()
+			
+		LOG.info('Extracted, updating SDK and downloading required Android platform (about 90MB, may take some time)')
+		with open(os.devnull, 'w') as devnull:
+			android_process = Popen(
+				[path_info.android, "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"],
+				stdout=devnull,
+				stderr=devnull,
+			)
+			while android_process.poll() is None:
+				time.sleep(5)
+				try:
+					Popen([path_info.adb, "kill-server"], stdout=devnull, stderr=devnull)
+				except Exception:
+					pass
+	
+	except Exception, e:
+		LOG.error(e)
+		raise CouldNotLocate("Automatic SDK download failed, please install manually and specify with the --sdk flag")
+	else:
+		LOG.info('Android SDK update complete')
+		return check_for_android_sdk()
+	finally:
+		os.chdir(orig_dir)
+		shutil.rmtree(temp_d, ignore_errors=True)
+
+def check_for_android_sdk(dir=None):
 	# Some sensible places to look for the Android SDK
 	possible_sdk = [
 		"C:/Program Files (x86)/Android/android-sdk/",
@@ -44,100 +120,39 @@ def check_for_android_sdk(dir):
 		"C:/Android/android-sdk-windows/",
 		"C:/android-sdk-windows/",
 		"/Applications/android-sdk-macosx",
-		os.path.expanduser("~/.forge/android-sdk-linux")
+		path.expanduser("~/.forge/android-sdk-linux")
 	]
 	if dir:
 		possible_sdk.insert(0, dir)
 
 	for directory in possible_sdk:
-		if os.path.isdir(directory):
-			if directory.endswith('/'):
-				return directory
-			else:
-				return directory+'/'
+		if path.isdir(directory):
+			return directory if directory.endswith('/') else directory+'/'
 	else:
 		# No SDK found - will the user let us install one?
-		path = None
+		sdk_path = None
 		
 		if sys.platform.startswith('win'):
-			path = "C:\\android-sdk-windows"
+			sdk_path = "C:\\android-sdk-windows"
 		elif sys.platform.startswith('linux'):
-			path = os.path.expanduser("~/.forge/android-sdk-linux")
+			sdk_path = path.expanduser("~/.forge/android-sdk-linux")
 		elif sys.platform.startswith('darwin'):
-			path = "/Applications/android-sdk-macosx"
+			sdk_path = "/Applications/android-sdk-macosx"
 			
-		if not path:
+		if not sdk_path:
 			raise CouldNotLocate("No Android SDK found, please specify with the --sdk flag")		
 		
 		prompt = raw_input('''
 No Android SDK found, would you like to:
-(1) Attempt to download and install the SDK automatically to {path}, or,
+(1) Attempt to download and install the SDK automatically to {sdk_path}, or,
 (2) Install the SDK yourself and rerun this command with the --sdk option to specify its location.
 
-Please enter 1 or 2: '''.format(path=path))
+Please enter 1 or 2: '''.format(sdk_path=sdk_path))
 		
-		if not prompt == "1":
+		if prompt != "1":
 			raise CouldNotLocate("No Android SDK found, please specify with the --sdk flag")
 		else:
-			# Attempt download
-			orig_dir = os.getcwd()
-			temp_d = tempfile.mkdtemp()
-			try:
-				os.chdir(temp_d)
-				LOG.info('Downloading Android SDK (about 30MB, may take some time)')
-				
-				if sys.platform.startswith('win'):
-					urllib.urlretrieve("http://webmynd.com/redirect/android/windows", "sdk.zip")
-
-					LOG.info('Download complete, extracting SDK')
-					zip_to_extract = zipfile.ZipFile("sdk.zip")
-					zip_to_extract.extractall("C:\\")
-					zip_to_extract.close()
-					
-					android_path = "C:\\android-sdk-windows\\tools\\android.bat"
-					adb_path = "C:\\android-sdk-windows\\platform-tools\\adb"
-				elif sys.platform.startswith('darwin'):
-					urllib.urlretrieve("http://webmynd.com/redirect/android/macosx", "sdk.zip")
-	
-					LOG.info('Download complete, extracting SDK')
-					zip_process = Popen(["unzip", "sdk.zip", '-d', "/Applications"], stdout=PIPE, stderr=STDOUT)
-					output = zip_process.communicate()[0]
-					LOG.debug("unzip output")
-					LOG.debug(output)
-					
-					android_path = "/Applications/android-sdk-macosx/tools/android"
-					adb_path = "/Applications/android-sdk-macosx/platform-tools/adb"
-				elif sys.platform.startswith('linux'):
-					urllib.urlretrieve("http://webmynd.com/redirect/android/linux", "sdk.tgz")
-	
-					LOG.info('Download complete, extracting SDK')
-					if not os.path.isdir(os.path.expanduser("~/.forge")):
-						os.mkdir(os.path.expanduser("~/.forge"))
-					
-					zip_process = Popen(["tar", "zxf", "sdk.tgz", "-C", os.path.expanduser("~/.forge")], stdout=PIPE, stderr=STDOUT)
-					output = zip_process.communicate()[0]
-					LOG.debug("unzip output")
-					LOG.debug(output)
-					
-					android_path = os.path.expanduser("~/.forge/android-sdk-linux/tools/android")
-					adb_path = os.path.expanduser("~/.forge/android-sdk-linux/platform-tools/adb")
-					
-				LOG.info('Extracted, updating SDK and downloading required Android platform (about 90MB, may take some time)')
-				android_process = Popen([android_path, "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
-				while android_process.poll() == None:
-					time.sleep(5)
-					try:
-						Popen([adb_path, "kill-server"], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
-					except Exception:
-						pass
-
-				LOG.info('Android SDK update complete')
-				return check_for_android_sdk(None)
-			finally:
-				os.chdir(orig_dir)
-				shutil.rmtree(temp_d, ignore_errors=True)
-
-			raise CouldNotLocate("Automatic SDK download failed, please install manually and specify with the --sdk flag")
+			_install_sdk_automatically()
 
 def scrape_available_devices(text):
 	'Scrapes the output of the adb devices command into a list'
@@ -152,7 +167,7 @@ def scrape_available_devices(text):
 
 	return available_devices
 
-def run_shell(args):
+def _run_shell(args):
 	LOG.debug("Running: {cmd}".format(cmd=" ".join(args)))
 	proc = Popen(args, stdout=PIPE, stderr=STDOUT)
 	proc_std = proc.communicate()[0]
@@ -174,44 +189,154 @@ def run_background(args, detach=False):
 			os.system(" ".join(args)+" &")
 
 def check_for_java():
-	try:
-		proc = Popen(['java', '-version'], stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
-		proc_std = proc.communicate()[0]
-		if proc.returncode != 0:
+	'Return True java exists on the path and can be invoked; False otherwise'
+	with open(os.devnull, 'w') as devnull:
+		try:
+			proc = Popen(['java', '-version'], stdout=devnull, stderr=devnull)
+			proc_std = proc.communicate()[0]
+			return proc.returncode == 0
+		except:
 			return False
-		return True
-	except:
-		return False
+
+def _create_avd(path_info):
+	LOG.info('Creating AVD')
+	args = [
+		path_info.android,
+		"create",
+		"avd",
+		"-n", "forge",
+		"-t", "android-8",
+		"--skin", "HVGA",
+		"-p", path.join(sdk, 'forge-avd'),
+		#"-a",
+		"-c", "32M",
+		"--force"
+	]
+	proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+	time.sleep(0.1)
+	proc_std = proc.communicate(input='\n')[0]
+	if proc.returncode != 0:
+		LOG.error('failed: %s' % (proc_std))
+		raise ForgeError
+	LOG.debug('Output:\n'+proc_std)
+
+def _launch_avd(path_info):
+	with cd(path.join(path.pardir, path.pardir)):
+		run_background([path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
+	
+	LOG.info("Started emulator, waiting for device to boot")
+	args = [
+		path_info.adb,
+		"wait-for-device"
+	]
+	_run_shell(args)
+	args = [
+		path_info.adb,
+		"shell", "pm", "path", "android"
+	]
+	output = "Error:"
+	while output.startswith("Error:"):
+		output = _run_shell(args)
+
+def _zip_apk():
+	LOG.info('Zipping files')
+	zipf = None
+	zipf_name = 'app.apk'
+	try:
+		zipf = zipfile.ZipFile(zipf_name, mode='w')
+		for root, _, files in os.walk('.'):
+			if root == '.':
+				root = ''
+			else: 
+				root = root.replace('\\', '/')+"/"
+				if root[0:2] == './':
+					root = root[2:]
+			for f in files:
+				if f != zipf_name:
+					LOG.debug('zipping: %s' % f)
+					zipf.write(root+f, root+f)
+	finally:
+		if zipf:
+			zipf.close()
+			
+	return zipf_name
+
+def _sign_zipf(jre, zipf_name, signed_zipf_name):
+	LOG.info('Signing apk')
+	args = [
+		path.join(jre,'java'),
+		'-jar',
+		path.join(defaults.FORGE_ROOT, 'webmynd', 'apk-signer.jar'),
+		'--keystore',
+		path.join(defaults.FORGE_ROOT, 'debug.keystore'),
+		'--storepass',
+		'android',
+		'--keyalias',
+		'androiddebugkey',
+		'--keypass',
+		'android',
+		'--out',
+		signed_zipf_name,
+		zipf_name
+	]
+	_run_shell(args)
+	
+def _align_apk(sdk, signed_zipf_name, out_apk_name):
+	LOG.info('Aligning apk')
+	if path.exists(out_apk_name):
+		os.remove(out_apk_name)
+	args = [path.join(sdk, 'tools', 'zipalign'), '-v', '4', signed_zipf_name, out_apk_name]
+	_run_shell(args)
+
+def _generate_package_name():
+	with codecs.open(path.join('..', '..', 'src', 'config.json'), encoding='utf8') as app_config:
+		app_config = json.load(app_config)
+	return re.sub("[^a-zA-Z0-9]", "", app_config["name"].lower()) + app_config["uuid"]
+
+def _run_apk(sdk, chosen_device, package_name):
+	LOG.info('Running apk')
+	# Get the app config details
+	args = [sdk+'platform-tools/adb', '-s', chosen_device, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
+	_run_shell(args)
+	
+def _follow_log(sdk, chosen_device, package_name):
+	LOG.info('Clearing android log')
+	args = [sdk+'platform-tools/adb', '-s', chosen_device, 'logcat', '-c']
+	proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
+	proc.wait()
+	LOG.info('Showing android log')
+	args = [sdk+'platform-tools/adb', '-s', chosen_device, 'logcat', 'WebCore:D', package_name+':D', '*:S']
+	proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
+	proc.wait()
 
 def run_android(sdk, device):
 	jre = ""
 
 	if not check_for_java():
-		jre = _look_for_java()
-		if not jre:
-			raise ForgeError("Java not found, java is required to be installed and available in your path in order to run Android")
-		jre = path.join(jre, 'bin')
+		jres = _look_for_java()
+		if not jres:
+			raise ForgeError("Java not found: Java must be installed and available in your path in order to run Android")
+		jre = path.join(jres[0], 'bin')
+
+	path_info = PathInfo(
+		android=path.abspath(path.join(sdk,'tools','android')),
+		adb=path.abspath(path.join(sdk, 'platform-tools', 'adb'))
+	)
+	if sys.platform.startswith('win'):
+		path_info.android = path_info.android + '.bat'
 
 	try:
 		LOG.info('Looking for Android device')
 		orig_dir = os.getcwd()
-		os.chdir(os.path.join('development', 'android'))
+		os.chdir(path.join('development', 'android'))
 		
-		adb_location = path.abspath(path.join(sdk,'platform-tools','adb'))
-		
-		if sys.platform.startswith('win'):
-			android_path = path.abspath(path.join(sdk,'tools','android.bat'))
-		else:
-			android_path = path.abspath(path.join(sdk,'tools','android'))
-	
-		run_background([adb_location, 'start-server'])
+		run_background([path_info.adb, 'start-server'])
 		time.sleep(1)
 		
-		args = [adb_location, 'devices']
 		try:
-			proc = Popen(args, stdout=PIPE)
+			proc = Popen([path_info.adb, 'devices'], stdout=PIPE)
 		except Exception as e:
-			LOG.error("problem finding the android debug bridge at: %s" % adb_location)
+			LOG.error("problem finding the android debug bridge at: %s" % path_info.adb)
 			# XXX: prompt to run the sdk manager, then retry?
 			LOG.error("this probably means you need to run the android SDK manager and download the android platform-tools.")
 			raise ForgeError
@@ -225,63 +350,29 @@ def run_android(sdk, device):
 	
 		if not available_devices:
 			# Prompt to automatically (create and) run an AVD
-			prompt = raw_input('\nNo active Android device found, would you like to:\n(1) Attempt to automatically launch the Android emulator\n(2) Attempt to find the device again (choose this option after plugging in an Android device or launching the emulator).\nPlease enter 1 or 2: ')
+			prompt = raw_input('''
+No active Android device found, would you like to:
+
+(1) Attempt to automatically launch the Android emulator
+(2) Attempt to find the device again (choose this option after plugging in an Android device or launching the emulator).
+
+Please enter 1 or 2: ''')
 			if not prompt == "1":
 				os.chdir(orig_dir)
 				return run_android(sdk, device)
-			else:
-				pass
-	
+			
 			# Create avd
-			if os.path.isdir(os.path.join(sdk, 'forge-avd')):
+			if path.isdir(path.join(sdk, 'forge-avd')):
 				LOG.info('Existing AVD found')
 			else:
-				LOG.info('Creating AVD')
-				args = [
-					android_path,
-					"create",
-					"avd",
-					"-n", "forge",
-					"-t", "android-8",
-					"--skin", "HVGA",
-					"-p", os.path.join(sdk, 'forge-avd'),
-					#"-a",
-					"-c", "32M",
-					"--force"
-				]
-				proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-				time.sleep(0.1)
-				proc_std = proc.communicate(input='\n')[0]
-				if proc.returncode != 0:
-					LOG.error('failed: %s' % (proc_std))
-					raise ForgeError
-				LOG.debug('Output:\n'+proc_std)
+				_create_avd(path_info)
 	
 			# Launch
-			with cd("../.."):
-				run_background([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
-			
-			LOG.info("Started emulator, waiting for device to boot")
-			args = [
-				adb_location,
-				"wait-for-device"
-			]
-			run_shell(args)
-			args = [
-				adb_location,
-				"shell", "pm", "path", "android"
-			]
-			output = "Error:"
-			while output.startswith("Error:"):
-				output = run_shell(args)
+			_launch_avd(path_info)
 			os.chdir(orig_dir)
 			return run_android(sdk, device)
 	
-		if not device:
-			chosen_device = available_devices[0]
-			LOG.info('No android device specified, defaulting to %s' % chosen_device)
-	
-		elif device:
+		if device:
 			if device in available_devices:
 				chosen_device = device
 				LOG.info('Using specified android device %s' % chosen_device)
@@ -290,74 +381,36 @@ def run_android(sdk, device):
 				LOG.error('The available devices are:')
 				LOG.error("\n".join(available_devices))
 				raise ForgeError
+		else:
+			chosen_device = available_devices[0]
+			LOG.info('No android device specified, defaulting to %s' % chosen_device)
 		
 		LOG.info('Creating Android .apk file')
 		#zip
-		LOG.info('Zipping files')
-		zipf = zipfile.ZipFile('app.apk', mode='w')
-		for root, _, files in os.walk('.'):
-			if root == '.':
-				root = ''
-			else: 
-				root = root.replace('\\', '/')+"/"
-				if root[0:2] == './':
-					root = root[2:]
-			for f in files:
-				if f != 'app.apk':
-					LOG.debug('zipping: %s' % f)
-					zipf.write(root+f, root+f)
-		zipf.close()
+		zipf_name = _zip_apk()
+		signed_zipf_name = 'signed-{0}'.format(zipf_name)
+		out_apk_name = 'out.apk'
 		
 		#sign
-		LOG.info('Signing apk')
-		args = [
-			path.join(jre,'java'),
-			'-jar',
-			os.path.join(defaults.FORGE_ROOT, 'webmynd', 'apk-signer.jar'),
-			'--keystore',
-			os.path.join(defaults.FORGE_ROOT, 'debug.keystore'),
-			'--storepass',
-			'android',
-			'--keyalias',
-			'androiddebugkey',
-			'--keypass',
-			'android',
-			'--out',
-			'signed-app.apk',
-			'app.apk'
-		]
-		run_shell(args)
+		_sign_zipf(jre, zipf_name, signed_zipf_name)
 	
 		#align
-		LOG.info('Aligning apk')
-		if os.path.exists('out.apk'):
-			os.remove('out.apk')
-		args = [sdk+'tools/zipalign', '-v', '4', 'signed-app.apk', 'out.apk']
-		run_shell(args)
-		os.remove('app.apk')
-		os.remove('signed-app.apk')
-	
+		_align_apk(sdk, signed_zipf_name, out_apk_name)
+		LOG.debug('removing zipfile and un-aligned APK')
+		os.remove(zipf_name)
+		os.remove(signed_zipf_name)
+
 		#install
 		LOG.info('Installing apk')
-		args = [sdk+'platform-tools/adb', '-s', chosen_device, 'install', '-r', 'out.apk']
-		run_shell(args) 
+		args = [sdk+'platform-tools/adb', '-s', chosen_device, 'install', '-r', out_apk_name]
+		_run_shell(args) 
 	
+		package_name = _generate_package_name()
+		
 		#run
-		LOG.info('Running apk')
-		# Get the app config details
-		with codecs.open(os.path.join('..', '..', 'src', 'config.json'), encoding='utf8') as app_config:
-			app_config = json.load(app_config)
-		package_name = re.sub("[^a-zA-Z0-9]", "", app_config["name"].lower())+app_config["uuid"];
-		args = [sdk+'platform-tools/adb', '-s', chosen_device, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
-		run_shell(args)
-	
-		LOG.info('Clearing android log')
-		args = [sdk+'platform-tools/adb', '-s', chosen_device, 'logcat', '-c']
-		proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
-		proc.wait()
-		LOG.info('Showing android log')
-		args = [sdk+'platform-tools/adb', '-s', chosen_device, 'logcat', 'WebCore:D', package_name+':D', '*:S']
-		proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
-		proc.wait()
+		_run_apk(sdk, chosen_device, package_name)
+		
+		#follow log
+		_follow_log(sdk, chosen_device, package_name)
 	finally:
-		run_background([adb_location, 'kill-server'])
+		run_background([path_info.adb, 'kill-server'])
