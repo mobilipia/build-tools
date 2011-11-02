@@ -22,7 +22,7 @@ def load(filename=None):
 	else:
 		LOG.warning('no app configuration file found at %s' % defaults.APP_CONFIG_FILE)
 	
-	LOG.debug('WebMynd build tools version: %s' % webmynd.VERSION)
+	LOG.debug('WebMynd build tools version: %s' % webmynd.get_version())
 	for key, val in config.iteritems():
 		LOG.debug('%s: %s' % (key, json.dumps(val)))
 	

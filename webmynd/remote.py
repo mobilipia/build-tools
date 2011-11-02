@@ -126,7 +126,7 @@ class Remote(object):
 		if method == "POST":
 			# must have CSRF token
 			data = kw.get("data", {})
-			data['build_tools_version'] = webmynd.VERSION
+			data['build_tools_version'] = webmynd.get_version()
 			data["csrfmiddlewaretoken"] = self._csrf_token()
 			kw["data"] = data
 		kw['cookies'] = self.cookies
@@ -271,7 +271,7 @@ class Remote(object):
 
 	def check_version(self):
 		result = self._api_get(
-			'version_check/{version}/'.format(version=webmynd.VERSION.replace('.','/'))
+			'version_check/{version}/'.format(version=webmynd.get_version().replace('.','/'))
 		)
 
 		if result['result'] == 'ok':

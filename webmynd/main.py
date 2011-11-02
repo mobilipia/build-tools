@@ -86,7 +86,7 @@ def setup_logging(args):
 		log_level = logging.INFO
 	logging.basicConfig(level=log_level, format='[%(levelname)7s] %(message)s')
 	LOG = logging.getLogger(__name__)
-	LOG.info('WebMynd tools running at version %s' % webmynd.VERSION)
+	LOG.info('WebMynd tools running at version %s' % webmynd.get_version())
 
 def add_general_options(parser):
 	'Generic command-line arguments'
