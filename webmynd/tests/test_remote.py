@@ -110,14 +110,12 @@ class Test_CsrfToken(TestRemote):
 class TestCreate(TestRemote):
 	def test_normal(self):
 		self.remote._authenticate = Mock()
-		post_resp = Mock()
-		post_resp.content = json.dumps({'result': 'ok', 'uuid': 'SERVER-TEST-UUID'})
-		self.remote._post = Mock(return_value=post_resp)
+		self.remote._api_post = Mock(return_value={'result': 'ok', 'uuid': 'SERVER-TEST-UUID'})
 		
 		result = self.remote.create('test name')
 		
 		self.remote._authenticate.assert_called_once_with( )
-		self.remote._post.assert_called_once_with('https://test.webmynd.com/api/app/', data={'name': 'test name'})
+		self.remote._api_post.assert_called_once_with('app/', data={'name': 'test name'})
 		eq_(result, 'SERVER-TEST-UUID')
 
 class TestFetchInitial(TestRemote):
@@ -132,7 +130,7 @@ class TestFetchInitial(TestRemote):
 		get_resp.content = 'zipfile contents'
 		self.remote._get = Mock(return_value=get_resp)
 		
-		with mock.patch('__builtin__.open', new=mock_open):
+		with mock.patch('webmynd.lib.open_file', new=mock_open):
 			result = self.remote.fetch_initial('TEST-UUID')
 			
 		shutil.move.assert_called_once_with('user', 'src')
@@ -196,27 +194,29 @@ class TestFetchUnpackaged(TestRemote):
 		path.abspath.side_effect = lambda x: '/absolute/path/'+x
 		path.isdir.return_value = False
 		self.remote._authenticate = Mock()
+		self.remote._api_get = Mock(return_value={'unpackaged':{'chrome': '/path/chrome url', 'firefox': '/path/firefox url'}, 'log_output': '1\n2'})
 		get_resp = Mock()
-		get_resp.content = json.dumps({'unpackaged':{'chrome': '/path/chrome url', 'firefox': '/path/firefox url'}, 'log_output': '1\n2'})
+		get_resp.content = 'dummy get content'
 		self.remote._get = Mock(return_value=get_resp)
+		self.remote._unzip_with_permissions = Mock()
 		mock_open = mock.MagicMock()
 		manager = mock_open.return_value.__enter__.return_value
+		cd = MagicMock()
 		
-		with mock.patch('__builtin__.open', new=mock_open):
-			resp = self.remote.fetch_unpackaged(-1, output_dir)
+		with patch('webmynd.remote.lib.cd', new=cd):
+			with mock.patch('webmynd.lib.open_file', new=mock_open):
+				resp = self.remote.fetch_unpackaged(-1, output_dir)
 		
 		self.remote._authenticate.assert_called_once_with()
 		os.mkdir.assert_called_once_with(output_dir)
-		eq_(os.chdir.call_args_list[0][0][0], output_dir)
-		eq_(manager.write.call_args_list, [((get_resp.content,), {})] * 2)
-
-		ok_(zipf.ZipFile.call_args_list[0][0][0].endswith('chrome url'))
-		ok_(zipf.ZipFile.call_args_list[1][0][0].endswith('firefox url'))
-		eq_(zipf.ZipFile.return_value.extractall.call_count, 2)
+		cd.assert_called_once_with(output_dir)
+		self.remote._unzip_with_permissions.call_args_list = [
+			(("chrome url", ), {}),
+			(("firefox url", ), {}),
+		]
 
 		ok_(resp[0].endswith('chrome'))
 		ok_(resp[1].endswith('firefox'))
-		eq_(os.chdir.call_args_list[-1][0][0], os.getcwd.return_value)
 
 class TestBuild(TestRemote):
 	def setup(self):
@@ -232,21 +232,35 @@ class TestBuild(TestRemote):
 	def teardown(self):
 		self.remote._authenticate.assert_called_once_with()
 		
-	def test_pending(self):
+	@patch('webmynd.remote.os.listdir')
+	@patch('webmynd.remote.path')
+	def test_pending(self, path, listdir):
+		'''a new build should not be started if a pending one exists,
+		and we should poll until that build completes / aborts
+		'''
 		states = ['pending', 'working', 'complete']
+		path.isfile.return_value = False
+		path.isdir.return_value = True
+		self.remote._api_post = Mock()
+		self.remote._api_get = Mock()
+		cd = MagicMock()
+		listdir.return_value = []
+
 		def states_effect(*args, **kw):
-			mock = Mock()
-			mock.content = json.dumps({'build_id': -1, 'state': states.pop(0), 'log_output': 'test logging'})
-			return mock
-		self.remote._get.side_effect = states_effect
-		resp = self.remote.build()
+			return {'build_id': -1, 'state': states.pop(0), 'log_output': 'test logging'}
+		self.remote._api_get.side_effect = states_effect
+		self.remote._api_post.return_value = {"build_id": -1}
+		
+		with patch('webmynd.remote.lib.cd', new=cd):
+			resp = self.remote.build(template_only=True)
+		
 		eq_(resp, -1)
-		self.remote._post.assert_called_once_with(
-			'https://test.webmynd.com/api/app/TEST-UUID/build/development',
+		self.remote._api_post.assert_called_once_with(
+			'app/TEST-UUID/template/development',
 			files=None, data={}
 		)
-		eq_(self.remote._get.call_args_list,
-			[(('https://test.webmynd.com/api/build/-1/detail/',), {})] * 3
+		eq_(self.remote._api_get.call_args_list,
+			[(('build/-1/detail/',), {})] * 3
 		)
 	@patch('webmynd.remote.os.listdir')
 	@patch('webmynd.remote.path')
@@ -279,23 +293,27 @@ class TestBuild(TestRemote):
 	@patch('webmynd.remote.tarfile')
 	def test_user_dir(self, tarfile, os, path):
 		mock_open = MagicMock()
-		manager = mock_open.return_value.__enter__.return_value
-		manager.read.return_value = 'user archive'
+		mock_open.return_value.__enter__.return_value = 'opened file'
 		path.isfile.return_value = False
 		path.isdir.return_value = True
-		
+		cd = MagicMock()
+		self.remote._api_post = Mock()
+		self.remote._api_post.return_value = {"build_id": -1}
+		self.remote._api_get = Mock()
+		self.remote._api_get.return_value = {"state": "complete", "log_output": "dummy log output"}
+
 		os.listdir.return_value = ['file.txt']
-		os.getcwd.return_value = 'original dir'
-		os.remove.side_effect = OSError
-		with patch('__builtin__.open', new=mock_open):
-			resp = self.remote.build()
+
+		with patch('webmynd.remote.lib.cd', new=cd):
+			with patch('__builtin__.open', new=mock_open):
+				resp = self.remote.build()
 			
 		tmp_file = mock_open.call_args_list[0][0][0]
-		eq_(os.chdir.call_args_list, [((defaults.SRC_DIR,), {}), (('original dir',), {})])
+		cd.assert_called_once_with(defaults.SRC_DIR)
 		tarfile.open.assert_called_once_with(tmp_file, mode='w:bz2')
 		tarfile.open.return_value.close.assert_called_once_with()
 		os.listdir.assert_called_once_with('.')
-		tarfile.open.return_value.add.called_once_with('file.txt')
+		tarfile.open.return_value.add.assert_called_once_with('file.txt')
 		eq_(len(mock_open.call_args_list), 1)
 		os.remove.assert_called_once_with(tmp_file)
 	
@@ -401,7 +419,7 @@ class TestGenerateInstructions(TestRemote):
 		self.remote._get.return_value.content = 'zip file contents'
 		mock_open = mock.MagicMock()
 		
-		with mock.patch('__builtin__.open', new=mock_open):
+		with mock.patch('webmynd.lib.open_file', new=mock_open):
 			self.remote.fetch_generate_instructions(1, 'my/path')
 		
 		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/build/1/generate_instructions/')

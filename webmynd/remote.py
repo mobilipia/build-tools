@@ -16,6 +16,7 @@ import zipfile
 import webmynd
 from webmynd import ForgeError
 from webmynd import defaults
+from webmynd import lib
 
 LOG = logging.getLogger(__name__)
 
@@ -255,23 +256,23 @@ class Remote(object):
 			LOG.warning('creating output directory "%s"' % to_dir)
 			os.mkdir(to_dir)
 
-		os.chdir(to_dir)
-		locations = build[output_key]
-		available_platforms = [plat for plat, url in locations.iteritems() if url]
+		with lib.cd(to_dir):
+			locations = build[output_key]
+			available_platforms = [plat for plat, url in locations.iteritems() if url]
 
-		for platform in available_platforms:
-			filename = urlsplit(locations[platform]).path.split('/')[-1]
+			for platform in available_platforms:
+				filename = urlsplit(locations[platform]).path.split('/')[-1]
 
-			resp = self._get(locations[platform])
+				resp = self._get(locations[platform])
 
-			with open(filename, 'wb') as out_file:
-				LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
-				out_file.write(resp.content)
+				with lib.open_file(filename, 'wb') as out_file:
+					LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
+					out_file.write(resp.content)
 
-			post_get_fn(platform, filename)
+				post_get_fn(platform, filename)
 
-			filenames.append(path.abspath(platform))
-		return filenames
+				filenames.append(path.abspath(platform))
+			return filenames
 
 	def check_version(self):
 		result = self._api_get(
@@ -303,7 +304,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		resp = self._get(urljoin(self.server, 'app/{uuid}/initial_files'.format(uuid=uuid)))
 
 		filename = 'initial.zip'
-		with open(filename, 'wb') as out_file:
+		with lib.open_file(filename, 'wb') as out_file:
 			LOG.debug('writing %s' % path.abspath(filename))
 			out_file.write(resp.content)
 
@@ -379,11 +380,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		LOG.info('fetching unpackaged artefacts for build %s into "%s"' % (build_id, to_dir))
 		self._authenticate()
 
-		orig_dir = os.getcwd()
-		try:
-			filenames = self._fetch_output(build_id, to_dir, 'unpackaged', self._handle_unpackaged)
-		finally:
-			os.chdir(orig_dir)
+		filenames = self._fetch_output(build_id, to_dir, 'unpackaged', self._handle_unpackaged)
 			
 		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
 		return filenames
@@ -413,7 +410,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		try:
 			os.makedirs(to_dir)
 			os.chdir(to_dir)
-			with open(temp_instructions_file, mode='wb') as out_tar:
+			with lib.open_file(temp_instructions_file, mode='wb') as out_tar:
 				out_tar.write(resp.content)
 			archive = zipfile.ZipFile(temp_instructions_file, mode='r')
 			archive.extractall()
@@ -445,9 +442,8 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		self._authenticate()
 		
 		data = {}
-
 		if path.isfile(defaults.APP_CONFIG_FILE):
-			with open(defaults.APP_CONFIG_FILE) as app_config:
+			with lib.open_file(defaults.APP_CONFIG_FILE) as app_config:
 				data['config'] = app_config.read()
 				pass
 
@@ -472,13 +468,13 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			try:
 				user_comp = None
 				user_comp = tarfile.open(filename, mode='w:bz2')
-				with webmynd.lib.cd(user_dir):
+				with lib.cd(user_dir):
 					for user_file in os.listdir('.'):
 						user_comp.add(user_file)
 						LOG.debug('added "%s" to user archive' % user_file)
 				user_comp.close()
 		
-				with open(filename, mode='rb') as user_files:
+				with lib.open_file(filename, mode='rb') as user_files:
 					resp = build_request({'user.tar.bz2': user_files})
 			finally:
 				try:
@@ -495,7 +491,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		while build['state'] in ('pending', 'working'):
 			LOG.debug('build {id} is {state}...'.format(id=build_id, state=build['state']))
 			time.sleep(self.POLL_DELAY)
-			build = self._api_get('build/{id}/detail'.format(id=build_id))
+			build = self._api_get('build/{id}/detail/'.format(id=build_id))
 
 		if build['state'] in ('complete',):
 			LOG.info('build completed successfully')

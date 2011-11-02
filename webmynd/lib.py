@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import os
 from os.path import join, isdir, islink
 from os import error, listdir
 
@@ -58,3 +59,9 @@ def cd(target_dir):
 		yield target_dir
 	finally:
 		os.chdir(old_dir)
+
+@contextmanager
+def open_file(*args, **kw):
+	'Simple wrapper around __builtins__.open for easier testing/mocking'
+	with open(*args, **kw) as out:
+		yield out
