@@ -71,7 +71,6 @@ def _download_sdk_for_linux():
 		adb=path.expanduser("~/.forge/android-sdk-linux/platform-tools/adb")
 	)
 
-
 def _install_sdk_automatically():
 	# Attempt download
 	orig_dir = os.getcwd()
@@ -86,32 +85,45 @@ def _install_sdk_automatically():
 			path_info = _download_sdk_for_mac()
 		elif sys.platform.startswith('linux'):
 			path_info = _download_sdk_for_linux()
-			
-		LOG.info('Extracted, updating SDK and downloading required Android platform (about 90MB, may take some time)')
-		with open(os.devnull, 'w') as devnull:
-			android_process = Popen(
-				[path_info.android, "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"],
-				stdout=devnull,
-				stderr=devnull,
-			)
-			while android_process.poll() is None:
-				time.sleep(5)
-				try:
-					Popen([path_info.adb, "kill-server"], stdout=devnull, stderr=devnull)
-				except Exception:
-					pass
-	
+		
+		_update_sdk(path_info)
 	except Exception, e:
 		LOG.error(e)
 		raise CouldNotLocate("Automatic SDK download failed, please install manually and specify with the --sdk flag")
 	else:
 		LOG.info('Android SDK update complete')
-		return _check_for_android_sdk()
+		return _check_for_sdk()
 	finally:
 		os.chdir(orig_dir)
 		shutil.rmtree(temp_d, ignore_errors=True)
 
-def _check_for_android_sdk(dir=None):
+def _update_sdk(path_info):
+	LOG.info('Updating SDK and downloading required Android platform (about 90MB, may take some time)')
+	with open(os.devnull, 'w') as devnull:
+		android_process = Popen(
+			[path_info.android, "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"],
+			stdout=devnull,
+			stderr=devnull,
+		)
+		while android_process.poll() is None:
+			time.sleep(5)
+			try:
+				Popen([path_info.adb, "kill-server"], stdout=devnull, stderr=devnull)
+			except Exception:
+				pass
+
+def _should_install_sdk(sdk_path):
+	resp = raw_input('''
+No Android SDK found, would you like to:
+
+(1) Attempt to download and install the SDK automatically to {sdk_path}, or,
+(2) Install the SDK yourself and rerun this command with the --sdk option to specify its location.
+
+Please enter 1 or 2: '''.format(sdk_path=sdk_path))
+	
+	return resp == 2
+
+def _check_for_sdk(dir=None):
 	# Some sensible places to look for the Android SDK
 	possible_sdk = [
 		"C:/Program Files (x86)/Android/android-sdk/",
@@ -140,21 +152,14 @@ def _check_for_android_sdk(dir=None):
 			sdk_path = "/Applications/android-sdk-macosx"
 			
 		if not sdk_path:
-			raise CouldNotLocate("No Android SDK found, please specify with the --sdk flag")		
-		
-		prompt = raw_input('''
-No Android SDK found, would you like to:
-(1) Attempt to download and install the SDK automatically to {sdk_path}, or,
-(2) Install the SDK yourself and rerun this command with the --sdk option to specify its location.
-
-Please enter 1 or 2: '''.format(sdk_path=sdk_path))
-		
-		if prompt != "1":
 			raise CouldNotLocate("No Android SDK found, please specify with the --sdk flag")
-		else:
+		
+		if _should_install_sdk(sdk_path):
 			_install_sdk_automatically()
+		else:
+			raise CouldNotLocate("No Android SDK found: please install one and use the --sdk flag")
 
-def scrape_available_devices(text):
+def _scrape_available_devices(text):
 	'Scrapes the output of the adb devices command into a list'
 	lines = text.split('\n')
 	available_devices = []
@@ -310,7 +315,7 @@ def _follow_log(sdk, chosen_device, package_name):
 	proc.wait()
 
 def run_android(sdk, device):
-	sdk = _check_for_android_sdk(sdk)
+	sdk = _check_for_sdk(sdk)
 	jre = ""
 
 	if not check_for_java():
@@ -347,7 +352,7 @@ def run_android(sdk, device):
 			LOG.error('Communication with adb failed: %s' % (proc_std))
 			raise ForgeError
 	
-		available_devices = scrape_available_devices(proc_std)
+		available_devices = _scrape_available_devices(proc_std)
 	
 		if not available_devices:
 			# Prompt to automatically (create and) run an AVD
