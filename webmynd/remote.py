@@ -408,6 +408,8 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		archive = None
 		temp_instructions_file = 'instructions.tar.bz2'
 		try:
+			if path.isdir(to_dir):
+				shutil.rmtree(to_dir, ignore_errors=True)
 			os.makedirs(to_dir)
 			os.chdir(to_dir)
 			with lib.open_file(temp_instructions_file, mode='wb') as out_tar:
