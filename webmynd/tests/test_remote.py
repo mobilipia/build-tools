@@ -1,12 +1,13 @@
 import cookielib
 import json
 from os import path
+import subprocess
 
 import mock
 from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 
-from webmynd import defaults, ForgeError
+from webmynd import defaults, ForgeError, VERSION
 from webmynd.remote import Remote, RequestError
 from webmynd.tests import dummy_config
 from lib import assert_raises_regexp
@@ -38,16 +39,13 @@ class Test__Init__(object):
 class Test_Authenticate(TestRemote):
 	def test_already_auth(self):
 		self.remote._authenticated = True
-		self.remote._get = Mock()
+		self.remote._api_get = Mock()
 		
 		self.remote._authenticate()
 		
-		ok_(not self.remote._get.called)
+		ok_(not self.remote._api_get.called)
 	def test_have_session(self):
-		get_resp = Mock()
-		get_resp.content = json.dumps({'result': 'ok', 'loggedin': True})
-		self.remote._get = Mock(return_value=get_resp)
-		
+		self.remote._api_get = Mock(return_value={'result': 'ok', 'loggedin': True})
 		mock_raw_input = mock.MagicMock()
 		mock_raw_input.return_value = 'user input'
 
@@ -58,10 +56,8 @@ class Test_Authenticate(TestRemote):
 		ok_(not mock_raw_input.called)
 	@mock.patch('webmynd.remote.getpass')
 	def test_real_login(self, getpass):
-		get_resp = Mock()
-		get_resp.content = json.dumps({'result': 'ok', 'loggedin': False})
-		self.remote._get = Mock(return_value=get_resp)
-		self.remote._post = Mock()
+		self.remote._api_get = Mock(return_value={'result': 'ok', 'loggedin': False})
+		self.remote._api_post = Mock()
 		
 		mock_raw_input = mock.MagicMock()
 		mock_raw_input.return_value = 'raw user input'
@@ -74,20 +70,17 @@ class Test_Authenticate(TestRemote):
 		mock_raw_input.assert_called_once_with("Your email address: ")
 		getpass.assert_called_once_with()
 		
-		eq_(2, len(self.remote._get.call_args_list))
-		ok_(self.remote._get.call_args_list[0][0][0].endswith('loggedin'))
-		ok_(self.remote._get.call_args_list[1][0][0].endswith('hello'))
+		eq_(2, len(self.remote._api_get.call_args_list))
+		ok_(self.remote._api_get.call_args_list[0][0][0].endswith('loggedin'))
+		ok_(self.remote._api_get.call_args_list[1][0][0].endswith('hello'))
 		
-		self.remote._post.assert_called_once_with('https://test.webmynd.com/api/auth/verify', data={'email': 'raw user input', 'password': 'getpass input'})
-	@mock.patch('webmynd.remote.getpass')
-	def test_non_json_response(self, getpass):
-		mock_get = Mock()
-		mock_resp = Mock()
-		mock_resp.content = "This isn't JSON at all!"
-		mock_get.side_effect = RequestError('mock error', mock_resp)
-		self.remote._get = mock_get
-
-		assert_raises_regexp(AuthenticationError, "This isn't JSON at all!", self.remote._authenticate)
+		self.remote._api_post.assert_called_once_with('auth/verify', data={'email': 'raw user input', 'password': 'getpass input'})
+	# @mock.patch('webmynd.remote.getpass')
+	# def test_non_json_response(self, getpass):
+	# 	mock_get.side_effect = RequestError('mock error', mock_resp)
+	# 	self.remote._api_get = Mock(side_effect=RequestError('mock error', "This isn't JSON at all!"))
+	# 	self.remote._authenticate()
+	# 	assert_raises_regexp(AuthenticationError, "This isn't JSON at all!", self.remote._authenticate)
 		
 class Test_CsrfToken(TestRemote):
 	def test_nocsrf(self):
@@ -162,22 +155,23 @@ class Test_HandlePackaged(TestRemote):
 
 class TestUnzipWithPermissions(TestRemote):
 
-	@patch('webmynd.remote.subprocess.call')
-	def test_when_system_has_unzip_should_call_unzip(self, call):
+	@patch('webmynd.remote.subprocess.Popen')
+	def test_when_system_has_unzip_should_call_unzip(self, Popen):
+		Popen.return_value.communicate.return_value = ('stdout', 'stderr')
 		self.remote._unzip_with_permissions('dummy archive.zip')
-		call.assert_called_with(["unzip", "dummy archive.zip"])
-		eq_(call.call_count, 2)
+		Popen.assert_called_with(["unzip", "dummy archive.zip"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		eq_(Popen.call_count, 2)
 
-	@patch('webmynd.remote.subprocess.call')
+	@patch('webmynd.remote.subprocess.Popen')
 	@patch('webmynd.remote.zipfile.ZipFile')
-	def test_when_system_doesnt_have_unzip_should_use_zipfile(self, ZipFile, call):
-		call.side_effect = OSError("cant find unzip")
+	def test_when_system_doesnt_have_unzip_should_use_zipfile(self, ZipFile, Popen):
+		Popen.side_effect = OSError("cant find unzip")
 		zip_object = mock.Mock()
 		ZipFile.return_value = zip_object
 
 		self.remote._unzip_with_permissions('dummy archive.zip')
 
-		eq_(call.call_count, 1)
+		eq_(Popen.call_count, 1)
 		ZipFile.assert_called_once_with('dummy archive.zip')
 		zip_object.extractall.assert_called_once_with()
 		zip_object.close.assert_called_once_with()
@@ -223,12 +217,8 @@ class TestBuild(TestRemote):
 		super(TestBuild, self).setup()
 		self.remote._authenticate = Mock()
 		self.remote.POLL_DELAY = 0.001
-		post_resp = Mock()
-		get_resp = Mock()
-		post_resp.content = json.dumps({'build_id': -1})
-		get_resp.content = json.dumps({'build_id': -1, 'state': 'complete', 'log_output': 'test logging'})
-		self.remote._post = Mock(return_value=post_resp)
-		self.remote._get = Mock(return_value=get_resp)
+		self.remote._api_post = Mock(return_value={'build_id': -1})
+		self.remote._api_get = Mock(return_value={'build_id': -1, 'state': 'complete', 'log_output': 'test logging'})
 	def teardown(self):
 		self.remote._authenticate.assert_called_once_with()
 		
@@ -241,15 +231,12 @@ class TestBuild(TestRemote):
 		states = ['pending', 'working', 'complete']
 		path.isfile.return_value = False
 		path.isdir.return_value = True
-		self.remote._api_post = Mock()
-		self.remote._api_get = Mock()
 		cd = MagicMock()
 		listdir.return_value = []
 
 		def states_effect(*args, **kw):
 			return {'build_id': -1, 'state': states.pop(0), 'log_output': 'test logging'}
 		self.remote._api_get.side_effect = states_effect
-		self.remote._api_post.return_value = {"build_id": -1}
 		
 		with patch('webmynd.remote.lib.cd', new=cd):
 			resp = self.remote.build(template_only=True)
@@ -271,10 +258,6 @@ class TestBuild(TestRemote):
 		manager.read.return_value = json.dumps(app_config)
 		mock_path.isfile.return_value = True
 		mock_path.isdir.return_value = True
-		self.remote._api_post = Mock()
-		self.remote._api_post.return_value = {"build_id": -1}
-		self.remote._api_get = Mock()
-		self.remote._api_get.return_value = {"state": "complete", "log_output": "dummy log output"}
 		
 		with patch('__builtin__.open', new=mock_open):
 			resp = self.remote.build(template_only=True)
@@ -297,10 +280,6 @@ class TestBuild(TestRemote):
 		path.isfile.return_value = False
 		path.isdir.return_value = True
 		cd = MagicMock()
-		self.remote._api_post = Mock()
-		self.remote._api_post.return_value = {"build_id": -1}
-		self.remote._api_get = Mock()
-		self.remote._api_get.return_value = {"state": "complete", "log_output": "dummy log output"}
 
 		os.listdir.return_value = ['file.txt']
 
@@ -317,12 +296,13 @@ class TestBuild(TestRemote):
 		eq_(len(mock_open.call_args_list), 1)
 		os.remove.assert_called_once_with(tmp_file)
 	
-	def test_fail(self):
-		self.remote._get.return_value.content = json.dumps({
-			'build_id': -1, 'state': 'aborted', 'log_output': 'test logging'
-		})
+	@patch('webmynd.remote.path')
+	def test_fail(self, path):
+		path.isfile.return_value = False
+		path.isdir.return_value = True
+		self.remote._api_get.return_value = {'build_id': -1, 'state': 'aborted', 'log_output': 'test logging'}
 		
-		assert_raises_regexp(Exception, 'build failed', self.remote.build)
+		assert_raises_regexp(Exception, 'build failed', self.remote.build, template_only=True)
 		
 class Test_Post(TestRemote):
 	@patch('webmynd.remote.requests')
@@ -332,30 +312,10 @@ class Test_Post(TestRemote):
 		
 		res = self.remote._post('url', 2, a=3, b=4)
 		self.remote._csrf_token.assert_called_once_with()
-		requests.post.assert_called_once_with('url', 2, cookies=self.remote.cookies, data={'csrfmiddlewaretoken': 'csrf token'}, a=3, b=4, headers={'REFERER': 'url'})
+		requests.post.assert_called_once_with('url', 2,
+			cookies=self.remote.cookies, a=3, b=4, headers={'REFERER': 'url'},
+			data={'csrfmiddlewaretoken': 'csrf token', "build_tools_version": VERSION})
 		ok_(res is requests.post.return_value)
-	@patch('webmynd.remote.requests')
-	def test_post_failed_no_msg(self, requests):
-		requests.post.return_value.ok = False
-		requests.post.return_value.url = 'dummy url'
-		self.remote._csrf_token = Mock(return_value='csrf token')
-		
-		assert_raises_regexp(Exception, 'POST to dummy url failed <mock', self.remote._post, 'url')
-	@patch('webmynd.remote.requests')
-	def test_post_failed_msg(self, requests):
-		requests.post.return_value.ok = False
-		requests.post.return_value.url = 'dummy url'
-		requests.post.return_value.status_code = 1000
-		requests.post.return_value.content = 'dummy content'
-		self.remote._csrf_token = Mock(return_value='csrf token')
-		
-		assert_raises_regexp(Exception, 'POST to dummy url failed: status code', self.remote._post, 'url')
-	@patch('webmynd.remote.requests')
-	def test_post_failed_custom_msg(self, requests):
-		requests.post.return_value.ok = False
-		self.remote._csrf_token = Mock(return_value='csrf token')
-		
-		assert_raises_regexp(Exception, 'bleurgh', self.remote._post, 'url', __error_message='bleurgh')
 
 class Test_Get(TestRemote):
 	@patch('webmynd.remote.requests')
@@ -363,26 +323,6 @@ class Test_Get(TestRemote):
 		res = self.remote._get('url', 2, a=3, b=4)
 		requests.get.assert_called_once_with('url', 2, a=3, b=4, cookies=self.remote.cookies, headers={'REFERER': 'url'})
 		ok_(res is requests.get.return_value)
-		
-	@patch('webmynd.remote.requests')
-	def test_get_failed_no_msg(self, requests):
-		requests.get.return_value.ok = False
-		requests.get.return_value.url = 'dummy url'
-		
-		assert_raises_regexp(Exception, 'GET to dummy url failed <mock', self.remote._get, 'url')
-	@patch('webmynd.remote.requests')
-	def test_get_failed_msg(self, requests):
-		requests.get.return_value.ok = False
-		requests.get.return_value.url = 'dummy url'
-		requests.get.return_value.status_code = 1000
-		requests.get.return_value.content = 'dummy content'
-		
-		assert_raises_regexp(Exception, 'GET to dummy url failed: status code', self.remote._get, 'url')
-	@patch('webmynd.remote.requests')
-	def test_get_failed_custom_msg(self, requests):
-		requests.get.return_value.ok = False
-		
-		assert_raises_regexp(Exception, 'bleurgh', self.remote._get, 'url', __error_message='bleurgh')
 		
 	@patch('webmynd.remote.requests')
 	def test_basic_auth(self, requests):
@@ -395,9 +335,7 @@ class Test_Get(TestRemote):
 
 class Test_CheckVersion(TestRemote):
 	def test_update_required(self):
-		get_resp = Mock()
-		get_resp.content = json.dumps({"url": "http://example.com/forge/upgrade/", "message": "you must upgrade to a newer version of the command-line tools", "upgrade": "required", "result": "ok"})
-		self.remote._get = Mock(return_value=get_resp)
+		self.remote._api_get = Mock(return_value={"url": "http://example.com/forge/upgrade/", "message": "you must upgrade to a newer version of the command-line tools", "upgrade": "required", "result": "ok"})
 		
 		assert_raises_regexp(Exception, 'An update to these command line tools is required', self.remote.check_version)
 
@@ -409,11 +347,11 @@ class TestGenerateInstructions(TestRemote):
 		requests.get.return_value.ok = False
 		requests.get.return_value.status_code = 404
 		
-		self.remote.fetch_generate_instructions(1)
+		self.remote.fetch_generate_instructions(1, 'my/path')
 		
-	@patch('webmynd.remote.tarfile')
+	@patch('webmynd.remote.zipfile')
 	@patch('webmynd.remote.os')
-	def test_normal(self, os, tarfile):
+	def test_normal(self, os, zipfile):
 		self.remote._authenticate = Mock()
 		self.remote._get = Mock()
 		self.remote._get.return_value.content = 'zip file contents'
@@ -423,7 +361,7 @@ class TestGenerateInstructions(TestRemote):
 			self.remote.fetch_generate_instructions(1, 'my/path')
 		
 		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/build/1/generate_instructions/')
-		mock_open.assert_called_once_with('instructions.tar.bz2', mode='wb')
-		tarfile.open.assert_called_once_with('instructions.tar.bz2', mode='r')
+		mock_open.assert_called_once_with('instructions.zip', mode='wb')
+		zipfile.ZipFile.assert_called_once_with('instructions.zip', mode='r')
 		eq_(os.chdir.call_args_list[0][0][0], 'my/path')
-		tarfile.open.return_value.extractall.assert_called_once_with()
+		zipfile.ZipFile.return_value.extractall.assert_called_once_with()

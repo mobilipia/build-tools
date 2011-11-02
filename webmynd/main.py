@@ -185,7 +185,6 @@ def create():
 
 def development_build():
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
-	
 	parser = argparse.ArgumentParser(prog='wm-dev-build', description='Creates new local, unzipped development add-ons with your source and configuration')
 	parser.add_argument('-f', '--full', action='store_true', help='Force a complete rebuild on the forge server')
 

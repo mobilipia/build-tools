@@ -118,16 +118,11 @@ class Remote(object):
 			raise Exception("We don't have a CSRF token")
 
 	def __get_or_post(self, url, *args, **kw):
-		'''Expects ``__method`` and ``__error_message`` entries in :param:`**kw`
+		'''Expects ``__method`` entry in :param:`**kw`
 		'''
 		method = kw['__method']
 		del kw['__method']
-		if '__error_message' in kw:
-			error_message = kw['__error_message']
-			del kw['__error_message']
-		else:
-			error_message = method+' to %(url)s failed: status code %(status_code)s\n%(content)s'
-
+		
 		if method == "POST":
 			# must have CSRF token
 			data = kw.get("data", {})
@@ -394,7 +389,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		of build-tools versions.
 		
 		:param build_id: primary key of the build to get instructions for
-		:param to_dir: where the instructions will be put (default .template/generate_dynamic)
+		:param to_dir: where the instructions will be put
 		'''
 		LOG.info("fetching generation instructions for build {build_id} into {to_dir}".format(**locals()))
 		
@@ -406,7 +401,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		
 		orig_dir = os.getcwd()
 		archive = None
-		temp_instructions_file = 'instructions.tar.bz2'
+		temp_instructions_file = 'instructions.zip'
 		try:
 			os.makedirs(to_dir)
 			os.chdir(to_dir)
@@ -459,7 +454,6 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		user_dir = defaults.SRC_DIR
 		if not path.isdir(user_dir):
 			raise ForgeError("no {0} directory found: are you currently in the right directory?".format(user_dir))
-		
 		if template_only:
 			resp = build_request()
 		else:

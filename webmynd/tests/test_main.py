@@ -159,7 +159,6 @@ class TestBuild(object):
 	def _check_dev_setup(self, parser, Manager, Remote, Generate):
 		eq_(parser.add_argument.call_args_list,
 			[
-				(('-s', '--sdk'), {'help': 'Path to the Android SDK'}),
 				(('-f', '--full'), {'action': 'store_true', 'help': 'Force a complete rebuild on the forge server'})
 			] + general_argparse)
 
@@ -183,26 +182,6 @@ class TestBuild(object):
 		isdir.assert_called_once_with(defaults.SRC_DIR)
 		ok_(not build_config.called)
 		
-	@mock.patch('webmynd.main.build_config')
-	@mock.patch('webmynd.main.os.path.isdir')
-	@mock.patch('webmynd.main.shutil')
-	@mock.patch('webmynd.main.Generate')
-	@mock.patch('webmynd.main.Remote')
-	@mock.patch('webmynd.main.Manager')
-	@mock.patch('webmynd.main.argparse')
-	@mock.patch('webmynd.main.time.sleep')
-	def test_dev_copy_template_fail(self, sleep, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
-		parser = argparse.ArgumentParser.return_value
-		isdir.return_value = True
-		build_config.load.return_value = dummy_config()
-		
-		def raise_except(*args, **kw):
-			raise Exception("Error")
-
-		shutil.copytree.side_effect = raise_except
-		
-		lib.assert_raises_regexp(Exception, 'Error', main.development_build)
-		eq_(sleep.call_count, 5)
 		
 	@mock.patch('webmynd.main.build_config')
 	@mock.patch('webmynd.main.os.path.isdir')
@@ -223,7 +202,10 @@ class TestBuild(object):
 		self._check_dev_setup(parser, Manager, Remote, Generate)
 		
 		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
-		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
+		eq_(shutil.rmtree.call_args_list, [
+			(('development',), {'ignore_errors': True}),
+			(('development/generate_dynamic',), {'ignore_errors': True})
+		])
 		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value, 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
 		
@@ -244,12 +226,14 @@ class TestBuild(object):
 		main.development_build()
 		
 		self._check_dev_setup(parser, Manager, Remote, Generate)
-
 		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
 		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value)
 		
-		shutil.rmtree.assert_called_once_with('development', ignore_errors=True)
+		eq_(shutil.rmtree.call_args_list, [
+			(('development',), {'ignore_errors': True}),
+			(('development/generate_dynamic',), {'ignore_errors': True})
+		])
 		shutil.copytree.assert_called_once_with(Manager.return_value.fetch_templates.return_value, 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
 		
