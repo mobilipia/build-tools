@@ -260,7 +260,6 @@ def run_android(sdk, device):
 			# Launch
 			with cd("../.."):
 				run_background([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
-			run_background([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
 			
 			LOG.info("Started emulator, waiting for device to boot")
 			args = [
