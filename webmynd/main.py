@@ -19,6 +19,7 @@ from webmynd.remote import Remote
 from webmynd.templates import Manager
 from webmynd.android import CouldNotLocate, run_android
 from webmynd.ios import IOSRunner
+from webmynd.lib import try_a_few_times
 
 LOG = None
 
@@ -217,20 +218,14 @@ def development_build():
 		# have templates - now fetch injection instructions
 		remote.fetch_generate_instructions(build_id, instructions_dir)
 
-	# Windows often gives a permission error without a small wait
-	try_again = 0
-	while try_again < 5:
-		time.sleep(try_again)
-		try:
-			try_again += 1
-			shutil.rmtree('development', ignore_errors=True)
-			shutil.copytree(templates_dir, 'development')
-			shutil.rmtree(path.join('development', 'generate_dynamic'), ignore_errors=True)
-			break
-		except Exception, e:
-			if try_again == 5:
-				raise
+	def move_files_across():
+		shutil.rmtree('development', ignore_errors=True)
+		shutil.copytree(templates_dir, 'development')
+		shutil.rmtree(path.join('development', 'generate_dynamic'), ignore_errors=True)
 	
+	# Windows often gives a permission error without a small wait
+	try_a_few_times(move_files_across)
+
 	# have templates and instructions - inject code
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.SRC_DIR)
