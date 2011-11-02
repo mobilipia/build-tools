@@ -13,6 +13,7 @@ import time
 from subprocess import Popen, PIPE, STDOUT
 
 from webmynd import defaults, ForgeError
+from webmynd.lib import cd
 
 LOG = logging.getLogger(__name__)
 
@@ -257,7 +258,8 @@ def run_android(sdk, device):
 				LOG.debug('Output:\n'+proc_std)
 	
 			# Launch
-			run_background([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
+			with cd("../.."):
+				run_background([os.path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
 			
 			LOG.info("Started emulator, waiting for device to boot")
 			args = [

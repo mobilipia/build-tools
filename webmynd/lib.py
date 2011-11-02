@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import os
 from os.path import join, isdir, islink
 from os import error, listdir
+import os
 
 # modified os.walk() function from Python 2.4 standard library
 def walk2(top, topdown=True, onerror=None, deeplevel=0): # fix 0
