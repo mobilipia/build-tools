@@ -106,12 +106,12 @@ def _install_sdk_automatically():
 		raise CouldNotLocate("Automatic SDK download failed, please install manually and specify with the --sdk flag")
 	else:
 		LOG.info('Android SDK update complete')
-		return check_for_android_sdk()
+		return _check_for_android_sdk()
 	finally:
 		os.chdir(orig_dir)
 		shutil.rmtree(temp_d, ignore_errors=True)
 
-def check_for_android_sdk(dir=None):
+def _check_for_android_sdk(dir=None):
 	# Some sensible places to look for the Android SDK
 	possible_sdk = [
 		"C:/Program Files (x86)/Android/android-sdk/",
@@ -310,6 +310,7 @@ def _follow_log(sdk, chosen_device, package_name):
 	proc.wait()
 
 def run_android(sdk, device):
+	sdk = _check_for_android_sdk(sdk)
 	jre = ""
 
 	if not check_for_java():

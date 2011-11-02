@@ -93,17 +93,16 @@ class TestRun(object):
 		
 		parser.parse_args.assert_called_once()
 
-	@mock.patch('webmynd.main.check_for_android_sdk')
 	@mock.patch('webmynd.main.run_android')
 	@mock.patch('webmynd.main.argparse')
-	def test_found_jdk_and_sdk(self, argparse, run_android, check_for_android_sdk):
+	def test_found_jdk_and_sdk(self, argparse, run_android):
 		main._assert_have_development_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
 		args.platform = 'android'
 		args.device = 'device'
+		args.sdk = 'sdk'
 		parser.parse_args.return_value = args
-		check_for_android_sdk.return_value = 'sdk'
 
 		values = ['jdk', 'sdk']
 		def get_dir(*args, **kw):
@@ -112,7 +111,6 @@ class TestRun(object):
 		main.run()
 		
 		parser.parse_args.assert_called_once()
-		check_for_android_sdk.assert_called_once_with(args.sdk)
 		run_android.assert_called_once_with('sdk', 'device')
 
 class Test_AssertNotSubdirectoryOfForgeRoot(object):

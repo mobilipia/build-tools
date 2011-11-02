@@ -17,7 +17,7 @@ from webmynd import defaults, build_config, ForgeError
 from webmynd.generate import Generate
 from webmynd.remote import Remote
 from webmynd.templates import Manager
-from webmynd.android import check_for_android_sdk, CouldNotLocate, run_android
+from webmynd.android import CouldNotLocate, run_android
 from webmynd.ios import IOSRunner
 
 LOG = None
@@ -130,9 +130,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		_assert_have_development_folder()
 
 		try:
-			sdk = check_for_android_sdk(args.sdk)
-
-			run_android(sdk, args.device)
+			run_android(args.sdk, args.device)
 		except CouldNotLocate as e:
 			LOG.error(e)
 	elif args.platform == 'ios':
