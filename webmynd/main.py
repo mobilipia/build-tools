@@ -127,6 +127,9 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	args = parser.parse_args()
 	handle_general_options(args)
 
+	if not os.path.isdir(path.join('development', args.platform)):
+		raise ForgeError("Can't run platform '%s', because you haven't built for it!" % args.platform)
+
 	if args.platform == 'android':
 		_assert_have_development_folder()
 
