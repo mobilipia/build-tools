@@ -21,7 +21,7 @@ LOG = logging.getLogger(__name__)
 class CouldNotLocate(Exception):
 	pass
 
-PathInfo = namedtuple('PathInfo', 'android adb')
+PathInfo = namedtuple('PathInfo', 'android adb sdk')
 
 def _look_for_java():
 	possible_jre_locations = [
@@ -212,7 +212,7 @@ def _create_avd(path_info):
 		"-n", "forge",
 		"-t", "android-8",
 		"--skin", "HVGA",
-		"-p", path.join(sdk, 'forge-avd'),
+		"-p", path.join(path_info.sdk, 'forge-avd'),
 		#"-a",
 		"-c", "32M",
 		"--force"
@@ -227,7 +227,7 @@ def _create_avd(path_info):
 
 def _launch_avd(path_info):
 	with cd(path.join(path.pardir, path.pardir)):
-		run_background([path.join(sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
+		run_background([path.join(path_info.sdk, "tools", "emulator"), "-avd", "forge"], detach=True)
 	
 	LOG.info("Started emulator, waiting for device to boot")
 	args = [
@@ -324,12 +324,18 @@ def run_android(sdk, device):
 			raise ForgeError("Java not found: Java must be installed and available in your path in order to run Android")
 		jre = path.join(jres[0], 'bin')
 
-	path_info = PathInfo(
-		android=path.abspath(path.join(sdk,'tools','android')),
-		adb=path.abspath(path.join(sdk, 'platform-tools', 'adb'))
-	)
 	if sys.platform.startswith('win'):
-		path_info.android = path_info.android + '.bat'
+		path_info = PathInfo(
+			android=path.abspath(path.join(sdk,'tools','android.bat')),
+			adb=path.abspath(path.join(sdk, 'platform-tools', 'adb')),
+			sdk=sdk,
+		)
+	else:
+		path_info = PathInfo(
+			android=path.abspath(path.join(sdk,'tools','android')),
+			adb=path.abspath(path.join(sdk, 'platform-tools', 'adb')),
+			sdk=sdk,
+		)
 
 	try:
 		LOG.info('Looking for Android device')
