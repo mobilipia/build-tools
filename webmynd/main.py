@@ -98,6 +98,11 @@ def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	setup_logging(args)
 
+def _assert_have_target_folder(target):
+	if not os.path.isdir(path.join('development', target)):
+		raise ForgeError("Can't run build for '%s', because you haven't built it!" % target) 
+
+
 def _assert_have_development_folder():
 	if not os.path.exists('development'):
 		raise ForgeError("No folder called 'development' found. You're trying to run your app but you haven't built it yet! Try wm-dev-build first.")
@@ -127,9 +132,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	args = parser.parse_args()
 	handle_general_options(args)
 
-	if not os.path.isdir(path.join('development', args.platform)):
-		raise ForgeError("Can't run platform '%s', because you haven't built for it!" % args.platform)
-
+	_assert_have_target_folder(args.platform)
 	if args.platform == 'android':
 		_assert_have_development_folder()
 

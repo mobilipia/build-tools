@@ -41,7 +41,8 @@ def _download_sdk_for_windows():
 	zip_to_extract.extractall("C:\\")
 	zip_to_extract.close()
 	
-	return PathInfo(android=r"C:\android-sdk-windows\tools\android.bat", adb=r"C:\android-sdk-windows\platform-tools\adb")
+	# XXX: should this really be hardcoded to C:\android-sdk-windows? wasn't sure if we were allowing user to specify location..
+	return PathInfo(android=r"C:\android-sdk-windows\tools\android.bat", adb=r"C:\android-sdk-windows\platform-tools\adb", sdk=r"C:\android-sdk-windows")
 
 def _download_sdk_for_mac():
 	urllib.urlretrieve("http://webmynd.com/redirect/android/macosx", "sdk.zip")
@@ -52,7 +53,7 @@ def _download_sdk_for_mac():
 	LOG.debug("unzip output")
 	LOG.debug(output)
 	
-	return PathInfo(android="/Applications/android-sdk-macosx/tools/android", adb="/Applications/android-sdk-macosx/platform-tools/adb")
+	return PathInfo(android="/Applications/android-sdk-macosx/tools/android", adb="/Applications/android-sdk-macosx/platform-tools/adb", sdk="/Applications/android-sdk-macosx")
 
 def _download_sdk_for_linux():
 	urllib.urlretrieve("http://webmynd.com/redirect/android/linux", "sdk.tgz")
@@ -68,7 +69,8 @@ def _download_sdk_for_linux():
 	
 	return PathInfo(
 		android=path.expanduser("~/.forge/android-sdk-linux/tools/android"),
-		adb=path.expanduser("~/.forge/android-sdk-linux/platform-tools/adb")
+		adb=path.expanduser("~/.forge/android-sdk-linux/platform-tools/adb"),
+		sdk=path.expanduser("~/.forge/android-sdk-linux"),
 	)
 
 def _install_sdk_automatically():

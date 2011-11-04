@@ -145,7 +145,7 @@ class TestUpdateSdk(object):
 			return popen_poll.pop(0)
 		Popen.return_value.poll.side_effect = poll
 		
-		android._update_sdk(android.PathInfo(adb='adb', android='android'))
+		android._update_sdk(android.PathInfo(adb='adb', android='android', sdk='sdk'))
 		eq_(Popen.call_args_list[0][0][0], ['android', "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"])
 		eq_(Popen.call_args_list[1][0][0], ["adb", "kill-server"])
 

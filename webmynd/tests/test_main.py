@@ -83,19 +83,21 @@ class TestCreate(object):
 class TestRun(object):
 	@mock.patch('webmynd.main.argparse')
 	@mock.patch('webmynd.main._assert_have_development_folder')
-	def test_not_android(self, _assert_have_development_folder, argparse):
+	@mock.patch('webmynd.main._assert_have_target_folder')
+	def test_not_android(self, _assert_have_target_folder, _assert_have_development_folder, argparse):
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
 		args.platform = 'chrome'
 		parser.parse_args.return_value = args
-		
+
 		main.run()
-		
+
 		parser.parse_args.assert_called_once()
 
 	@mock.patch('webmynd.main.run_android')
 	@mock.patch('webmynd.main.argparse')
-	def test_found_jdk_and_sdk(self, argparse, run_android):
+	@mock.patch('webmynd.main._assert_have_target_folder')
+	def test_found_jdk_and_sdk(self, _assert_have_development_folder, argparse, run_android):
 		main._assert_have_development_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
