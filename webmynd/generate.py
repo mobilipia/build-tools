@@ -15,6 +15,7 @@ import os
 from os import path
 import shutil
 import tempfile
+import sys
 from glob import glob
 
 from webmynd import build_config
@@ -58,8 +59,12 @@ class Generate(object):
 		for directory in os.listdir(target_dir):
 			if directory in directory_to_platform:
 				enabled_platforms.append(directory_to_platform[directory])
-		
+
+		# XXX: we were hoping to just get .template into the PYTHONPATH environment variable,
+		# but it seems like we were doing it too early so we're doing it here.
+		sys.path.insert(0, '.template')
 		from generate_dynamic import build, customer_phases, customer_tasks, predicates
+
 		build_to_run = build.Build(self.app_config, user_dir, target_dir, enabled_platforms=enabled_platforms)
 		
 		build_to_run.add_steps(customer_phases.copy_user_source_to_template(server=False))

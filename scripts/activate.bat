@@ -8,7 +8,7 @@ if not defined PYTHONPATH (
     set PYTHONPATH=;
 )
 set _OLD_PYTHONPATH=%PYTHONPATH%
-set PYTHONPATH=%CD%\webmynd-dependencies;%CD%;.template\;%PYTHONPATH%
+set PYTHONPATH=%CD%\webmynd-dependencies;%CD%;%PYTHONPATH%
 
 if not defined PROMPT (
     set PROMPT=$P$G
