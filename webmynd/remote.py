@@ -412,7 +412,6 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			archive = zipfile.ZipFile(temp_instructions_file, mode='r')
 			archive.extractall()
 		finally:
-			os.chdir(orig_dir)
 			if archive is not None:
 				try:
 					archive.close()
@@ -420,6 +419,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 					pass
 			if path.isfile(temp_instructions_file):
 				os.remove(temp_instructions_file)
+			os.chdir(orig_dir)
 		return to_dir
 	
 	def build(self, development=True, template_only=False):
