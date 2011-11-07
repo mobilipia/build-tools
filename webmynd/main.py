@@ -219,7 +219,7 @@ def development_build():
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
-		templates_dir = manager.fetch_templates(build_id)
+		templates_dir = manager.fetch_templates(build_id, clean=args.full)
 		
 		# have templates - now fetch injection instructions
 		remote.fetch_generate_instructions(build_id, instructions_dir)

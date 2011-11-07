@@ -81,3 +81,17 @@ class TestFetchTemplates(object):
 		res = self.manager.fetch_templates(-1)
 			
 		eq_(res, 'template directory')
+	
+	@mock.patch('webmynd.templates.shutil')
+	@mock.patch('webmynd.templates.Remote')
+	def test_clean_templates_first(self, Remote, shutil):
+		self.manager.templates_for_config = mock.Mock(return_value='template directory')
+		self.manager._hash_file = mock.Mock(return_value='hashed file')
+		remote = Remote.return_value
+		mock_open = mock.MagicMock()
+		manager = mock_open.return_value.__enter__.return_value
+		
+		with mock.patch('__builtin__.open', new=mock_open):
+			res = self.manager.fetch_templates(-1, clean=True)
+		
+		shutil.rmtree.assert_called_once_with('templates', ignore_errors=True)

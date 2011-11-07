@@ -57,15 +57,16 @@ class Manager(object):
 		else:
 			return None
 		
-	def fetch_templates(self, build_id):
+	def fetch_templates(self, build_id, clean=False):
 		'''Retrieve remote template files for a specified build, and the config to match.
 		
 		:param build_id: the primary key of the build
+		:param clean: should we remove any existing templates first?
 		'''
 		remote = Remote(self._config)
 
 		template_dir = self.templates_for_config(defaults.APP_CONFIG_FILE)
-		if template_dir:
+		if template_dir and not clean:
 			LOG.info('already have templates for current App configuration')
 			return template_dir
 
