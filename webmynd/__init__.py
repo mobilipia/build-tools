@@ -2,7 +2,7 @@
 import sys
 from os import path
 
-VERSION = '2.0.0'
+VERSION = '2.0.1'
 
 def _check_version():
 	'''Throw error if we're on Python < 2.6'''
