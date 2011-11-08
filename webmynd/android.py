@@ -179,8 +179,7 @@ def _run_shell(args):
 	proc = Popen(args, stdout=PIPE, stderr=STDOUT)
 	proc_std = proc.communicate()[0]
 	if proc.returncode != 0:
-		LOG.error('failed: %s' % (proc_std))
-		raise ForgeError
+		raise ForgeError('failed: %s' % (proc_std))
 	LOG.debug('Output:\n'+proc_std)
 	return proc_std
 
@@ -223,8 +222,7 @@ def _create_avd(path_info):
 	time.sleep(0.1)
 	proc_std = proc.communicate(input='\n')[0]
 	if proc.returncode != 0:
-		LOG.error('failed: %s' % (proc_std))
-		raise ForgeError
+		raise ForgeError('failed: %s' % (proc_std))
 	LOG.debug('Output:\n'+proc_std)
 
 def _launch_avd(path_info):
@@ -375,14 +373,12 @@ def run_android(build_type_dir, sdk, device):
 		except Exception as e:
 			LOG.error("problem finding the android debug bridge at: %s" % path_info.adb)
 			# XXX: prompt to run the sdk manager, then retry?
-			LOG.error("this probably means you need to run the android SDK manager and download the android platform-tools.")
-			raise ForgeError
+			raise ForgeError("this probably means you need to run the android SDK manager and download the android platform-tools.")
 	
 		proc_std = proc.communicate()[0]
 		if proc.returncode != 0:
-			LOG.error('Communication with adb failed: %s' % (proc_std))
-			raise ForgeError
-
+			raise ForgeError('Communication with adb failed: %s' % (proc_std))
+	
 		available_devices = _scrape_available_devices(proc_std)
 
 		if not available_devices:
@@ -395,10 +391,11 @@ def run_android(build_type_dir, sdk, device):
 				chosen_device = device
 				LOG.info('Using specified android device %s' % chosen_device)
 			else:
-				LOG.error('No such device "%s"' % device)
-				LOG.error('The available devices are:')
-				LOG.error("\n".join(available_devices))
-				raise ForgeError
+				message = """No such device "{chosen}"
+The available devices are:
+{available}""".format(chosen=device, available="\n".join(available_devices))
+
+				raise ForgeError(message)
 		else:
 			chosen_device = available_devices[0]
 			LOG.info('No android device specified, defaulting to %s' % chosen_device)
