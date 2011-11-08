@@ -221,6 +221,10 @@ class Remote(object):
 		LOG.info('authentication successful')
 		self._authenticated = True
 
+	def list_apps(self):
+		self._authenticate()
+		return self._api_get('app/')
+
 	def create(self, name):
 		self._authenticate()
 	
