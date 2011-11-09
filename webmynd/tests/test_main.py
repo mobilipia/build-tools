@@ -88,6 +88,7 @@ class TestRun(object):
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
 		args.platform = 'chrome'
+		args.production = False
 		parser.parse_args.return_value = args
 
 		main.run()
@@ -104,6 +105,7 @@ class TestRun(object):
 		args.platform = 'android'
 		args.device = 'device'
 		args.sdk = 'sdk'
+		args.production = False
 		parser.parse_args.return_value = args
 
 		values = ['jdk', 'sdk']
@@ -113,8 +115,43 @@ class TestRun(object):
 		main.run()
 		
 		parser.parse_args.assert_called_once()
-		run_android.assert_called_once_with('sdk', 'device')
-
+		run_android.assert_called_once_with('development', 'sdk', 'device')
+	
+	@mock.patch('webmynd.main.run_android')
+	@mock.patch('webmynd.main.argparse')
+	@mock.patch('webmynd.main._assert_have_target_folder')
+	def test_prod_android(self, _assert_have_development_folder, argparse, run_android):
+		main._assert_have_production_folder = mock.Mock()
+		parser = argparse.ArgumentParser.return_value
+		args = mock.Mock()
+		args.platform = 'android'
+		args.device = 'device'
+		args.sdk = 'sdk'
+		args.production = True
+		parser.parse_args.return_value = args
+		
+		main.run()
+		
+		run_android.assert_called_once_with('production', 'sdk', "device")
+	
+	@mock.patch('webmynd.main.build_config')
+	@mock.patch('webmynd.main.IOSRunner')
+	@mock.patch('webmynd.main.argparse')
+	@mock.patch('webmynd.main._assert_have_target_folder')
+	def test_prod_ios(self, _assert_have_development_folder, argparse, IOSRunner, build_config):
+		main._assert_have_production_folder = mock.Mock()
+		parser = argparse.ArgumentParser.return_value
+		args = mock.Mock()
+		args.platform = 'ios'
+		args.production = True
+		parser.parse_args.return_value = args
+		build_config.load_app.return_value = {"name": "dummy name"}
+		
+		main.run()
+		
+		IOSRunner.assert_called_once_with('production')
+		IOSRunner.return_value.run_iphone_simulator_with.assert_called_once_with("dummy name")
+		
 class Test_AssertNotSubdirectoryOfForgeRoot(object):
 	@mock.patch('webmynd.main.os.getcwd')
 	@raises(main.RunningInForgeRoot)
@@ -218,6 +255,8 @@ class TestBuild(object):
 	@mock.patch('webmynd.main.argparse')
 	def test_dev_conf_change(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
+		args = parser.parse_args.return_value
+		args.full = False
 		Manager.return_value.templates_for_config.return_value = None
 		Remote.return_value.build.return_value = -1
 		isdir.return_value = True
@@ -228,7 +267,7 @@ class TestBuild(object):
 		self._check_dev_setup(parser, Manager, Remote, Generate)
 		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
-		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value)
+		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value, clean=False)
 		
 		eq_(shutil.rmtree.call_args_list, [
 			(('development',), {'ignore_errors': True}),

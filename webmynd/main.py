@@ -98,10 +98,9 @@ def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	setup_logging(args)
 
-def _assert_have_target_folder(target):
-	if not os.path.isdir(path.join('development', target)):
+def _assert_have_target_folder(directory, target):
+	if not os.path.isdir(path.join(directory, target)):
 		raise ForgeError("Can't run build for '%s', because you haven't built it!" % target) 
-
 
 def _assert_have_development_folder():
 	if not os.path.exists('development'):
@@ -127,37 +126,40 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	parser = argparse.ArgumentParser(prog='wm-run', description='Run a built dev app on a particular platform')
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
+	parser.add_argument('-p', '--production', help="Run a production build, rather than a development build", action='store_true')
 	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox'])
 	add_general_options(parser)
 	args = parser.parse_args()
 	handle_general_options(args)
-
-	_assert_have_target_folder(args.platform)
-	if args.platform == 'android':
+	
+	if args.production:
+		build_type_dir = 'production'
+		_assert_have_production_folder()
+	else:
+		build_type_dir = 'development'
 		_assert_have_development_folder()
-
+	_assert_have_target_folder(build_type_dir, args.platform)
+	
+	if args.platform == 'android':
 		try:
-			run_android(args.sdk, args.device)
+			run_android(build_type_dir, args.sdk, args.device)
 		except CouldNotLocate as e:
 			LOG.error(e)
 	elif args.platform == 'ios':
-		_assert_have_development_folder()
-
 		config = build_config.load_app()
-		runner = IOSRunner()
+		runner = IOSRunner(build_type_dir)
 		runner.run_iphone_simulator_with(config['name'])
 	elif args.platform == 'firefox':
-		shutil.move(os.path.join('development', 'firefox', 'harness-options.json'),
-			os.path.join('development', 'firefox', 'harness-options-bak.json'))
+		original_harness_options = os.path.join(build_type_dir, 'firefox', 'harness-options.json')
+		backup_harness_options = os.path.join(build_type_dir, 'firefox', 'harness-options-bak.json')
+		shutil.move(original_harness_options, backup_harness_options)
 		try:
-			with codecs.open(os.path.join('development', 'firefox', 'harness-options-bak.json'), encoding='utf8') as harness_file:
+			with codecs.open(backup_harness_options, encoding='utf8') as harness_file:
 				harness_config = json.load(harness_file)
 			from cuddlefish.runner import run_app
-			run_app(os.path.join('development', 'firefox'), harness_config, "firefox", verbose=True)
+			run_app(os.path.join(build_type_dir, 'firefox'), harness_config, "firefox", verbose=True)
 		finally:
-			shutil.move(os.path.join('development', 'firefox', 'harness-options-bak.json'),
-				os.path.join('development', 'firefox', 'harness-options.json'))
-			
+			shutil.move(backup_harness_options, original_harness_options)
 
 def create():
 	'Create a new development environment'

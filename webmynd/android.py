@@ -316,7 +316,7 @@ def _follow_log(sdk, chosen_device, package_name):
 	proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
 	proc.wait()
 
-def run_android(sdk, device):
+def run_android(build_type_dir, sdk, device):
 	sdk = _check_for_sdk(sdk)
 	jre = ""
 
@@ -342,7 +342,7 @@ def run_android(sdk, device):
 	try:
 		LOG.info('Looking for Android device')
 		orig_dir = os.getcwd()
-		os.chdir(path.join('development', 'android'))
+		os.chdir(path.join(build_type_dir, 'android'))
 		
 		run_background([path_info.adb, 'start-server'])
 		time.sleep(1)
