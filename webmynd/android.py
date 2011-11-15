@@ -373,7 +373,7 @@ No active Android device found, would you like to:
 Please enter 1 or 2: ''')
 			if not prompt == "1":
 				os.chdir(orig_dir)
-				return run_android(sdk, device)
+				return run_android(build_type_dir, sdk, device)
 			
 			# Create avd
 			if path.isdir(path.join(sdk, 'forge-avd')):
@@ -384,7 +384,7 @@ Please enter 1 or 2: ''')
 			# Launch
 			_launch_avd(path_info)
 			os.chdir(orig_dir)
-			return run_android(sdk, device)
+			return run_android(build_type_dir, sdk, device)
 	
 		if device:
 			if device in available_devices:
