@@ -316,6 +316,29 @@ def _follow_log(sdk, chosen_device, package_name):
 	proc = Popen(args, stdout=sys.stdout, stderr=sys.stderr)
 	proc.wait()
 
+def _prompt_user_to_attach_android_device(path_info):
+	# Prompt to automatically (create and) run an AVD
+	prompt = raw_input('''
+No active Android device found, would you like to:
+
+(1) Attempt to automatically launch the Android emulator
+(2) Attempt to find the device again (choose this option after plugging in an Android device or launching the emulator).
+
+Please enter 1 or 2: ''')
+
+	if not prompt == "1":
+		return
+
+	# Create avd
+	if path.isdir(path.join(path_info.sdk, 'forge-avd')):
+		LOG.info('Existing AVD found')
+	else:
+		_create_avd(path_info)
+
+	# Launch
+	_launch_avd(path_info)
+
+
 def run_android(build_type_dir, sdk, device):
 	sdk = _check_for_sdk(sdk)
 	jre = ""
@@ -346,7 +369,7 @@ def run_android(build_type_dir, sdk, device):
 		
 		run_background([path_info.adb, 'start-server'])
 		time.sleep(1)
-		
+
 		try:
 			proc = Popen([path_info.adb, 'devices'], stdout=PIPE)
 		except Exception as e:
@@ -359,33 +382,14 @@ def run_android(build_type_dir, sdk, device):
 		if proc.returncode != 0:
 			LOG.error('Communication with adb failed: %s' % (proc_std))
 			raise ForgeError
-	
+
 		available_devices = _scrape_available_devices(proc_std)
-	
+
 		if not available_devices:
-			# Prompt to automatically (create and) run an AVD
-			prompt = raw_input('''
-No active Android device found, would you like to:
-
-(1) Attempt to automatically launch the Android emulator
-(2) Attempt to find the device again (choose this option after plugging in an Android device or launching the emulator).
-
-Please enter 1 or 2: ''')
-			if not prompt == "1":
-				os.chdir(orig_dir)
-				return run_android(build_type_dir, sdk, device)
-			
-			# Create avd
-			if path.isdir(path.join(sdk, 'forge-avd')):
-				LOG.info('Existing AVD found')
-			else:
-				_create_avd(path_info)
-	
-			# Launch
-			_launch_avd(path_info)
+			_prompt_user_to_attach_android_device(path_info)
 			os.chdir(orig_dir)
 			return run_android(build_type_dir, sdk, device)
-	
+
 		if device:
 			if device in available_devices:
 				chosen_device = device
