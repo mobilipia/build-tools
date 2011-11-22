@@ -240,8 +240,14 @@ class TestBuild(object):
 		
 		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		eq_(shutil.rmtree.call_args_list, [
-			(('development',), {'ignore_errors': True}),
-			(('development/generate_dynamic',), {'ignore_errors': True})
+			(
+				('development',),
+				{'ignore_errors': True}
+			),
+			(
+				(path.join('development', 'generate_dynamic'),),
+				{'ignore_errors': True}
+			)
 		])
 		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value, 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
@@ -270,8 +276,14 @@ class TestBuild(object):
 		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value, clean=False)
 		
 		eq_(shutil.rmtree.call_args_list, [
-			(('development',), {'ignore_errors': True}),
-			(('development/generate_dynamic',), {'ignore_errors': True})
+			(
+				('development',),
+				{'ignore_errors': True}
+			),
+			(
+				(path.join('development', 'generate_dynamic'),),
+				{'ignore_errors': True}
+			)
 		])
 		shutil.copytree.assert_called_once_with(Manager.return_value.fetch_templates.return_value, 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
