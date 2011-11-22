@@ -79,3 +79,14 @@ def open_file(*args, **kw):
 	'Simple wrapper around __builtins__.open for easier testing/mocking'
 	with open(*args, **kw) as out:
 		yield out
+
+def extract_zipfile(zip):
+	'''Extracts all the contents of a zipfile.
+
+	Use this instead of zipfile.extractall which is broken for very early python 2.6
+	'''
+	for f in sorted(zip.namelist()):
+		if f.endswith('/'):
+			os.makedirs(f)
+		else:
+			zip.extract(f)

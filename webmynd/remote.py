@@ -305,7 +305,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 
 		zipf = zipfile.ZipFile(filename)
 		# XXX: shouldn't do the renaming here - need to fix the server to serve up the correct structure
-		zipf.extractall()
+		lib.extract_zipfile(zipf)
 		shutil.move('user', defaults.SRC_DIR)
 		zipf.close()
 		LOG.debug('extracted initial project template')
@@ -323,7 +323,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		except OSError:
 			LOG.debug("'unzip' not available, falling back on python ZipFile, this will strip certain permissions from files")
 			zip_to_extract = zipfile.ZipFile(filename)
-			zip_to_extract.extractall()
+			lib.extract_zipfile(zip_to_extract)
 			zip_to_extract.close()
 		else:
 			LOG.debug("unzip is available, using it")
@@ -410,7 +410,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			with lib.open_file(temp_instructions_file, mode='wb') as out_tar:
 				out_tar.write(resp.content)
 			archive = zipfile.ZipFile(temp_instructions_file, mode='r')
-			archive.extractall()
+			lib.extract_zipfile(archive)
 		finally:
 			if archive is not None:
 				try:
