@@ -115,7 +115,8 @@ class TestFetchInitial(TestRemote):
 	@patch('webmynd.remote.zipfile')
 	@patch('webmynd.remote.os')
 	@patch('webmynd.remote.shutil')
-	def test_normal(self, shutil, os, zipf):
+	@patch('webmynd.remote.lib.extract_zipfile')
+	def test_normal(self, extract_zipfile, shutil, os, zipf):
 		self.remote._authenticate = Mock()
 		mock_open = mock.MagicMock()
 		manager = mock_open.return_value.__enter__.return_value
@@ -130,8 +131,10 @@ class TestFetchInitial(TestRemote):
 		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/app/TEST-UUID/initial_files')
 		mock_open.assert_called_once_with('initial.zip', 'wb')
 		manager.write.assert_called_once_with('zipfile contents')
+
 		zipf.ZipFile.assert_called_once_with('initial.zip')
-		zipf.ZipFile.return_value.extractall.assert_called_once_with()
+		extract_zipfile.assert_called_once_with(zipf.ZipFile.return_value)
+
 		os.remove.assert_called_once_with('initial.zip')
 
 class TestFetchPackaged(TestRemote):
@@ -164,7 +167,8 @@ class TestUnzipWithPermissions(TestRemote):
 
 	@patch('webmynd.remote.subprocess.Popen')
 	@patch('webmynd.remote.zipfile.ZipFile')
-	def test_when_system_doesnt_have_unzip_should_use_zipfile(self, ZipFile, Popen):
+	@patch('webmynd.remote.lib.extract_zipfile')
+	def test_when_system_doesnt_have_unzip_should_use_zipfile(self, extract_zipfile, ZipFile, Popen):
 		Popen.side_effect = OSError("cant find unzip")
 		zip_object = mock.Mock()
 		ZipFile.return_value = zip_object
@@ -173,7 +177,7 @@ class TestUnzipWithPermissions(TestRemote):
 
 		eq_(Popen.call_count, 1)
 		ZipFile.assert_called_once_with('dummy archive.zip')
-		zip_object.extractall.assert_called_once_with()
+		extract_zipfile.assert_called_once_with(zip_object)
 		zip_object.close.assert_called_once_with()
 
 class TestFetchUnpackaged(TestRemote):
@@ -351,7 +355,8 @@ class TestGenerateInstructions(TestRemote):
 		
 	@patch('webmynd.remote.zipfile')
 	@patch('webmynd.remote.os')
-	def test_normal(self, os, zipfile):
+	@patch('webmynd.remote.lib.extract_zipfile')
+	def test_normal(self, extract_zipfile, os, zipfile):
 		self.remote._authenticate = Mock()
 		self.remote._get = Mock()
 		self.remote._get.return_value.content = 'zip file contents'
@@ -364,4 +369,4 @@ class TestGenerateInstructions(TestRemote):
 		mock_open.assert_called_once_with('instructions.zip', mode='wb')
 		zipfile.ZipFile.assert_called_once_with('instructions.zip', mode='r')
 		eq_(os.chdir.call_args_list[0][0][0], 'my/path')
-		zipfile.ZipFile.return_value.extractall.assert_called_once_with()
+		extract_zipfile.assert_called_once_with(zipfile.ZipFile.return_value)
