@@ -258,11 +258,11 @@ class Remote(object):
 			for platform in available_platforms:
 				filename = urlsplit(locations[platform]).path.split('/')[-1]
 
-				resp = self._get(locations[platform])
-
-				with lib.open_file(filename, 'wb') as out_file:
-					LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
-					out_file.write(resp.content)
+				LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
+				self._get_file(
+					locations[platform],
+					write_to_path=filename
+				)
 
 				post_get_fn(platform, filename)
 
