@@ -205,8 +205,6 @@ def development_build():
 	
 	config = build_config.load()
 	remote = Remote(config)
-	remote.check_version()
-
 	manager = Manager(config)
 
 	instructions_dir = defaults.INSTRUCTIONS_DIR
@@ -218,6 +216,9 @@ def development_build():
 			LOG.info('forcing rebuild of templates')
 		else:
 			LOG.info('configuration has changed: creating new templates')
+
+		remote.check_version()
+
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
