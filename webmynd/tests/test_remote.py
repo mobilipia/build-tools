@@ -112,29 +112,22 @@ class TestCreate(TestRemote):
 		eq_(result, 'SERVER-TEST-UUID')
 
 class TestFetchInitial(TestRemote):
-	@patch('webmynd.remote.zipfile')
 	@patch('webmynd.remote.os')
 	@patch('webmynd.remote.shutil')
-	@patch('webmynd.remote.lib.extract_zipfile')
-	def test_normal(self, extract_zipfile, shutil, os, zipf):
+	@patch('webmynd.remote.lib.unzip_with_permissions')
+	def test_normal(self, unzip_with_permissions, shutil, os):
 		self.remote._authenticate = Mock()
-		mock_open = mock.MagicMock()
-		manager = mock_open.return_value.__enter__.return_value
-		get_resp = Mock()
-		get_resp.content = 'zipfile contents'
-		self.remote._get = Mock(return_value=get_resp)
-		
-		with mock.patch('webmynd.lib.open_file', new=mock_open):
-			result = self.remote.fetch_initial('TEST-UUID')
-			
+		self.remote._get_file = mock.Mock()
+
+		self.remote.fetch_initial('TEST-UUID')
+
+		self.remote._get_file.assert_called_once_with(
+			'https://test.webmynd.com/api/app/TEST-UUID/initial_files',
+			write_to_path='initial.zip'
+		)
+
 		shutil.move.assert_called_once_with('user', 'src')
-		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/app/TEST-UUID/initial_files')
-		mock_open.assert_called_once_with('initial.zip', 'wb')
-		manager.write.assert_called_once_with('zipfile contents')
-
-		zipf.ZipFile.assert_called_once_with('initial.zip')
-		extract_zipfile.assert_called_once_with(zipf.ZipFile.return_value)
-
+		unzip_with_permissions.assert_called_once_with('initial.zip')
 		os.remove.assert_called_once_with('initial.zip')
 
 class TestFetchPackaged(TestRemote):
@@ -156,62 +149,50 @@ class Test_HandlePackaged(TestRemote):
 	def test_normal(self):
 		self.remote._handle_packaged('platform', 'filename')
 
-class TestUnzipWithPermissions(TestRemote):
-
-	@patch('webmynd.remote.subprocess.Popen')
-	def test_when_system_has_unzip_should_call_unzip(self, Popen):
-		Popen.return_value.communicate.return_value = ('stdout', 'stderr')
-		self.remote._unzip_with_permissions('dummy archive.zip')
-		Popen.assert_called_with(["unzip", "dummy archive.zip"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-		eq_(Popen.call_count, 2)
-
-	@patch('webmynd.remote.subprocess.Popen')
-	@patch('webmynd.remote.zipfile.ZipFile')
-	@patch('webmynd.remote.lib.extract_zipfile')
-	def test_when_system_doesnt_have_unzip_should_use_zipfile(self, extract_zipfile, ZipFile, Popen):
-		Popen.side_effect = OSError("cant find unzip")
-		zip_object = mock.Mock()
-		ZipFile.return_value = zip_object
-
-		self.remote._unzip_with_permissions('dummy archive.zip')
-
-		eq_(Popen.call_count, 1)
-		ZipFile.assert_called_once_with('dummy archive.zip')
-		extract_zipfile.assert_called_once_with(zip_object)
-		zip_object.close.assert_called_once_with()
-
 class TestFetchUnpackaged(TestRemote):
+
 	# TODO refactor tests to go after _fetch_output directly
-	@patch('webmynd.remote.subprocess.call')
-	@patch('webmynd.remote.zipfile')
-	@patch('webmynd.remote.path')
-	@patch('webmynd.remote.os')
-	def test_fetch_unpackaged(self, os, path, zipf, call):
-		call.side_effect = OSError("cant find unzip")
-		output_dir = 'output dir'
-		path.abspath.side_effect = lambda x: '/absolute/path/'+x
-		path.isdir.return_value = False
+	@patch('webmynd.remote.path.isdir', new=mock.Mock(return_value=False))
+	@patch('webmynd.remote.path.abspath', new=mock.Mock(side_effect=lambda x: '/absolute/path/'+x))
+
+	@patch('webmynd.remote.os.remove')
+	@patch('webmynd.remote.os.mkdir')
+	@patch('webmynd.remote.lib.unzip_with_permissions')
+	def test_fetch_unpackaged(self, unzip_with_permissions, mkdir, remove):
+		cd = mock.MagicMock()
 		self.remote._authenticate = Mock()
-		self.remote._api_get = Mock(return_value={'unpackaged':{'chrome': '/path/chrome url', 'firefox': '/path/firefox url'}, 'log_output': '1\n2'})
-		get_resp = Mock()
-		get_resp.content = 'dummy get content'
-		self.remote._get = Mock(return_value=get_resp)
-		self.remote._unzip_with_permissions = Mock()
-		mock_open = mock.MagicMock()
-		manager = mock_open.return_value.__enter__.return_value
-		cd = MagicMock()
-		
+		self.remote._get_file = mock.Mock()
+
+		self.remote._api_get = Mock(
+			return_value={
+				'unpackaged': {
+					'chrome': '/path/chrome url',
+					'firefox': '/path/firefox url'
+				},
+				'log_output': '1\n2'
+			}
+		)
+
+		output_dir = 'output dir'
+
 		with patch('webmynd.remote.lib.cd', new=cd):
-			with mock.patch('webmynd.lib.open_file', new=mock_open):
-				resp = self.remote.fetch_unpackaged(-1, output_dir)
-		
+			# what does -1 signify here?
+			resp = self.remote.fetch_unpackaged(-1, output_dir)
+
 		self.remote._authenticate.assert_called_once_with()
-		os.mkdir.assert_called_once_with(output_dir)
+		mkdir.assert_called_once_with(output_dir)
 		cd.assert_called_once_with(output_dir)
-		self.remote._unzip_with_permissions.call_args_list = [
+
+		#eq_(self._get_file.call_args_list, [
+		#
+		#])
+
+		eq_(unzip_with_permissions.call_args_list, [
 			(("chrome url", ), {}),
 			(("firefox url", ), {}),
-		]
+		])
+
+		# remove called?
 
 		ok_(resp[0].endswith('chrome'))
 		ok_(resp[1].endswith('firefox'))
@@ -263,9 +244,10 @@ class TestBuild(TestRemote):
 		mock_path.isfile.return_value = True
 		mock_path.isdir.return_value = True
 		
-		with patch('__builtin__.open', new=mock_open):
+		with patch('webmynd.remote.lib.open_file', new=mock_open):
 			resp = self.remote.build(template_only=True)
-			
+
+		# what does -1 signify here?
 		eq_(resp, -1)
 		self.remote._api_post.assert_called_once_with(
 			'app/TEST-UUID/template/development',
@@ -278,7 +260,8 @@ class TestBuild(TestRemote):
 	@patch('webmynd.remote.path')
 	@patch('webmynd.remote.os')
 	@patch('webmynd.remote.tarfile')
-	def test_user_dir(self, tarfile, os, path):
+	@patch('webmynd.remote.lib.human_readable_file_size')
+	def test_user_dir(self, filesize, tarfile, os, path):
 		mock_open = MagicMock()
 		mock_open.return_value.__enter__.return_value = 'opened file'
 		path.isfile.return_value = False
@@ -288,7 +271,7 @@ class TestBuild(TestRemote):
 		os.listdir.return_value = ['file.txt']
 
 		with patch('webmynd.remote.lib.cd', new=cd):
-			with patch('__builtin__.open', new=mock_open):
+			with patch('webmynd.remote.lib.open_file', new=mock_open):
 				resp = self.remote.build()
 			
 		tmp_file = mock_open.call_args_list[0][0][0]
@@ -299,7 +282,7 @@ class TestBuild(TestRemote):
 		tarfile.open.return_value.add.assert_called_once_with('file.txt')
 		eq_(len(mock_open.call_args_list), 1)
 		os.remove.assert_called_once_with(tmp_file)
-	
+		
 	@patch('webmynd.remote.path')
 	def test_fail(self, path):
 		path.isfile.return_value = False
@@ -350,9 +333,8 @@ class TestGenerateInstructions(TestRemote):
 		self.remote._authenticate = Mock()
 		requests.get.return_value.ok = False
 		requests.get.return_value.status_code = 404
-		
 		self.remote.fetch_generate_instructions(1, 'my/path')
-		
+
 	@patch('webmynd.remote.zipfile')
 	@patch('webmynd.remote.os')
 	@patch('webmynd.remote.lib.extract_zipfile')
