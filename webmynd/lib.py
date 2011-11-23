@@ -85,6 +85,12 @@ def open_file(*args, **kw):
 	with open(*args, **kw) as out:
 		yield out
 
+def human_readable_file_size(file):
+	'Takes a python file object and gives back a human readable file size'
+	size = os.fstat(file.fileno()).st_size
+	return format_size_in_bytes(size)
+
+
 def extract_zipfile(zip):
 	'''Extracts all the contents of a zipfile.
 
@@ -95,6 +101,12 @@ def extract_zipfile(zip):
 			os.makedirs(f)
 		else:
 			zip.extract(f)
+
+def format_size_in_bytes(size_in_bytes):
+	for x in ['bytes','KB','MB','GB','TB']:
+		if size_in_bytes < 1024.0:
+			return "%3.1f%s" % (size_in_bytes, x)
+		size_in_bytes /= 1024.0
 
 def unzip_with_permissions(filename):
 	'''Helper function which attempts to use the 'unzip' program if it's installed on the system.
