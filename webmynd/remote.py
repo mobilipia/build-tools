@@ -287,7 +287,22 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 """)
 		else:
 			LOG.info('Upgrade check failed.')
-		
+
+	def _get_file(self, url, write_to_path):
+		response = self._get(url)
+		content_length = response.headers.get('Content-length')
+
+		if content_length:
+			message = 'Fetching ({content_length}) into {out_file}'.format(
+				content_length=content_length,
+				out_file=write_to_path
+			)
+			LOG.debug(message)
+
+		with open(write_to_path, 'wb') as write_to_file:
+			# TODO: upgrade requests, use Response.iter_content
+			write_to_file.write(response.content)
+
 	def fetch_initial(self, uuid):
 		'''Retrieves the initial project template
 		
@@ -295,14 +310,13 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		'''
 		LOG.info('Fetching initial project template')
 		self._authenticate()
-		
-		resp = self._get(urljoin(self.server, 'app/{uuid}/initial_files'.format(uuid=uuid)))
 
 		initial_zip_filename = 'initial.zip'
-		filename = 'initial.zip'
-		with lib.open_file(filename, 'wb') as out_file:
-			LOG.debug('writing %s' % path.abspath(filename))
-			out_file.write(resp.content)
+
+		self._get_file(
+			urljoin(self.server, 'app/{uuid}/initial_files'.format(uuid=uuid)),
+			write_to_path=initial_zip_filename
+		)
 		lib.unzip_with_permissions(initial_zip_filename)
 		LOG.debug('Extracted initial project template')
 
