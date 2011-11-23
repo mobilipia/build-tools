@@ -293,25 +293,26 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		
 		:param uuid: project uuid
 		'''
-		LOG.info('fetching initial project template')
+		LOG.info('Fetching initial project template')
 		self._authenticate()
 		
 		resp = self._get(urljoin(self.server, 'app/{uuid}/initial_files'.format(uuid=uuid)))
 
+		initial_zip_filename = 'initial.zip'
 		filename = 'initial.zip'
 		with lib.open_file(filename, 'wb') as out_file:
 			LOG.debug('writing %s' % path.abspath(filename))
 			out_file.write(resp.content)
+		lib.unzip_with_permissions(initial_zip_filename)
+		LOG.debug('Extracted initial project template')
 
-		zipf = zipfile.ZipFile(filename)
-		# XXX: shouldn't do the renaming here - need to fix the server to serve up the correct structure
-		lib.extract_zipfile(zipf)
+		# XXX: shouldn't do the renaming here
+		# need to fix the server to serve up the correct structure
 		shutil.move('user', defaults.SRC_DIR)
-		zipf.close()
-		LOG.debug('extracted initial project template')
-		os.remove(filename)
-		LOG.debug('removed downloaded file "%s"' % filename)
-		
+
+		os.remove(initial_zip_filename)
+		LOG.debug('Removed downloaded file "%s"' % initial_zip_filename)
+
 	def _handle_packaged(self, platform, filename):
 		'No-op'
 		pass
