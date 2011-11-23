@@ -420,7 +420,82 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 				os.remove(temp_instructions_file)
 			os.chdir(orig_dir)
 		return to_dir
-	
+
+	def _request_build(self, development, template_only, data=None, files=None):
+		if data is None:
+			data = {}
+
+		# TODO can we just use self.config here?
+		if path.isfile(defaults.APP_CONFIG_FILE):
+			with lib.open_file(defaults.APP_CONFIG_FILE) as app_config:
+				data['config'] = app_config.read()
+
+		url = 'app/%s/%s/%s' % (
+			self.config.get('uuid'),
+			'template' if template_only else 'build',
+			'development' if development else ''
+		)
+		return self._api_post(url, data=data, files=files)
+
+	def _request_development_build(self):
+		return self._request_build(
+			development=True,
+			template_only=True,
+		)
+
+	def _create_src_tar(self, archive_filename, directory_to_archive):
+		# TODO skip over files specified by some .forgeignore file
+		src_archive = tarfile.open(archive_filename, mode='w:bz2')
+
+		with lib.cd(directory_to_archive):
+			for user_file in os.listdir('.'):
+				src_archive.add(user_file)
+				LOG.debug('added "%s" to user archive' % user_file)
+
+		src_archive.close()
+		return src_archive
+
+	def _request_production_build(self):
+		src_dir = defaults.SRC_DIR
+		src_archive_filename = 'user.%s.tar.bz2' % time.time()
+
+		try:
+			src_archive = None
+			src_archive = self._create_src_tar(src_archive_filename, src_dir)
+
+			with lib.open_file(src_archive_filename, mode='rb') as user_files:
+				LOG.info('Uploading application source code ({size})...'.format(
+					size=lib.human_readable_file_size(user_files)
+				))
+
+				return self._request_build(
+					development=False,
+					template_only=False,
+					files={'user.tar.bz2': user_files}
+				)
+		finally:
+			try:
+				os.remove(src_archive_filename)
+			except OSError:
+				# wasn't created
+				pass
+
+	def _poll_until_build_complete(self, build_id):
+		build = self._api_get('build/{id}/detail/'.format(id=build_id))
+
+		while build['state'] in ('pending', 'working'):
+			LOG.debug('build {id} is {state}...'.format(id=build_id, state=build['state']))
+			time.sleep(self.POLL_DELAY)
+			build = self._api_get('build/{id}/detail/'.format(id=build_id))
+
+		if build['state'] in ('complete',):
+			LOG.info('build completed successfully')
+			LOG.debug(build['log_output'])
+			return
+
+		else:
+			raise ForgeError('build failed: %s' % build['log_output'])
+
 	def build(self, development=True, template_only=False):
 		'''Start a build on the remote server.
 		
@@ -434,64 +509,22 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		:return: the primary key of the build
 		:raises Exception: if any errors occur during the build
 		'''
-		LOG.info('starting new build')
+		LOG.info('Starting new build')
 		self._authenticate()
-		
-		data = {}
-		if path.isfile(defaults.APP_CONFIG_FILE):
-			with lib.open_file(defaults.APP_CONFIG_FILE) as app_config:
-				data['config'] = app_config.read()
-				pass
 
-		def build_request(files=None):
-			'build the URL to start a build, then POST it'
-			url = 'app/%s/%s/%s' % (
-				self.config.get('uuid'),
-				'template' if template_only else 'build',
-				'development' if development else ''
-			)
-			return self._api_post(url, data=data, files=files)
-			
-		user_dir = defaults.SRC_DIR
-		if not path.isdir(user_dir):
-			raise ForgeError("no {0} directory found: are you currently in the right directory?".format(user_dir))
+		src_dir = defaults.SRC_DIR
+
+		if not path.isdir(src_dir):
+			raise ForgeError("No {0} directory found: are you currently in the right directory?".format(src_dir))
+
 		if template_only:
-			resp = build_request()
+			resp = self._request_development_build()
 		else:
-			# need to send up customer's code - compress it and add to request
-			filename, orig_dir = 'user.%s.tar.bz2' % time.time(), os.getcwd()
-			try:
-				user_comp = None
-				user_comp = tarfile.open(filename, mode='w:bz2')
-				with lib.cd(user_dir):
-					for user_file in os.listdir('.'):
-						user_comp.add(user_file)
-						LOG.debug('added "%s" to user archive' % user_file)
-				user_comp.close()
-		
-				with lib.open_file(filename, mode='rb') as user_files:
-					resp = build_request({'user.tar.bz2': user_files})
-			finally:
-				try:
-					os.remove(filename)
-				except OSError:
-					# wasn't created
-					pass
-		
+			resp = self._request_production_build()
+
 		build_id = resp['build_id']
-		LOG.info('build %s started...' % build_id)
-		
-		build = self._api_get('build/{id}/detail/'.format(id=build_id))
+		LOG.info('Build %s started...' % build_id)
+		LOG.info('This could take a while, but will only happen again if you modify config.json')
 
-		while build['state'] in ('pending', 'working'):
-			LOG.debug('build {id} is {state}...'.format(id=build_id, state=build['state']))
-			time.sleep(self.POLL_DELAY)
-			build = self._api_get('build/{id}/detail/'.format(id=build_id))
-
-		if build['state'] in ('complete',):
-			LOG.info('build completed successfully')
-			LOG.debug(build['log_output'])
-			return build_id
-
-		else:
-			raise ForgeError('build failed: %s' % build['log_output'])
+		self._poll_until_build_complete(build_id)
+		return build_id
