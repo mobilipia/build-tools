@@ -524,7 +524,11 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 
 		build_id = resp['build_id']
 		LOG.info('Build %s started...' % build_id)
-		LOG.info('This could take a while, but will only happen again if you modify config.json')
+
+		if development:
+			LOG.info('This could take a while, but will only happen again if you modify config.json')
+		else:
+			LOG.info('This could take a while, any production build requires a full build with the Forge service')
 
 		self._poll_until_build_complete(build_id)
 		return build_id
