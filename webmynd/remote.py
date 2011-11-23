@@ -393,32 +393,26 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		LOG.info("fetching generation instructions for build {build_id} into {to_dir}".format(**locals()))
 		
 		self._authenticate()
-		
-		resp = self._get(
-			urljoin(self.server, 'build/{build_id}/generate_instructions/'.format(build_id=build_id))
-		)
-		
-		orig_dir = os.getcwd()
-		archive = None
+
 		temp_instructions_file = 'instructions.zip'
+
 		try:
+			# ensure generate_dynamic dir is empty before extracting instructions into it
 			if path.isdir(to_dir):
 				shutil.rmtree(to_dir, ignore_errors=True)
 			os.makedirs(to_dir)
-			os.chdir(to_dir)
-			with lib.open_file(temp_instructions_file, mode='wb') as out_tar:
-				out_tar.write(resp.content)
-			archive = zipfile.ZipFile(temp_instructions_file, mode='r')
-			lib.extract_zipfile(archive)
+
+			with lib.cd(to_dir):
+				self._get_file(
+					urljoin(self.server, 'build/{build_id}/generate_instructions/'.format(build_id=build_id)),
+					temp_instructions_file
+				)
+				lib.unzip_with_permissions(temp_instructions_file)
+
 		finally:
-			if archive is not None:
-				try:
-					archive.close()
-				except Exception:
-					pass
-			if path.isfile(temp_instructions_file):
-				os.remove(temp_instructions_file)
-			os.chdir(orig_dir)
+			if path.isfile(path.join(to_dir, temp_instructions_file)):
+				os.remove(path.join(to_dir, temp_instructions_file))
+
 		return to_dir
 
 	def _request_build(self, development, template_only, data=None, files=None):
