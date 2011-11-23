@@ -1,9 +1,14 @@
 from contextlib import contextmanager
+import logging
+import subprocess
+import zipfile
 import os
 from os.path import join, isdir, islink
 from os import error, listdir
 import os
 import time
+
+LOG = logging.getLogger(__file__)
 
 # modified os.walk() function from Python 2.4 standard library
 def walk2(top, topdown=True, onerror=None, deeplevel=0): # fix 0
@@ -90,3 +95,24 @@ def extract_zipfile(zip):
 			os.makedirs(f)
 		else:
 			zip.extract(f)
+
+def unzip_with_permissions(filename):
+	'''Helper function which attempts to use the 'unzip' program if it's installed on the system.
+
+	This is because a ZipFile doesn't understand unix permissions (which aren't really in the zip spec),
+	and strips them when it has its contents extracted.
+	'''
+
+	try:
+		subprocess.Popen(["unzip"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		LOG.debug("'unzip' not available, falling back on python ZipFile, this will strip certain permissions from files")
+		zip_to_extract = zipfile.ZipFile(filename)
+		extract_zipfile(zip_to_extract)
+		zip_to_extract.close()
+	else:
+		LOG.debug("unzip is available, using it")
+		zip_process = subprocess.Popen(["unzip", filename], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		output = zip_process.communicate()[0]
+		LOG.debug("unzip output")
+		LOG.debug(output)
