@@ -82,14 +82,12 @@ def cd(target_dir):
 @contextmanager
 def open_file(*args, **kw):
 	'Simple wrapper around __builtins__.open for easier testing/mocking'
-	with open(*args, **kw) as out:
-		yield out
+	yield open(*args, **kw)
 
 def human_readable_file_size(file):
 	'Takes a python file object and gives back a human readable file size'
 	size = os.fstat(file.fileno()).st_size
 	return format_size_in_bytes(size)
-
 
 def extract_zipfile(zip):
 	'''Extracts all the contents of a zipfile.
