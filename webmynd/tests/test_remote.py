@@ -328,27 +328,36 @@ class Test_CheckVersion(TestRemote):
 
 class TestGenerateInstructions(TestRemote):
 	@raises(RequestError)
+	@patch('webmynd.remote.os')
+	@patch('webmynd.remote.shutil')
 	@patch('webmynd.remote.requests')
-	def test_not_found_build(self, requests):
+	def test_not_found_build(self, requests, shutil, os):
+		cd = mock.MagicMock()
 		self.remote._authenticate = Mock()
 		requests.get.return_value.ok = False
 		requests.get.return_value.status_code = 404
-		self.remote.fetch_generate_instructions(1, 'my/path')
 
-	@patch('webmynd.remote.zipfile')
-	@patch('webmynd.remote.os')
-	@patch('webmynd.remote.lib.extract_zipfile')
-	def test_normal(self, extract_zipfile, os, zipfile):
-		self.remote._authenticate = Mock()
-		self.remote._get = Mock()
-		self.remote._get.return_value.content = 'zip file contents'
-		mock_open = mock.MagicMock()
-		
-		with mock.patch('webmynd.lib.open_file', new=mock_open):
+		with mock.patch('webmynd.lib.cd', new=cd):
 			self.remote.fetch_generate_instructions(1, 'my/path')
+
+	@patch('webmynd.remote.os')
+	@patch('webmynd.remote.shutil')
+	@patch('webmynd.remote.lib.unzip_with_permissions')
+	def test_normal(self, unzip_with_permissions, shutil, os):
+		cd = mock.MagicMock()
+		self.remote._authenticate = Mock()
+		self.remote._get_file = mock.Mock()
+
+		with mock.patch('webmynd.lib.cd', new=cd):
+			self.remote.fetch_generate_instructions(
+				build_id=1,
+				to_dir='my/path'
+			)
 		
-		self.remote._get.assert_called_once_with('https://test.webmynd.com/api/build/1/generate_instructions/')
-		mock_open.assert_called_once_with('instructions.zip', mode='wb')
-		zipfile.ZipFile.assert_called_once_with('instructions.zip', mode='r')
-		eq_(os.chdir.call_args_list[0][0][0], 'my/path')
-		extract_zipfile.assert_called_once_with(zipfile.ZipFile.return_value)
+		self.remote._get_file.assert_called_once_with(
+			'https://test.webmynd.com/api/build/1/generate_instructions/',
+			'instructions.zip'
+		)
+
+		cd.assert_called_once_with('my/path')
+		unzip_with_permissions.assert_called_once_with('instructions.zip')
