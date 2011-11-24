@@ -9,6 +9,11 @@ install pyinstaller
 install pywin32 library
 C:\Python27\python C:\path\to\pyinstaller.py forge.spec
 
+PyInstaller
+===========
+
+api docs for writing spec files: http://www.pyinstaller.org/export/latest/trunk/doc/Manual.html#spec-files
+
 """
 
 # TODO: should we be using pyinstaller straight from svn or the official release?
@@ -43,15 +48,36 @@ a = Analysis([
 pyz = PYZ(
 	# a.pure refers to the pure python dependencies identified by the above
 	# dependency Analysis.
-	a.pure
+	a.pure,
 )
+
+def _toc(*args, **kwargs):
+	entry_type = kwargs.get('type', 'DATA')
+
+	entries = []
+	for path in args:
+		full_path = os.path.abspath(path)
+		entries.append(
+			(path, full_path, entry_type)
+		)
+
+	return entries
+
+forced_data_dependencies = _toc(
+	'webmynd/apk-signer.jar',
+	type='DATA'
+)
+
+print "FORCED DATA DEPENDENCIES"
+for x in forced_data_dependencies:
+	print x
 
 exe = EXE(
 	pyz,
 	a.scripts,
 	a.binaries,
 	a.zipfiles,
-	a.datas,
+	a.datas + forced_data_dependencies,
 
 	# the output location of the exe
 	name=os.path.join('dist', 'forge.exe'),
