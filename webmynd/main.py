@@ -274,14 +274,26 @@ def production_build(unhandled_args):
 	remote.fetch_unpackaged(build_id, to_dir='production')
 	LOG.info("Production build created. Use wm-run to run your app.")
 
+COMMANDS = {
+	'create': create,
+	'dev-build': development_build,
+	'prod-build': production_build,
+	'run': run,
+}
+
 if __name__ == "__main__":
-	'The main entry point for the program, parses enough to figure out what subparser to hand off to'
+	'''The main entry point for the program.
+
+	 Parses enough to figure out what subparser to hand off to, sets up logging and error handling
+	 for the chosen sub-command.
+	 '''
 
 	top_level_parser = argparse.ArgumentParser(prog='forge', add_help=False)
-	top_level_parser.add_argument('command')
+	top_level_parser.add_argument('command', choices=COMMANDS.keys())
 	add_general_options(top_level_parser)
 
 	handled_args, other_args = top_level_parser.parse_known_args()
 	handle_general_options(handled_args)
 
-	locals()[handled_args.command](other_args)
+	subcommand = COMMANDS[handled_args.command]
+	with_error_handler(subcommand)(other_args)
