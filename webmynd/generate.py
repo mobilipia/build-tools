@@ -67,7 +67,9 @@ class Generate(object):
 
 		build_to_run = build.Build(self.app_config, user_dir, target_dir, enabled_platforms=enabled_platforms)
 		
+		build_to_run.add_steps(customer_phases.resolve_urls())
 		build_to_run.add_steps(customer_phases.copy_user_source_to_template(server=False))
 		build_to_run.add_steps(customer_phases.include_platform_in_html(server=False))
+		build_to_run.add_steps(customer_phases.include_icons())
 		
 		build_to_run.run()

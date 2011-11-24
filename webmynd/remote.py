@@ -314,7 +314,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		initial_zip_filename = 'initial.zip'
 
 		self._get_file(
-			urljoin(self.server, 'app/{uuid}/initial_files'.format(uuid=uuid)),
+			urljoin(self.server, 'app/{uuid}/initial_files/'.format(uuid=uuid)),
 			write_to_path=initial_zip_filename
 		)
 		lib.unzip_with_permissions(initial_zip_filename)

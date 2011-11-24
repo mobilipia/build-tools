@@ -122,7 +122,7 @@ class TestFetchInitial(TestRemote):
 		self.remote.fetch_initial('TEST-UUID')
 
 		self.remote._get_file.assert_called_once_with(
-			'https://test.webmynd.com/api/app/TEST-UUID/initial_files',
+			'https://test.webmynd.com/api/app/TEST-UUID/initial_files/',
 			write_to_path='initial.zip'
 		)
 
