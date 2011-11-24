@@ -13,7 +13,7 @@ import time
 import urllib
 import zipfile
 
-from webmynd import defaults, ForgeError
+from webmynd import defaults, ForgeError, lib
 from webmynd.lib import cd
 
 LOG = logging.getLogger(__name__)
@@ -271,7 +271,7 @@ def _sign_zipf(jre, zipf_name, signed_zipf_name):
 	args = [
 		path.join(jre,'java'),
 		'-jar',
-		path.join(defaults.FORGE_ROOT, 'webmynd', 'apk-signer.jar'),
+		lib.path_to_data_file('webmynd', 'apk-signer.jar'),
 		'--keystore',
 		path.join(defaults.FORGE_ROOT, 'debug.keystore'),
 		'--storepass',

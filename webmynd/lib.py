@@ -2,13 +2,25 @@ from contextlib import contextmanager
 import logging
 import subprocess
 import zipfile
+import sys
 import os
 from os.path import join, isdir, islink
 from os import error, listdir
 import os
 import time
 
+import webmynd
+
 LOG = logging.getLogger(__file__)
+
+def path_to_data_file(*relative_path):
+	'''This is a helper function that will return the path to a data file bundled inside the application.
+
+	It is aware of whether the application is frozen (e.g. being run from forge.exe) or not.
+
+	http://www.pyinstaller.org/export/latest/trunk/doc/Manual.html#adapting-to-being-frozen
+	'''
+	return os.path.join(webmynd.DATA_PATH, *relative_path)
 
 # modified os.walk() function from Python 2.4 standard library
 def walk2(top, topdown=True, onerror=None, deeplevel=0): # fix 0
