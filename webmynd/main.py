@@ -1,4 +1,4 @@
-'Entry points for the WebMynd build tools'
+'Forge subcommands as well as the main entry point for the forge tools'
 import logging
 import codecs
 import json
@@ -45,7 +45,7 @@ def with_error_handler(function):
 				_assert_not_in_subdirectory_of_forge_root()
 			except RunningInForgeRoot:
 				LOG.warning(
-					"Running webmynd commands in a subdirectory of the forge build tools.\n"
+					"Working directory is a subdirectory of the forge build tools.\n"
 					"This is probably a bad idea! Please do your app development in a folder outside\n"
 					"of the build tools installation directory.\n"
 				)
@@ -84,7 +84,7 @@ def setup_logging(args):
 		log_level = logging.INFO
 	logging.basicConfig(level=log_level, format='[%(levelname)7s] %(message)s')
 	LOG = logging.getLogger(__name__)
-	LOG.info('WebMynd tools running at version %s' % webmynd.get_version())
+	LOG.info('Forge tools running at version %s' % webmynd.get_version())
 
 def add_general_options(parser):
 	'Generic command-line arguments'
@@ -101,11 +101,23 @@ def _assert_have_target_folder(directory, target):
 
 def _assert_have_development_folder():
 	if not os.path.exists('development'):
-		raise ForgeError("No folder called 'development' found. You're trying to run your app but you haven't built it yet! Try wm-dev-build first.")
+		message = (
+			"No folder called 'development' found. You're trying to run your app but you haven't built it yet!\n"
+			"Try {prog} dev-build first."
+		).format(
+			prog=ENTRY_POINT_NAME
+		)
+		raise ForgeError(message)
 
 def _assert_have_production_folder():
 	if not os.path.exists('production'):
-		raise ForgeError("No folder called 'production' found. You're trying to run your app but you haven't built it yet! Try wm-prod-build first.")
+		message = (
+			"No folder called 'production' found. You're trying to run your app but you haven't built it yet!\n"
+			"Try {prog} prod-build first."
+		).format(
+			prog=ENTRY_POINT_NAME
+		)
+		raise ForgeError(message)
 
 def _parse_run_args(args):
 	parser = argparse.ArgumentParser(prog='%s run' % ENTRY_POINT_NAME, description='Run a built dev app on a particular platform')
@@ -184,8 +196,8 @@ def create(unhandled_args):
 		remote.fetch_initial(uuid)
 		LOG.info('App structure created. To proceed:')
 		LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
-		LOG.info('2) Run wm-dev-build to make a development build')
-		LOG.info('3) Run wm-prod-build to make a production build')
+		LOG.info('2) Run %s dev-build to make a development build' % ENTRY_POINT_NAME)
+		LOG.info('3) Run %s prod-build to make a production build' % ENTRY_POINT_NAME)
 
 def _parse_development_build_args(args):
 	parser = argparse.ArgumentParser('%s dev-build' % ENTRY_POINT_NAME, description='Creates new local, unzipped development add-ons with your source and configuration')
@@ -197,7 +209,12 @@ def development_build(unhandled_args):
 	args = _parse_development_build_args(unhandled_args)
 
 	if not os.path.isdir(defaults.SRC_DIR):
-		raise ForgeError('Source folder "%s" does not exist - have you run wm-create yet?' % defaults.SRC_DIR)
+		raise ForgeError(
+			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
+				src=defaults.SRC_DIR,
+				prog=ENTRY_POINT_NAME,
+			)
+		)
 
 	config = build_config.load()
 	remote = Remote(config)
@@ -234,7 +251,9 @@ def development_build(unhandled_args):
 	# have templates and instructions - inject code
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.SRC_DIR)
-	LOG.info("Development build created. Use wm-run to run your app.")
+	LOG.info("Development build created. Use {prog} to run your app.".format(
+		prog=ENTRY_POINT_NAME
+	))
 
 def _parse_production_build_args(args):
 	parser = argparse.ArgumentParser(
@@ -251,7 +270,7 @@ def production_build(unhandled_args):
 	_parse_production_build_args(unhandled_args)
 
 	if not os.path.isdir(defaults.SRC_DIR):
-		raise ForgeError('Source folder "%s" does not exist - have you run wm-create yet?' % defaults.SRC_DIR)
+		raise ForgeError('Source folder "%s" does not exist - have you run %s create yet?' % defaults.SRC_DIR)
 
 	config = build_config.load()
 	remote = Remote(config)
@@ -265,11 +284,11 @@ def production_build(unhandled_args):
 	# TODO implement server-side packaging
 	build_id = int(remote.build(development=False, template_only=False))
 
-	LOG.info('fetching new WebMynd build')
+	LOG.info('fetching new Forge build')
 	# remote.fetch_packaged(build_id, to_dir='production')
 	# TODO implement server-side packaging
 	remote.fetch_unpackaged(build_id, to_dir='production')
-	LOG.info("Production build created. Use wm-run to run your app.")
+	LOG.info("Production build created. Use %s run to run your app." % ENTRY_POINT_NAME)
 
 COMMANDS = {
 	'create': create,
