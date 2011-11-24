@@ -111,7 +111,7 @@ def _assert_have_production_folder():
 		raise ForgeError("No folder called 'production' found. You're trying to run your app but you haven't built it yet! Try wm-prod-build first.")
 
 def _parse_run_args(args):
-	run_parser = argparse.ArgumentParser(prog='%s run' % ENTRY_POINT_NAME, description='Run a built dev app on a particular platform')
+	parser = argparse.ArgumentParser(prog='%s run' % ENTRY_POINT_NAME, description='Run a built dev app on a particular platform')
 	def not_chrome(text):
 		if text == "chrome":
 			msg = """
@@ -124,12 +124,11 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 			raise argparse.ArgumentTypeError(msg)
 		return text
 
-	parser = argparse.ArgumentParser(prog='wm-run', )
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
 	parser.add_argument('-p', '--production', help="Run a production build, rather than a development build", action='store_true')
 	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox'])
-	return run_parser.parse_args(args)
+	return parser.parse_args(args)
 
 def run(unhandled_args):
 	args = _parse_run_args(unhandled_args)
