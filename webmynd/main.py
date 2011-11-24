@@ -44,33 +44,30 @@ def with_error_handler(function):
 			try:
 				_assert_not_in_subdirectory_of_forge_root()
 			except RunningInForgeRoot:
-				print
-				print """WARNING: running webmynd commands in a subdirectory of the forge build tools, this is probably a bad idea - please do your app development in a folder outside of the build tools"""
-				print
+				LOG.warning(
+					"Running webmynd commands in a subdirectory of the forge build tools.\n"
+					"This is probably a bad idea! Please do your app development in a folder outside\n"
+					"of the build tools installation directory.\n"
+				)
 
 			function(*args, **kwargs)
 		except RunningInForgeRoot:
-			# XXX: would use logging here, but there's no logging setup at this point - it gets setup
-			# inside the command based on arguments
-			# might be able to setup logging earlier on in this global handler?
-			print
-			print "ERROR: You're trying to run commands in the build tools directory, you need to move to another directory outside of this one first."
+			LOG.error(
+				"You're trying to run commands in the build tools directory.\n"
+				"You need to move to another directory outside of this one first.\n"
+			)
 		except KeyboardInterrupt:
 			sys.stdout.write('\n')
 			LOG.info('exiting...')
 			sys.exit(1)
 		except ForgeError as e:
 			# thrown by us, expected
-			# XXX: want to print this out, going to sort out logging here.
-			if LOG is None:
-				print e
-			else:
-				LOG.error(e)
+			LOG.error(e)
 		except Exception as e:
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
-			LOG.error("Something went wrong that we didn't expect:");
-			LOG.error(e);
-			LOG.error("Please contact support@webmynd.com");
+			LOG.error("Something went wrong that we didn't expect:")
+			LOG.error(e)
+			LOG.error("Please contact support@webmynd.com")
 
 	return decorated_with_handler
 
