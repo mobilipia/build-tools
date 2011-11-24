@@ -12,20 +12,20 @@ def json_view(view):
 	return with_json_response
 
 @route('/')
-def index():
+def _index():
 	return "Hello world"
 
 @route('/app')
 @json_view
-def apps():
+def _apps():
 	"""
 	Returns a list of App details as JSON
 	"""
 	return remote.list_apps()
 
 @route('/static/:filename')
-def server_static(filename):
+def _server_static(filename):
 	return static_file(filename, root='static/')
 
-if __name__ == "__main__":
+def run_server():
 	run(host='localhost', port=5000)

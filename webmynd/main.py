@@ -20,6 +20,7 @@ from webmynd.templates import Manager
 from webmynd.android import CouldNotLocate, run_android
 from webmynd.ios import IOSRunner
 from webmynd.lib import try_a_few_times
+from webmynd import web
 
 LOG = None
 ENTRY_POINT_NAME = 'forge'
@@ -290,11 +291,15 @@ def production_build(unhandled_args):
 	remote.fetch_unpackaged(build_id, to_dir='production')
 	LOG.info("Production build created. Use %s run to run your app." % ENTRY_POINT_NAME)
 
+def run_web_server(other_args):
+	web.run_server()
+
 COMMANDS = {
 	'create': create,
 	'dev-build': development_build,
 	'prod-build': production_build,
 	'run': run,
+	'web': run_web_server,
 }
 
 if __name__ == "__main__":
