@@ -41,7 +41,8 @@ a = Analysis([
 	# are also searched)
 	os.getcwd(),
 	os.path.join(os.getcwd(), 'webmynd-dependencies'),
-])
+], hookspath=os.path.join(os.getcwd(), 'pyinstaller-hooks')
+)
 
 # pyz just means a compressed (z for zipped, though you can specify the compression algorithm)
 # set of python files, I think.
