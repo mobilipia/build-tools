@@ -93,5 +93,7 @@ exe = EXE(
 	upx=True,
 
 	# might want to set this to false for the webserver
-	console=True
+	console=True,
+
+	icon='forge.ico'
 )
