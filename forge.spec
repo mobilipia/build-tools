@@ -33,8 +33,8 @@ import os
 a = Analysis([
 	# files to analyse for dependencies
 	# HOMEPATH refers to the path to the pyinstaller installation
-	os.path.join(HOMEPATH,'support\\_mountzlib.py'),
-	os.path.join(HOMEPATH,'support\\useUnicode.py'),
+	os.path.join(HOMEPATH,'support', '_mountzlib.py'),
+	os.path.join(HOMEPATH,'support', 'useUnicode.py'),
 	os.path.join('webmynd', 'main.py'),
 ],[
 	# path of places to grab dependencies from (the standard python 3rd party library directories
