@@ -54,33 +54,12 @@ pyz = PYZ(
 	a.pure,
 )
 
-def _toc(*args, **kwargs):
-	entry_type = kwargs.get('type', 'DATA')
-
-	entries = []
-	for path in args:
-		full_path = os.path.abspath(path)
-		entries.append(
-			(path, full_path, entry_type)
-		)
-
-	return entries
-
-forced_data_dependencies = _toc(
-	'webmynd/apk-signer.jar',
-	type='DATA'
-)
-
-print "FORCED DATA DEPENDENCIES"
-for x in forced_data_dependencies:
-	print x
-
 exe = EXE(
 	pyz,
 	a.scripts,
 	a.binaries,
 	a.zipfiles,
-	a.datas + forced_data_dependencies,
+	a.datas,
 
 	# the output location of the exe
 	name=os.path.join('dist', 'forge.exe'),
