@@ -1,5 +1,6 @@
 @echo off
-set LOG_FILE=webmynd-install.log
+SET LOG_FILE=webmynd-install.log
+
 IF EXIST %LOG_FILE% del %LOG_FILE%
 
 rem
@@ -123,10 +124,16 @@ ECHO.
 
 del %LOG_FILE%
 
+rem if the first argument is not empty
+IF NOT %1.==. (
+	rem then this script is effectively being "sourced", skip launching a subshell
+	GOTO end
+)
+
 ECHO.
 ECHO Welcome to the Forge development environment!
 ECHO.
 ECHO To get started, change to a fresh directory for your app, then run: wm-create
 ECHO.
-
 cmd /k
+:end
