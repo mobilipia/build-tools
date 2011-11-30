@@ -37,3 +37,5 @@ def get_version():
 		version += ".{commit_count}".format(commit_count=_get_commit_count())
 
 	return version
+
+settings = {}

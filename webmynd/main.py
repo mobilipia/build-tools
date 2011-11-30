@@ -38,6 +38,7 @@ def _assert_not_in_subdirectory_of_forge_root():
 
 def with_error_handler(function):
 	def decorated_with_handler(*args, **kwargs):
+		global LOG
 		try:
 			_assert_outside_of_forge_root()
 
@@ -93,9 +94,16 @@ def add_general_options(parser):
 	'Generic command-line arguments'
 	parser.add_argument('-v', '--verbose', action='store_true')
 	parser.add_argument('-q', '--quiet', action='store_true')
+	parser.add_argument('-u', '--username', help='username used to login to the forge website')
+	parser.add_argument('-p', '--password', help='password used to login to the forge website')
 	
 def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
+	# TODO setup given user/password somewhere accessible by remote.py
+	if args.username:
+		webmynd.settings['username'] = args.username
+	if args.password:
+		webmynd.settings['password'] = args.password
 	setup_logging(args)
 
 def _assert_have_target_folder(directory, target):

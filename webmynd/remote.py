@@ -207,8 +207,16 @@ class Remote(object):
 			LOG.debug('already authenticated via cookie - continuing')
 			return
 
-		email = raw_input("Your email address: ")
-		password = getpass()
+		if 'username' in webmynd.settings:
+			email = webmynd.settings['username']
+		else:
+			email = raw_input("Your email address: ")
+
+		if 'password' in webmynd.settings:
+			password = webmynd.settings['password']
+		else:
+			password = getpass()
+
 		LOG.info('authenticating as "%s"' % email)
 		credentials = {
 			'email': email,
