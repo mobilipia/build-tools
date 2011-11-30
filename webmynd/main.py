@@ -172,6 +172,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 def create():
 	'Create a new development environment'
 	parser = argparse.ArgumentParser(prog='wm-create', description='Initialises your development environment')
+	parser.add_argument('-n', '--name')
 	add_general_options(parser)
 	args = parser.parse_args()
 
@@ -190,7 +191,10 @@ def create():
 	if os.path.exists(defaults.SRC_DIR):
 		LOG.error('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
 	else:
-		name = raw_input('Enter app name: ')
+		if args.name:
+			name = args.name
+		else:
+			name = raw_input('Enter app name:\n')
 		uuid = remote.create(name)
 		remote.fetch_initial(uuid)
 		LOG.info('App structure created. To proceed:')
