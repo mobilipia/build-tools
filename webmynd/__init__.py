@@ -1,4 +1,5 @@
 '''WebMynd Build Tools'''
+from getpass import getpass
 import sys
 from os import path
 
@@ -39,3 +40,17 @@ def get_version():
 	return version
 
 settings = {}
+
+def request_username():
+	if 'username' not in settings:
+		# TODO: detect context, e.g. webapp, console app
+		settings['email'] = raw_input("Your email address: ")
+
+	return settings['username']
+
+def request_password():
+	if 'password' not in settings:
+		# TODO: detect context, e.g. webapp, console app
+		settings['password'] = getpass()
+
+	return settings['password']
