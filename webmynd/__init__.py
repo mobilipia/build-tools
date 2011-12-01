@@ -44,7 +44,7 @@ settings = {}
 def request_username():
 	if 'username' not in settings:
 		# TODO: detect context, e.g. webapp, console app
-		settings['email'] = raw_input("Your email address: ")
+		settings['username'] = raw_input("Your email address: ")
 
 	return settings['username']
 
