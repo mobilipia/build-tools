@@ -35,7 +35,6 @@ def _assert_not_in_subdirectory_of_forge_root():
 	if cwd.startswith(defaults.FORGE_ROOT + os.sep):
 		raise RunningInForgeRoot
 
-
 def with_error_handler(function):
 	def decorated_with_handler(*args, **kwargs):
 		global LOG
@@ -64,10 +63,15 @@ def with_error_handler(function):
 			# thrown by us, expected
 			# XXX: want to print this out, going to sort out logging here.
 			if LOG is None:
-				print e
-			else:
-				LOG.error(e)
+				LOG = logging.getLogger(__name__)
+				LOG.addHandler(logging.StreamHandler())
+				LOG.setLevel('DEBUG')
+			LOG.error(e)
 		except Exception as e:
+			if LOG is None:
+				LOG = logging.getLogger(__name__)
+				LOG.addHandler(logging.StreamHandler())
+				LOG.setLevel('DEBUG')
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:");
 			LOG.error(e);
