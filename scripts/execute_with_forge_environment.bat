@@ -8,7 +8,7 @@ rem changes directory to the build tools, activates the environment (using
 rem go.bat), and then runs the arguments to this script as a command
 
 
-SET TOOLS_DIR=%~dp0
+SET TOOLS_DIR=%~dp0\..
 SET ORIG_DIR=%CD%
 
 cd "%TOOLS_DIR%"
