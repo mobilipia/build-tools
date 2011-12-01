@@ -54,21 +54,20 @@ class Test_Authenticate(TestRemote):
 		
 		ok_(self.remote._authenticated)
 		ok_(not mock_raw_input.called)
-	@mock.patch('webmynd.remote.getpass')
-	def test_real_login(self, getpass):
+
+	@mock.patch('webmynd.remote.webmynd.request_username')
+	@mock.patch('webmynd.remote.webmynd.request_password')
+	def test_real_login(self, request_password, request_username):
 		self.remote._api_get = Mock(return_value={'result': 'ok', 'loggedin': False})
 		self.remote._api_post = Mock()
-		
-		mock_raw_input = mock.MagicMock()
-		mock_raw_input.return_value = 'raw user input'
-		getpass.return_value = 'getpass input'
+		request_username.return_value = 'raw user input'
+		request_password.return_value = 'getpass input'
 
-		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
-			self.remote._authenticate()
+		self.remote._authenticate()
 		
 		ok_(self.remote._authenticated)
-		mock_raw_input.assert_called_once_with("Your email address: ")
-		getpass.assert_called_once_with()
+		request_username.assert_called_once_with()
+		request_username.assert_called_once_with()
 		
 		eq_(2, len(self.remote._api_get.call_args_list))
 		ok_(self.remote._api_get.call_args_list[0][0][0].endswith('loggedin'))

@@ -194,7 +194,7 @@ def create():
 		if args.name:
 			name = args.name
 		else:
-			name = raw_input('Enter app name:\n')
+			name = raw_input('Enter app name:')
 		uuid = remote.create(name)
 		remote.fetch_initial(uuid)
 		LOG.info('App structure created. To proceed:')
