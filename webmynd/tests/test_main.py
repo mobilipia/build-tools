@@ -41,8 +41,8 @@ def test_both():
 general_argparse = [
 	(('-v', '--verbose'), {'action': 'store_true'}),
 	(('-q', '--quiet'), {'action': 'store_true'}),
-	(('-u', '--username'), {'help': 'username used to login to the forge website'}),
-	(('-p', '--password'), {'help': 'password used to login to the forge website'}),
+	(('--username', ), {'help': 'username used to login to the forge website'}),
+	(('--password', ), {'help': 'password used to login to the forge website'}),
 ]
 
 class TestCreate(object):

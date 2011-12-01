@@ -100,8 +100,8 @@ def add_general_options(parser):
 	'Generic command-line arguments'
 	parser.add_argument('-v', '--verbose', action='store_true')
 	parser.add_argument('-q', '--quiet', action='store_true')
-	parser.add_argument('-u', '--username', help='username used to login to the forge website')
-	parser.add_argument('-p', '--password', help='password used to login to the forge website')
+	parser.add_argument('--username', help='username used to login to the forge website')
+	parser.add_argument('--password', help='password used to login to the forge website')
 	
 def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
