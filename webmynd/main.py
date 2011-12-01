@@ -67,6 +67,7 @@ def with_error_handler(function):
 				LOG.addHandler(logging.StreamHandler())
 				LOG.setLevel('DEBUG')
 			LOG.error(e)
+			sys.exit(1)
 		except Exception as e:
 			if LOG is None:
 				LOG = logging.getLogger(__name__)
@@ -76,6 +77,7 @@ def with_error_handler(function):
 			LOG.error("Something went wrong that we didn't expect:");
 			LOG.error(e);
 			LOG.error("Please contact support@webmynd.com");
+			sys.exit(1)
 
 	return decorated_with_handler
 
