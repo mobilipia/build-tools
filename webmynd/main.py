@@ -195,7 +195,7 @@ def create():
 	manager = Manager(config)
 	
 	if os.path.exists(defaults.SRC_DIR):
-		LOG.error('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
+		raise ForgeError('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
 	else:
 		if args.name:
 			name = args.name
