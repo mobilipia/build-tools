@@ -37,21 +37,22 @@ def _assert_not_in_subdirectory_of_forge_root():
 	if cwd.startswith(defaults.FORGE_ROOT + os.sep):
 		raise RunningInForgeRoot
 
+def _check_working_directory_is_safe():
+	_assert_outside_of_forge_root()
+	try:
+		_assert_not_in_subdirectory_of_forge_root()
+	except RunningInForgeRoot:
+		LOG.warning(
+			"Working directory is a subdirectory of the forge build tools.\n"
+			"This is probably a bad idea! Please do your app development in a folder outside\n"
+			"of the build tools installation directory.\n"
+		)
+
 def with_error_handler(function):
+
 	def decorated_with_handler(*args, **kwargs):
 		global LOG
 		try:
-			_assert_outside_of_forge_root()
-
-			try:
-				_assert_not_in_subdirectory_of_forge_root()
-			except RunningInForgeRoot:
-				LOG.warning(
-					"Working directory is a subdirectory of the forge build tools.\n"
-					"This is probably a bad idea! Please do your app development in a folder outside\n"
-					"of the build tools installation directory.\n"
-				)
-
 			function(*args, **kwargs)
 		except RunningInForgeRoot:
 			LOG.error(
@@ -154,6 +155,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	return parser.parse_args(args)
 
 def run(unhandled_args):
+	_check_working_directory_is_safe()
 	args = _parse_run_args(unhandled_args)
 
 	if args.production:
@@ -192,6 +194,7 @@ def _parse_create_args(args):
 
 def create(unhandled_args):
 	'Create a new development environment'
+	_check_working_directory_is_safe()
 	args = _parse_create_args(unhandled_args)
 	config = build_config.load()
 	remote = Remote(config)
@@ -224,6 +227,7 @@ def _parse_development_build_args(args):
 
 def development_build(unhandled_args):
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
+	_check_working_directory_is_safe()
 	args = _parse_development_build_args(unhandled_args)
 
 	if not os.path.isdir(defaults.SRC_DIR):
@@ -285,6 +289,7 @@ def _parse_production_build_args(args):
 def production_build(unhandled_args):
 	'Trigger a new build'
 	# TODO commonality between this and development_build
+	_check_working_directory_is_safe()
 	_parse_production_build_args(unhandled_args)
 
 	if not os.path.isdir(defaults.SRC_DIR):
