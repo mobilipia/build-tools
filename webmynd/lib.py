@@ -23,6 +23,23 @@ def path_to_data_file(*relative_path):
 	'''
 	return os.path.join(webmynd.DATA_PATH, *relative_path)
 
+def path_to_config_file(*relative_path):
+	if sys.platform.startswith("win"):
+		return os.path.join(
+			os.environ['LOCALAPPDATA'],
+			'forge',
+			*relative_path
+		)
+	elif sys.platform.startswith("darwin"):
+		return os.path.join(
+			os.path.expanduser('~'),
+			'.forge'
+		)
+	elif sys.platform.startswith("linux"):
+		return os.path.join(
+			os.path.expanduser('~'),
+			'.forge'
+		)
 
 def try_a_few_times(f):
 	try_again = 0
