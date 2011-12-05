@@ -39,6 +39,7 @@ def _assert_not_in_subdirectory_of_forge_root():
 
 def with_error_handler(function):
 	def decorated_with_handler(*args, **kwargs):
+		global LOG
 		try:
 			_assert_outside_of_forge_root()
 
@@ -65,10 +66,15 @@ def with_error_handler(function):
 			# thrown by us, expected
 			LOG.error(e)
 		except Exception as e:
+			if LOG is None:
+				LOG = logging.getLogger(__name__)
+				LOG.addHandler(logging.StreamHandler())
+				LOG.setLevel('DEBUG')
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
-			LOG.error("Something went wrong that we didn't expect:")
-			LOG.error(e)
-			LOG.error("Please contact support@webmynd.com")
+			LOG.error("Something went wrong that we didn't expect:");
+			LOG.error(e);
+			LOG.error("Please contact support@webmynd.com");
+			sys.exit(1)
 
 	return decorated_with_handler
 
@@ -91,9 +97,16 @@ def add_general_options(parser):
 	'Generic command-line arguments'
 	parser.add_argument('-v', '--verbose', action='store_true')
 	parser.add_argument('-q', '--quiet', action='store_true')
-
+	parser.add_argument('--username', help='username used to login to the forge website')
+	parser.add_argument('--password', help='password used to login to the forge website')
+	
 def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
+	# TODO setup given user/password somewhere accessible by remote.py
+	if args.username:
+		webmynd.settings['username'] = args.username
+	if args.password:
+		webmynd.settings['password'] = args.password
 	setup_logging(args)
 
 def _assert_have_target_folder(directory, target):
@@ -174,11 +187,12 @@ def run(unhandled_args):
 
 def _parse_create_args(args):
 	parser = argparse.ArgumentParser('%s create' % ENTRY_POINT_NAME, description='create a new application')
+	parser.add_argument('-n', '--name')
 	return parser.parse_args(args)
 
 def create(unhandled_args):
 	'Create a new development environment'
-	_parse_create_args(unhandled_args)
+	args = _parse_create_args(unhandled_args)
 	config = build_config.load()
 	remote = Remote(config)
 	try:
@@ -190,9 +204,12 @@ def create(unhandled_args):
 	manager = Manager(config)
 
 	if os.path.exists(defaults.SRC_DIR):
-		LOG.error('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
+		raise ForgeError('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
 	else:
-		name = raw_input('Enter app name: ')
+		if args.name:
+			name = args.name
+		else:
+			name = raw_input('Enter app name: ')
 		uuid = remote.create(name)
 		remote.fetch_initial(uuid)
 		LOG.info('App structure created. To proceed:')

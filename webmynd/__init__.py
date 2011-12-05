@@ -1,5 +1,6 @@
 '''Forge Build Tools'''
 import os
+from getpass import getpass
 import sys
 from os import path
 
@@ -45,3 +46,19 @@ if 'frozen' in set(dir(sys)):
 else:
 	FROZEN = False
 	DATA_PATH = path.abspath(path.join(__file__, "..", ".."))
+
+settings = {}
+
+def request_username():
+	if 'username' not in settings:
+		# TODO: detect context, e.g. webapp, console app
+		settings['username'] = raw_input("Your email address: ")
+
+	return settings['username']
+
+def request_password():
+	if 'password' not in settings:
+		# TODO: detect context, e.g. webapp, console app
+		settings['password'] = getpass()
+
+	return settings['password']

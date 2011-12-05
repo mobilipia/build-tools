@@ -41,6 +41,8 @@ def test_both():
 general_argparse = [
 	(('-v', '--verbose'), {'action': 'store_true'}),
 	(('-q', '--quiet'), {'action': 'store_true'}),
+	(('--username', ), {'help': 'username used to login to the forge website'}),
+	(('--password', ), {'help': 'password used to login to the forge website'}),
 ]
 
 class TestCreate(object):
@@ -50,6 +52,8 @@ class TestCreate(object):
 	@mock.patch('webmynd.main.argparse')
 	def test_normal(self, argparse, Remote, os, build_config):
 		parser = argparse.ArgumentParser.return_value
+		parser.parse_args.return_value.name = None
+
 		os.path.exists.return_value = False
 		mock_raw_input = mock.MagicMock()
 		mock_raw_input.return_value = 'user input'
