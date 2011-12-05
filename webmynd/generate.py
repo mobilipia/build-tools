@@ -19,7 +19,6 @@ import sys
 from glob import glob
 
 from webmynd import build_config
-from webmynd.lib import walk2
 
 LOG = logging.getLogger(__name__)
 
