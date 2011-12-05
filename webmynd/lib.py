@@ -1,3 +1,4 @@
+import codecs
 from contextlib import contextmanager
 import logging
 import subprocess
@@ -48,7 +49,9 @@ def cd(target_dir):
 @contextmanager
 def open_file(*args, **kw):
 	'Simple wrapper around __builtins__.open for easier testing/mocking'
-	yield open(*args, **kw)
+	if 'encoding' not in kw:
+		kw['encoding'] = 'utf8'
+	yield codecs.open(*args, **kw)
 
 def human_readable_file_size(file):
 	'Takes a python file object and gives back a human readable file size'
