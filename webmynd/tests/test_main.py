@@ -70,6 +70,7 @@ class TestCreate(object):
 	@mock.patch('webmynd.main.os')
 	@mock.patch('webmynd.main.Remote')
 	@mock.patch('webmynd.main.argparse')
+	@raises(webmynd.ForgeError)
 	def test_user_dir_there(self, argparse, Remote, os):
 		parser = argparse.ArgumentParser.return_value
 		os.path.exists.return_value = True
@@ -79,10 +80,6 @@ class TestCreate(object):
 
 		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
 			main.create()
-		
-		os.path.exists.assert_called_once_with(defaults.SRC_DIR)
-		ok_(not remote.create.called)
-		ok_(not remote.fetch_initial.called)
 
 class TestRun(object):
 	@mock.patch('webmynd.main.argparse')
