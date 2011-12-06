@@ -2,18 +2,18 @@ import logging
 import mock
 from nose.tools import ok_, eq_, raises
 
-import webmynd
-from webmynd.tests import dummy_config, lib
-from webmynd import main, defaults
+import forge
+from forge.tests import dummy_config, lib
+from forge import main, defaults
 from os import path
 
-@mock.patch('webmynd.main.logging')
+@mock.patch('forge.main.logging')
 def _logging_test(args, level, logging):
 	main.setup_logging(args)
 	
 	logging.basicConfig.assert_called_once_with(level=getattr(logging, level),
 		format='[%(levelname)7s] %(message)s')
-	logging.getLogger.assert_called_once_with('webmynd.main')
+	logging.getLogger.assert_called_once_with('forge.main')
 
 
 def test_verbose():
@@ -46,10 +46,10 @@ general_argparse = [
 ]
 
 class TestCreate(object):
-	@mock.patch('webmynd.main.build_config')
-	@mock.patch('webmynd.main.os')
-	@mock.patch('webmynd.main.Remote')
-	@mock.patch('webmynd.main.argparse')
+	@mock.patch('forge.main.build_config')
+	@mock.patch('forge.main.os')
+	@mock.patch('forge.main.Remote')
+	@mock.patch('forge.main.argparse')
 	def test_normal(self, argparse, Remote, os, build_config):
 		parser = argparse.ArgumentParser.return_value
 		parser.parse_args.return_value.name = None
@@ -67,10 +67,10 @@ class TestCreate(object):
 		remote.create.assert_called_once_with(mock_raw_input.return_value)
 		remote.fetch_initial.assert_called_once_with(remote.create.return_value)
 
-	@mock.patch('webmynd.main.os')
-	@mock.patch('webmynd.main.Remote')
-	@mock.patch('webmynd.main.argparse')
-	@raises(webmynd.ForgeError)
+	@mock.patch('forge.main.os')
+	@mock.patch('forge.main.Remote')
+	@mock.patch('forge.main.argparse')
+	@raises(forge.ForgeError)
 	def test_user_dir_there(self, argparse, Remote, os):
 		parser = argparse.ArgumentParser.return_value
 		os.path.exists.return_value = True
@@ -82,9 +82,9 @@ class TestCreate(object):
 			main.create()
 
 class TestRun(object):
-	@mock.patch('webmynd.main.argparse')
-	@mock.patch('webmynd.main._assert_have_development_folder')
-	@mock.patch('webmynd.main._assert_have_target_folder')
+	@mock.patch('forge.main.argparse')
+	@mock.patch('forge.main._assert_have_development_folder')
+	@mock.patch('forge.main._assert_have_target_folder')
 	def test_not_android(self, _assert_have_target_folder, _assert_have_development_folder, argparse):
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
@@ -96,9 +96,9 @@ class TestRun(object):
 
 		parser.parse_args.assert_called_once()
 
-	@mock.patch('webmynd.main.run_android')
-	@mock.patch('webmynd.main.argparse')
-	@mock.patch('webmynd.main._assert_have_target_folder')
+	@mock.patch('forge.main.run_android')
+	@mock.patch('forge.main.argparse')
+	@mock.patch('forge.main._assert_have_target_folder')
 	def test_found_jdk_and_sdk(self, _assert_have_development_folder, argparse, run_android):
 		main._assert_have_development_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
@@ -118,9 +118,9 @@ class TestRun(object):
 		parser.parse_args.assert_called_once()
 		run_android.assert_called_once_with('development', 'sdk', 'device')
 	
-	@mock.patch('webmynd.main.run_android')
-	@mock.patch('webmynd.main.argparse')
-	@mock.patch('webmynd.main._assert_have_target_folder')
+	@mock.patch('forge.main.run_android')
+	@mock.patch('forge.main.argparse')
+	@mock.patch('forge.main._assert_have_target_folder')
 	def test_prod_android(self, _assert_have_development_folder, argparse, run_android):
 		main._assert_have_production_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
@@ -135,10 +135,10 @@ class TestRun(object):
 		
 		run_android.assert_called_once_with('production', 'sdk', "device")
 	
-	@mock.patch('webmynd.main.build_config')
-	@mock.patch('webmynd.main.IOSRunner')
-	@mock.patch('webmynd.main.argparse')
-	@mock.patch('webmynd.main._assert_have_target_folder')
+	@mock.patch('forge.main.build_config')
+	@mock.patch('forge.main.IOSRunner')
+	@mock.patch('forge.main.argparse')
+	@mock.patch('forge.main._assert_have_target_folder')
 	def test_prod_ios(self, _assert_have_development_folder, argparse, IOSRunner, build_config):
 		main._assert_have_production_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
@@ -154,32 +154,32 @@ class TestRun(object):
 		IOSRunner.return_value.run_iphone_simulator_with.assert_called_once_with("dummy name")
 		
 class Test_AssertNotSubdirectoryOfForgeRoot(object):
-	@mock.patch('webmynd.main.os.getcwd')
+	@mock.patch('forge.main.os.getcwd')
 	@raises(main.RunningInForgeRoot)
 	def test_raises_in_subdirectory(self, getcwd):
 		getcwd.return_value = path.join(defaults.FORGE_ROOT, 'dummy')
 		main._assert_not_in_subdirectory_of_forge_root()
 
-	@mock.patch('webmynd.main.os.getcwd')
+	@mock.patch('forge.main.os.getcwd')
 	def test_not_confused_by_similar_directory(self, getcwd):
 		getcwd.return_value = path.join(defaults.FORGE_ROOT + '-app', 'dummy')
 		main._assert_not_in_subdirectory_of_forge_root()
 
-	@mock.patch('webmynd.main.os.getcwd')
+	@mock.patch('forge.main.os.getcwd')
 	def test_ok_when_not_in_subdirectory(self, getcwd):
 		getcwd.return_value = path.join('not','forge','tools', 'dummy')
 		main._assert_not_in_subdirectory_of_forge_root()
 
 class Test_AssertOutsideOfForgeRoot(object):
 
-	@mock.patch('webmynd.main.os')
+	@mock.patch('forge.main.os')
 	@raises(main.RunningInForgeRoot)
 	def test_raises_exception_inside_forge_root(self, os):
 		os.getcwd = mock.Mock()
 		os.getcwd.return_value = defaults.FORGE_ROOT
 		main._assert_outside_of_forge_root()
 
-	@mock.patch('webmynd.main.os')
+	@mock.patch('forge.main.os')
 	def test_nothing_happens_outside_of_forge_root(self, os):
 		os.getcwd = mock.Mock()
 		os.getcwd.return_value = path.join('some', 'other', 'dir')
@@ -207,10 +207,10 @@ class TestBuild(object):
 	def _check_prod_setup(self, parser, Remote):
 		eq_(parser.add_argument.call_args_list, general_argparse)
 
-	@mock.patch('webmynd.main.build_config')
-	@mock.patch('webmynd.main.os.path.isdir')
-	@mock.patch('webmynd.main.argparse')
-	@raises(webmynd.ForgeError)
+	@mock.patch('forge.main.build_config')
+	@mock.patch('forge.main.os.path.isdir')
+	@mock.patch('forge.main.argparse')
+	@raises(forge.ForgeError)
 	def test_user_dir_not_there(self, argparse, isdir, build_config):
 		isdir.return_value = False
 		build_config.load.return_value = dummy_config()
@@ -221,13 +221,13 @@ class TestBuild(object):
 		ok_(not build_config.called)
 		
 		
-	@mock.patch('webmynd.main.build_config')
-	@mock.patch('webmynd.main.os.path.isdir')
-	@mock.patch('webmynd.main.shutil')
-	@mock.patch('webmynd.main.Generate')
-	@mock.patch('webmynd.main.Remote')
-	@mock.patch('webmynd.main.Manager')
-	@mock.patch('webmynd.main.argparse')
+	@mock.patch('forge.main.build_config')
+	@mock.patch('forge.main.os.path.isdir')
+	@mock.patch('forge.main.shutil')
+	@mock.patch('forge.main.Generate')
+	@mock.patch('forge.main.Remote')
+	@mock.patch('forge.main.Manager')
+	@mock.patch('forge.main.argparse')
 	def test_dev_no_conf_change(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		args = parser.parse_args.return_value
@@ -253,13 +253,13 @@ class TestBuild(object):
 		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value, 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
 		
-	@mock.patch('webmynd.main.build_config')
-	@mock.patch('webmynd.main.os.path.isdir')
-	@mock.patch('webmynd.main.shutil')
-	@mock.patch('webmynd.main.Generate')
-	@mock.patch('webmynd.main.Remote')
-	@mock.patch('webmynd.main.Manager')
-	@mock.patch('webmynd.main.argparse')
+	@mock.patch('forge.main.build_config')
+	@mock.patch('forge.main.os.path.isdir')
+	@mock.patch('forge.main.shutil')
+	@mock.patch('forge.main.Generate')
+	@mock.patch('forge.main.Remote')
+	@mock.patch('forge.main.Manager')
+	@mock.patch('forge.main.argparse')
 	def test_dev_conf_change(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		args = parser.parse_args.return_value
@@ -289,10 +289,10 @@ class TestBuild(object):
 		shutil.copytree.assert_called_once_with(Manager.return_value.fetch_templates.return_value, 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
 		
-	@mock.patch('webmynd.main.build_config')
-	@mock.patch('webmynd.main.os.path.isdir')
-	@mock.patch('webmynd.main.Remote')
-	@mock.patch('webmynd.main.argparse')
+	@mock.patch('forge.main.build_config')
+	@mock.patch('forge.main.os.path.isdir')
+	@mock.patch('forge.main.Remote')
+	@mock.patch('forge.main.argparse')
 	def test_prod(self, argparse, Remote, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		Remote.return_value.build.return_value = -1
@@ -307,9 +307,9 @@ class TestBuild(object):
 		Remote.return_value.fetch_unpackaged.assert_called_once_with(Remote.return_value.build.return_value, to_dir='production')
 
 class TestWithErrorHandler(object):
-	@mock.patch('webmynd.main._assert_outside_of_forge_root')
-	@mock.patch('webmynd.main._assert_not_in_subdirectory_of_forge_root')
-	@mock.patch('webmynd.main.sys')
+	@mock.patch('forge.main._assert_outside_of_forge_root')
+	@mock.patch('forge.main._assert_not_in_subdirectory_of_forge_root')
+	@mock.patch('forge.main.sys')
 	def test_keyboard_interrupt(self, sys, warn_if_subdir, assert_outside):
 		def interrupt():
 			raise KeyboardInterrupt()

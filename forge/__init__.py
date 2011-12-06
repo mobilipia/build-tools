@@ -1,4 +1,4 @@
-'''WebMynd Build Tools'''
+'''Forge Build Tools'''
 from getpass import getpass
 import sys
 from os import path
@@ -8,14 +8,14 @@ VERSION = '2.1.0'
 def _check_version():
 	'''Throw error if we're on Python < 2.6'''
 	if sys.hexversion < 0x020600f0:
-		raise Exception('WebMynd tools require Python at least version 2.6.0: please update your interpreter')
+		raise Exception('Forge tools require Python at least version 2.6.0: please update your interpreter')
 _check_version()
 
 class ForgeError(Exception):
 	pass
 
 def _get_commit_count():
-	# XXX: this requires the webmynd library to be located a specific distance from
+	# XXX: this requires the forge library to be located a specific distance from
 	# the forge tools folder
 	# might make sense for this value to be obtained from an environment variable which
 	# is set by all entry points

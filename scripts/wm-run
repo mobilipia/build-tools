@@ -3,8 +3,8 @@ import sys
 from os import path
 
 sys.path.insert(0, path.abspath(path.join(__file__, '..', '..')))
-sys.path.insert(0, path.abspath(path.join(__file__, '..', '..', 'webmynd-dependencies')))
+sys.path.insert(0, path.abspath(path.join(__file__, '..', '..', 'forge-dependencies')))
 
-from webmynd import main
+from forge import main
 
 main.with_error_handler(main.run)()

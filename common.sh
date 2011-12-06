@@ -13,7 +13,7 @@ undefine_functions () {
 	unset -f remove_dev_virtualenv
 	unset -f install_pip_if_necessary
 	unset -f install_dev_dependencies
-	unset -f install_webmynd_library
+	unset -f install_forge_library
 
 	# user requirements
 	unset -f activate_user_virtualenv
@@ -42,7 +42,7 @@ assert_user_have_python () {
 	if [ $? -ne 0 ]
 	then
 		echo 'Python not found.'
-		echo 'You can download it from here: http://webmynd.com/forge/requirements/'
+		echo 'You can download it from here: https://trigger.io/forge/requirements/'
 		failure
 		return 1
 	fi
@@ -53,7 +53,7 @@ assert_have_python () {
 	if [ $? -ne 0 ]
 	then
 		echo 'Python not found.'
-		echo 'You can download it from here: http://webmynd.com/forge/requirements/'
+		echo 'You can download it from here: https://trigger.io/forge/requirements/'
 		failure
 		return 1
 	fi
@@ -90,9 +90,9 @@ install_virtualenv () {
 }
 
 make_dev_virtualenv_if_necessary () {
-	if [ ! -e 'webmynd-environment' ]
+	if [ ! -e 'forge-environment' ]
 	then
-		virtualenv --no-site-packages webmynd-environment
+		virtualenv --no-site-packages forge-environment
 		if [ $? -ne 0 ]
 		then
 			echo
@@ -100,21 +100,21 @@ make_dev_virtualenv_if_necessary () {
 			failure
 			return 1
 		fi
-		echo 'WebMynd virtual environment created.'
+		echo 'Forge virtual environment created.'
 	fi
 }
 
 activate_dev_virtualenv () {
-	. ./webmynd-environment/bin/activate
+	. ./forge-environment/bin/activate
 	if [ $? -ne 0 ]; then
 		remove_dev_virtualenv
 	else
-		echo 'Entered WebMynd virtual env.'
+		echo 'Entered Forge virtual env.'
 	fi
 }
 
 remove_dev_virtualenv () {
-	rm -rf ./webmynd-environment
+	rm -rf ./forge-environment
 	echo
 	echo 'Your virtual environment appears to be broken; please re-run this script to fix it!'
 	failure
@@ -154,14 +154,14 @@ install_dev_dependencies () {
 	echo 'Requirements found and installed.'
 }
 
-install_webmynd_library () {
+install_forge_library () {
 	python setup.py install >> $LOG_FILE 2>&1
 	if [ $? -ne 0 ]
 	then
-		echo 'WebMynd setup failed.'
+		echo 'Forge setup failed.'
 		failure 
 	fi
-	echo 'WebMynd tools installed.'
+	echo 'Forge tools installed.'
 }
 
 put_wm_scripts_in_path () {
@@ -187,5 +187,5 @@ check_for_file () {
 }
 
 check_for_folder scripts &&
-check_for_folder webmynd-dependencies &&
+check_for_folder forge-dependencies &&
 check_for_file scripts/activate

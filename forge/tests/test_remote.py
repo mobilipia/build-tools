@@ -7,9 +7,9 @@ import mock
 from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 
-from webmynd import defaults, ForgeError, VERSION
-from webmynd.remote import Remote, RequestError
-from webmynd.tests import dummy_config
+from forge import defaults, ForgeError, VERSION
+from forge.remote import Remote, RequestError
+from forge.tests import dummy_config
 from lib import assert_raises_regexp
 
 class TestRemote(object):
@@ -18,16 +18,16 @@ class TestRemote(object):
 		self.remote = Remote(self.test_config)
 	
 class Test__Init__(object):
-	@mock.patch('webmynd.remote.LWPCookieJar')
-	@mock.patch('webmynd.remote.os')
+	@mock.patch('forge.remote.LWPCookieJar')
+	@mock.patch('forge.remote.os')
 	def test_cookies_there(self, os, LWPCookieJar):
 		os.path.exists.return_value = True
 		os.getcwd.return_value = '/here'
 		remote = Remote(dummy_config())
 		
 		LWPCookieJar.return_value.load.assert_called_once_with()
-	@mock.patch('webmynd.remote.LWPCookieJar')
-	@mock.patch('webmynd.remote.os')
+	@mock.patch('forge.remote.LWPCookieJar')
+	@mock.patch('forge.remote.os')
 	def test_cookies_not_there(self, os, LWPCookieJar):
 		os.path.exists.return_value = False
 		os.getcwd.return_value = '/here'
@@ -55,8 +55,8 @@ class Test_Authenticate(TestRemote):
 		ok_(self.remote._authenticated)
 		ok_(not mock_raw_input.called)
 
-	@mock.patch('webmynd.remote.webmynd.request_username')
-	@mock.patch('webmynd.remote.webmynd.request_password')
+	@mock.patch('forge.remote.forge.request_username')
+	@mock.patch('forge.remote.forge.request_password')
 	def test_real_login(self, request_password, request_username):
 		self.remote._api_get = Mock(return_value={'result': 'ok', 'loggedin': False})
 		self.remote._api_post = Mock()
@@ -74,7 +74,7 @@ class Test_Authenticate(TestRemote):
 		ok_(self.remote._api_get.call_args_list[1][0][0].endswith('hello'))
 		
 		self.remote._api_post.assert_called_once_with('auth/verify', data={'email': 'raw user input', 'password': 'getpass input'})
-	# @mock.patch('webmynd.remote.getpass')
+	# @mock.patch('forge.remote.getpass')
 	# def test_non_json_response(self, getpass):
 	# 	mock_get.side_effect = RequestError('mock error', mock_resp)
 	# 	self.remote._api_get = Mock(side_effect=RequestError('mock error', "This isn't JSON at all!"))
@@ -95,7 +95,7 @@ class Test_CsrfToken(TestRemote):
 		cookie2 = Mock()
 		cookie2.name = 'csrftoken'
 		cookie2.value = 'csrf value 2'
-		cookie2.domain = 'test.webmynd.com'
+		cookie2.domain = 'test.trigger.io'
 		self.remote.cookies = [cookie1, cookie2]
 		eq_(self.remote._csrf_token(), 'csrf value 2')
 
@@ -111,9 +111,9 @@ class TestCreate(TestRemote):
 		eq_(result, 'SERVER-TEST-UUID')
 
 class TestFetchInitial(TestRemote):
-	@patch('webmynd.remote.os')
-	@patch('webmynd.remote.shutil')
-	@patch('webmynd.remote.lib.unzip_with_permissions')
+	@patch('forge.remote.os')
+	@patch('forge.remote.shutil')
+	@patch('forge.remote.lib.unzip_with_permissions')
 	def test_normal(self, unzip_with_permissions, shutil, os):
 		self.remote._authenticate = Mock()
 		self.remote._get_file = mock.Mock()
@@ -121,7 +121,7 @@ class TestFetchInitial(TestRemote):
 		self.remote.fetch_initial('TEST-UUID')
 
 		self.remote._get_file.assert_called_once_with(
-			'https://test.webmynd.com/api/app/TEST-UUID/initial_files/',
+			'https://test.trigger.io/api/app/TEST-UUID/initial_files/',
 			write_to_path='initial.zip'
 		)
 
@@ -130,12 +130,12 @@ class TestFetchInitial(TestRemote):
 		os.remove.assert_called_once_with('initial.zip')
 
 class TestFetchPackaged(TestRemote):
-	@patch('webmynd.remote.os')
+	@patch('forge.remote.os')
 	def test_fetch_packaged(self, os):
 		output_dir = 'output dir'
 		self.remote._authenticate = Mock()
 		
-		with patch('webmynd.remote.Remote._fetch_output') as _fetch_output:
+		with patch('forge.remote.Remote._fetch_output') as _fetch_output:
 			_fetch_output.return_value = ['dummy filename']
 			resp = self.remote.fetch_packaged(-1, output_dir)
 		
@@ -151,12 +151,12 @@ class Test_HandlePackaged(TestRemote):
 class TestFetchUnpackaged(TestRemote):
 
 	# TODO refactor tests to go after _fetch_output directly
-	@patch('webmynd.remote.path.isdir', new=mock.Mock(return_value=False))
-	@patch('webmynd.remote.path.abspath', new=mock.Mock(side_effect=lambda x: '/absolute/path/'+x))
+	@patch('forge.remote.path.isdir', new=mock.Mock(return_value=False))
+	@patch('forge.remote.path.abspath', new=mock.Mock(side_effect=lambda x: '/absolute/path/'+x))
 
-	@patch('webmynd.remote.os.remove')
-	@patch('webmynd.remote.os.mkdir')
-	@patch('webmynd.remote.lib.unzip_with_permissions')
+	@patch('forge.remote.os.remove')
+	@patch('forge.remote.os.mkdir')
+	@patch('forge.remote.lib.unzip_with_permissions')
 	def test_fetch_unpackaged(self, unzip_with_permissions, mkdir, remove):
 		cd = mock.MagicMock()
 		self.remote._authenticate = Mock()
@@ -174,7 +174,7 @@ class TestFetchUnpackaged(TestRemote):
 
 		output_dir = 'output dir'
 
-		with patch('webmynd.remote.lib.cd', new=cd):
+		with patch('forge.remote.lib.cd', new=cd):
 			# what does -1 signify here?
 			resp = self.remote.fetch_unpackaged(-1, output_dir)
 
@@ -206,8 +206,8 @@ class TestBuild(TestRemote):
 	def teardown(self):
 		self.remote._authenticate.assert_called_once_with()
 		
-	@patch('webmynd.remote.os.listdir')
-	@patch('webmynd.remote.path')
+	@patch('forge.remote.os.listdir')
+	@patch('forge.remote.path')
 	def test_pending(self, path, listdir):
 		'''a new build should not be started if a pending one exists,
 		and we should poll until that build completes / aborts
@@ -222,7 +222,7 @@ class TestBuild(TestRemote):
 			return {'build_id': -1, 'state': states.pop(0), 'log_output': 'test logging'}
 		self.remote._api_get.side_effect = states_effect
 		
-		with patch('webmynd.remote.lib.cd', new=cd):
+		with patch('forge.remote.lib.cd', new=cd):
 			resp = self.remote.build(template_only=True)
 		
 		eq_(resp, -1)
@@ -233,8 +233,8 @@ class TestBuild(TestRemote):
 		eq_(self.remote._api_get.call_args_list,
 			[(('build/-1/detail/',), {})] * 3
 		)
-	@patch('webmynd.remote.os.listdir')
-	@patch('webmynd.remote.path')
+	@patch('forge.remote.os.listdir')
+	@patch('forge.remote.path')
 	def test_data(self, mock_path, listdir):
 		mock_open = MagicMock()
 		manager = mock_open.return_value.__enter__.return_value
@@ -243,7 +243,7 @@ class TestBuild(TestRemote):
 		mock_path.isfile.return_value = True
 		mock_path.isdir.return_value = True
 		
-		with patch('webmynd.remote.lib.open_file', new=mock_open):
+		with patch('forge.remote.lib.open_file', new=mock_open):
 			resp = self.remote.build(template_only=True)
 
 		# what does -1 signify here?
@@ -256,10 +256,10 @@ class TestBuild(TestRemote):
 		# Fails on windows
 		#mock_open.assert_called_once_with('user/config.json')
 	
-	@patch('webmynd.remote.path')
-	@patch('webmynd.remote.os')
-	@patch('webmynd.remote.tarfile')
-	@patch('webmynd.remote.lib.human_readable_file_size')
+	@patch('forge.remote.path')
+	@patch('forge.remote.os')
+	@patch('forge.remote.tarfile')
+	@patch('forge.remote.lib.human_readable_file_size')
 	def test_user_dir(self, filesize, tarfile, os, path):
 		mock_open = MagicMock()
 		mock_open.return_value.__enter__.return_value = 'opened file'
@@ -269,8 +269,8 @@ class TestBuild(TestRemote):
 
 		os.listdir.return_value = ['file.txt']
 
-		with patch('webmynd.remote.lib.cd', new=cd):
-			with patch('webmynd.remote.lib.open_file', new=mock_open):
+		with patch('forge.remote.lib.cd', new=cd):
+			with patch('forge.remote.lib.open_file', new=mock_open):
 				resp = self.remote.build()
 			
 		tmp_file = mock_open.call_args_list[0][0][0]
@@ -282,7 +282,7 @@ class TestBuild(TestRemote):
 		eq_(len(mock_open.call_args_list), 1)
 		os.remove.assert_called_once_with(tmp_file)
 		
-	@patch('webmynd.remote.path')
+	@patch('forge.remote.path')
 	def test_fail(self, path):
 		path.isfile.return_value = False
 		path.isdir.return_value = True
@@ -291,7 +291,7 @@ class TestBuild(TestRemote):
 		assert_raises_regexp(Exception, 'build failed', self.remote.build, template_only=True)
 		
 class Test_Post(TestRemote):
-	@patch('webmynd.remote.requests')
+	@patch('forge.remote.requests')
 	def test_post(self, requests):
 		requests.post.return_value.ok = True
 		self.remote._csrf_token = Mock(return_value='csrf token')
@@ -304,13 +304,13 @@ class Test_Post(TestRemote):
 		ok_(res is requests.post.return_value)
 
 class Test_Get(TestRemote):
-	@patch('webmynd.remote.requests')
+	@patch('forge.remote.requests')
 	def test_get(self, requests):
 		res = self.remote._get('url', 2, a=3, b=4)
 		requests.get.assert_called_once_with('url', 2, a=3, b=4, cookies=self.remote.cookies, headers={'REFERER': 'url'})
 		ok_(res is requests.get.return_value)
 		
-	@patch('webmynd.remote.requests')
+	@patch('forge.remote.requests')
 	def test_basic_auth(self, requests):
 		self.remote.config['main']['authentication'] = {
 			'username': 'test username',
@@ -327,34 +327,34 @@ class Test_CheckVersion(TestRemote):
 
 class TestGenerateInstructions(TestRemote):
 	@raises(RequestError)
-	@patch('webmynd.remote.os')
-	@patch('webmynd.remote.shutil')
-	@patch('webmynd.remote.requests')
+	@patch('forge.remote.os')
+	@patch('forge.remote.shutil')
+	@patch('forge.remote.requests')
 	def test_not_found_build(self, requests, shutil, os):
 		cd = mock.MagicMock()
 		self.remote._authenticate = Mock()
 		requests.get.return_value.ok = False
 		requests.get.return_value.status_code = 404
 
-		with mock.patch('webmynd.lib.cd', new=cd):
+		with mock.patch('forge.lib.cd', new=cd):
 			self.remote.fetch_generate_instructions(1, 'my/path')
 
-	@patch('webmynd.remote.os')
-	@patch('webmynd.remote.shutil')
-	@patch('webmynd.remote.lib.unzip_with_permissions')
+	@patch('forge.remote.os')
+	@patch('forge.remote.shutil')
+	@patch('forge.remote.lib.unzip_with_permissions')
 	def test_normal(self, unzip_with_permissions, shutil, os):
 		cd = mock.MagicMock()
 		self.remote._authenticate = Mock()
 		self.remote._get_file = mock.Mock()
 
-		with mock.patch('webmynd.lib.cd', new=cd):
+		with mock.patch('forge.lib.cd', new=cd):
 			self.remote.fetch_generate_instructions(
 				build_id=1,
 				to_dir='my/path'
 			)
 		
 		self.remote._get_file.assert_called_once_with(
-			'https://test.webmynd.com/api/build/1/generate_instructions/',
+			'https://test.trigger.io/api/build/1/generate_instructions/',
 			'instructions.zip'
 		)
 

@@ -2,7 +2,7 @@
 from os import path
 
 FORGE_ROOT = path.abspath(path.join(__file__, "..", ".."))
-CONFIG_FILE = path.join(FORGE_ROOT, 'webmynd_build.json')
+CONFIG_FILE = path.join(FORGE_ROOT, 'forge_build.json')
 PASSWORD = "your password"
 
 SRC_DIR = 'src'

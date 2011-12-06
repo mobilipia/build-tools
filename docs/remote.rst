@@ -1,5 +1,5 @@
 Invoking Remote Operations
 ==========================
 
-.. automodule:: webmynd.remote
+.. automodule:: forge.remote
   :members:

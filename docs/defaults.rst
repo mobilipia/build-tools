@@ -1,5 +1,5 @@
 Default Configuration Values
 ============================
 
-.. automodule:: webmynd.defaults
+.. automodule:: forge.defaults
   :members:

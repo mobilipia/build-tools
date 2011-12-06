@@ -1,4 +1,4 @@
-'Entry points for the WebMynd build tools'
+'Entry points for the Forge build tools'
 import logging
 import codecs
 import json
@@ -12,14 +12,14 @@ import time
 from subprocess import Popen
 from os import path, devnull
 
-import webmynd
-from webmynd import defaults, build_config, ForgeError
-from webmynd.generate import Generate
-from webmynd.remote import Remote
-from webmynd.templates import Manager
-from webmynd.android import CouldNotLocate, run_android
-from webmynd.ios import IOSRunner
-from webmynd.lib import try_a_few_times
+import forge
+from forge import defaults, build_config, ForgeError
+from forge.generate import Generate
+from forge.remote import Remote
+from forge.templates import Manager
+from forge.android import CouldNotLocate, run_android
+from forge.ios import IOSRunner
+from forge.lib import try_a_few_times
 
 LOG = None
 
@@ -45,7 +45,7 @@ def with_error_handler(function):
 				_assert_not_in_subdirectory_of_forge_root()
 			except RunningInForgeRoot:
 				print
-				print """WARNING: running webmynd commands in a subdirectory of the forge build tools, this is probably a bad idea - please do your app development in a folder outside of the build tools"""
+				print """WARNING: running forge commands in a subdirectory of the forge build tools, this is probably a bad idea - please do your app development in a folder outside of the build tools"""
 				print
 
 			function(*args, **kwargs)
@@ -76,7 +76,7 @@ def with_error_handler(function):
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:");
 			LOG.error(e);
-			LOG.error("Please contact support@webmynd.com");
+			LOG.error("Please contact support@trigger.io");
 			sys.exit(1)
 
 	return decorated_with_handler
@@ -94,7 +94,7 @@ def setup_logging(args):
 		log_level = logging.INFO
 	logging.basicConfig(level=log_level, format='[%(levelname)7s] %(message)s')
 	LOG = logging.getLogger(__name__)
-	LOG.info('WebMynd tools running at version %s' % webmynd.get_version())
+	LOG.info('Forge tools running at version %s' % forge.get_version())
 
 def add_general_options(parser):
 	'Generic command-line arguments'
@@ -107,9 +107,9 @@ def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	# TODO setup given user/password somewhere accessible by remote.py
 	if args.username:
-		webmynd.settings['username'] = args.username
+		forge.settings['username'] = args.username
 	if args.password:
-		webmynd.settings['password'] = args.password
+		forge.settings['password'] = args.password
 	setup_logging(args)
 
 def _assert_have_target_folder(directory, target):
@@ -282,7 +282,7 @@ def production_build():
 	# TODO implement server-side packaging
 	build_id = int(remote.build(development=False, template_only=False))
 	
-	LOG.info('fetching new WebMynd build')
+	LOG.info('fetching new Forge build')
 	# remote.fetch_packaged(build_id, to_dir='production')
 	# TODO implement server-side packaging
 	remote.fetch_unpackaged(build_id, to_dir='production')

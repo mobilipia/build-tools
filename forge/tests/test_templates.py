@@ -2,9 +2,9 @@ import mock
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
 from os import path
 
-from webmynd import defaults
-from webmynd.templates import Manager
-from webmynd.tests import dummy_config
+from forge import defaults
+from forge.templates import Manager
+from forge.tests import dummy_config
 
 class Test_HashFile(object):
 	def setup(self):
@@ -15,7 +15,7 @@ class Test_HashFile(object):
 		manager = mock_open.return_value.__enter__.return_value
 		manager.read.return_value = 'the contents of the hash file'
 		
-		with mock.patch('webmynd.templates.codecs.open', new=mock_open):
+		with mock.patch('forge.templates.codecs.open', new=mock_open):
 			hsh = self.manager._hash_file('config file name')
 		
 		eq_(hsh, 'd633bf2dfeecd2a8561d736ff0db50ee')
@@ -25,7 +25,7 @@ class TestTemplatesFor(object):
 	def setup(self):
 		self.manager = Manager(dummy_config(), '.my-templates')
 		
-	@mock.patch('webmynd.templates.path')
+	@mock.patch('forge.templates.path')
 	def test_exists(self, path):
 		path.join.return_value = 'the hash file'
 		path.exists.return_value = True
@@ -38,7 +38,7 @@ class TestTemplatesFor(object):
 		path.join.assert_called_once_with('.my-templates', '999.hash')
 		eq_(res, '.my-templates')
 		
-	@mock.patch('webmynd.templates.path')
+	@mock.patch('forge.templates.path')
 	def test_not_exists(self, path):
 		path.join.return_value = 'the hash file'
 		path.exists.return_value = False
@@ -54,8 +54,8 @@ class TestFetchTemplates(object):
 	def setup(self):
 		self.manager = Manager(dummy_config(), 'templates')
 		
-	@mock.patch('webmynd.templates.shutil')
-	@mock.patch('webmynd.templates.Remote')
+	@mock.patch('forge.templates.shutil')
+	@mock.patch('forge.templates.Remote')
 	def test_no_templates(self, Remote, shutil):
 		self.manager.templates_for_config = mock.Mock(return_value=None)
 		self.manager._hash_file = mock.Mock(return_value='hashed file')
@@ -73,8 +73,8 @@ class TestFetchTemplates(object):
 		ok_(manager.write.called)
 		eq_(res, 'templates')
 		
-	@mock.patch('webmynd.templates.shutil')
-	@mock.patch('webmynd.templates.Remote')
+	@mock.patch('forge.templates.shutil')
+	@mock.patch('forge.templates.Remote')
 	def test_have_templates(self, Remote, shutil):
 		self.manager.templates_for_config = mock.Mock(return_value='template directory')
 
@@ -82,8 +82,8 @@ class TestFetchTemplates(object):
 			
 		eq_(res, 'template directory')
 	
-	@mock.patch('webmynd.templates.shutil')
-	@mock.patch('webmynd.templates.Remote')
+	@mock.patch('forge.templates.shutil')
+	@mock.patch('forge.templates.Remote')
 	def test_clean_templates_first(self, Remote, shutil):
 		self.manager.templates_for_config = mock.Mock(return_value='template directory')
 		self.manager._hash_file = mock.Mock(return_value='hashed file')

@@ -13,8 +13,8 @@ import time
 import urllib
 import zipfile
 
-from webmynd import defaults, ForgeError
-from webmynd.lib import cd
+from forge import defaults, ForgeError
+from forge.lib import cd
 
 LOG = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ def _look_for_java():
 	return [directory for directory in possible_jre_locations if path.isdir(directory)]
 
 def _download_sdk_for_windows():
-	urllib.urlretrieve("http://webmynd.com/redirect/android/windows", "sdk.zip")
+	urllib.urlretrieve("http://trigger.io/redirect/android/windows", "sdk.zip")
 
 	LOG.info('Download complete, extracting SDK')
 	zip_to_extract = zipfile.ZipFile("sdk.zip")
@@ -45,7 +45,7 @@ def _download_sdk_for_windows():
 	return PathInfo(android=r"C:\android-sdk-windows\tools\android.bat", adb=r"C:\android-sdk-windows\platform-tools\adb", sdk=r"C:\android-sdk-windows")
 
 def _download_sdk_for_mac():
-	urllib.urlretrieve("http://webmynd.com/redirect/android/macosx", "sdk.zip")
+	urllib.urlretrieve("http://trigger.io/redirect/android/macosx", "sdk.zip")
 
 	LOG.info('Download complete, extracting SDK')
 	zip_process = Popen(["unzip", "sdk.zip", '-d', "/Applications"], stdout=PIPE, stderr=STDOUT)
@@ -56,7 +56,7 @@ def _download_sdk_for_mac():
 	return PathInfo(android="/Applications/android-sdk-macosx/tools/android", adb="/Applications/android-sdk-macosx/platform-tools/adb", sdk="/Applications/android-sdk-macosx")
 
 def _download_sdk_for_linux():
-	urllib.urlretrieve("http://webmynd.com/redirect/android/linux", "sdk.tgz")
+	urllib.urlretrieve("http://trigger.io/redirect/android/linux", "sdk.tgz")
 
 	LOG.info('Download complete, extracting SDK')
 	if not path.isdir(path.expanduser("~/.forge")):
@@ -273,7 +273,7 @@ def _sign_zipf(jre, zipf_name, signed_zipf_name):
 	args = [
 		path.join(jre,'java'),
 		'-jar',
-		path.join(defaults.FORGE_ROOT, 'webmynd', 'apk-signer.jar'),
+		path.join(defaults.FORGE_ROOT, 'forge', 'apk-signer.jar'),
 		'--keystore',
 		path.join(defaults.FORGE_ROOT, 'debug.keystore'),
 		'--storepass',
@@ -303,7 +303,7 @@ def _generate_package_name():
 def _run_apk(sdk, chosen_device, package_name):
 	LOG.info('Running apk')
 	# Get the app config details
-	args = [sdk+'platform-tools/adb', '-s', chosen_device, 'shell', 'am', 'start', '-n', 'webmynd.generated.'+package_name+'/webmynd.generated.'+package_name+'.LoadActivity']
+	args = [sdk+'platform-tools/adb', '-s', chosen_device, 'shell', 'am', 'start', '-n', 'forge.generated.'+package_name+'/forge.generated.'+package_name+'.LoadActivity']
 	_run_shell(args)
 	
 def _follow_log(sdk, chosen_device, package_name):

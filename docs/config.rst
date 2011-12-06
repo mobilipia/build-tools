@@ -1,5 +1,5 @@
 Build Configuration
 ===================
 
-.. automodule:: webmynd.config
+.. automodule:: forge.config
   :members:

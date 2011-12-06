@@ -1,15 +1,15 @@
 from setuptools import setup, find_packages
 import sys, os
 
-import webmynd
+import forge
 
-version = webmynd.VERSION
+version = forge.VERSION
 
-setup(name='WebMynd Build Tools',
+setup(name='Forge Build Tools',
 	version=version,
 	author='James Brady',
-	author_email='james@webmynd.com',
-	url='http://www.webmynd.com/',
+	author_email='james@trigger.io',
+	url='https://trigger.io/',
 	license='MIT',
 	packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
 	include_package_data=True,

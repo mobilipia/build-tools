@@ -17,8 +17,8 @@ if __name__ == "__main__":
 
 	required_folders = [
 		'scripts',
-		'webmynd',
-		'webmynd-dependencies',
+		'forge',
+		'forge-dependencies',
 	]
 
 	required_files = [
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
 		'debug.keystore',
 		'README.rst',
-		'webmynd_build.json'
+		'forge_build.json'
 	]
 
 	with ZipFile('forge-tools.zip', 'w') as distributable:

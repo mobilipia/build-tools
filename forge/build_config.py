@@ -3,13 +3,13 @@ import json
 import logging
 from os import path
 
-import webmynd
-from webmynd import defaults
+import forge
+from forge import defaults
 
 LOG = logging.getLogger(__name__)
 
 def load(filename=None):
-	'Read in and JSON the app-indendent configuration file (normally webmynd_build.json)'
+	'Read in and JSON the app-indendent configuration file (normally forge_build.json)'
 	if filename is None:
 		filename = defaults.CONFIG_FILE
 	
@@ -22,7 +22,7 @@ def load(filename=None):
 	else:
 		LOG.warning('no app configuration file found at %s' % defaults.APP_CONFIG_FILE)
 	
-	LOG.debug('WebMynd build tools version: %s' % webmynd.get_version())
+	LOG.debug('Forge build tools version: %s' % forge.get_version())
 	for key, val in config.iteritems():
 		LOG.debug('%s: %s' % (key, json.dumps(val)))
 	
@@ -37,4 +37,4 @@ def load_app(filename=None):
 		try:
 			return json.load(app_config)
 		except ValueError as e:
-			raise webmynd.ForgeError("Your configuration file ({0}) is malformed:\n{1}".format(filename, e))
+			raise forge.ForgeError("Your configuration file ({0}) is malformed:\n{1}".format(filename, e))

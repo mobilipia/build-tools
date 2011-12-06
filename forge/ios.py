@@ -6,7 +6,7 @@ from os import path
 import time
 from glob import glob
 
-from webmynd import ForgeError
+from forge import ForgeError
 
 LOG = logging.getLogger(__name__)
 

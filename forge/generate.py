@@ -18,8 +18,8 @@ import tempfile
 import sys
 from glob import glob
 
-from webmynd import build_config
-from webmynd.lib import walk2
+from forge import build_config
+from forge.lib import walk2
 
 LOG = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class Generate(object):
 			"chrome": "chrome",
 			"firefox": "firefox",
 			"ie": "ie",
-			"webmynd.safariextension": "safari",
+			"forge.safariextension": "safari",
 			"android": "android",
 			"ios": "ios",
 		}

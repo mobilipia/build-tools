@@ -1,5 +1,5 @@
 @echo off
-set VIRTUAL_ENV=webmynd-environment
+set VIRTUAL_ENV=forge-environment
 
 if defined _OLD_PYTHONPATH (
     set "PYTHONPATH=%_OLD_PYTHONPATH%"
@@ -8,7 +8,7 @@ if not defined PYTHONPATH (
     set PYTHONPATH=;
 )
 set _OLD_PYTHONPATH=%PYTHONPATH%
-set PYTHONPATH=%CD%\webmynd-dependencies;%CD%;%PYTHONPATH%
+set PYTHONPATH=%CD%\forge-dependencies;%CD%;%PYTHONPATH%
 
 if not defined PROMPT (
     set PROMPT=$P$G

@@ -10,8 +10,8 @@ import shutil
 import subprocess
 import sys
 
-from webmynd import defaults
-from webmynd.remote import Remote
+from forge import defaults
+from forge.remote import Remote
 
 LOG = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class Manager(object):
 		shutil.rmtree(self._tmpl_dir, ignore_errors=True)
 		
 		# grab templated platform
-		LOG.info('fetching new WebMynd templates')
+		LOG.info('fetching new Forge templates')
 		remote.fetch_unpackaged(build_id, to_dir=self._tmpl_dir)
 		if sys.platform == 'win32':
 			try:

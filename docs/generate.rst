@@ -1,5 +1,5 @@
 Local File Re-generation
 ========================
 
-.. automodule:: webmynd.generate
+.. automodule:: forge.generate
   :members:

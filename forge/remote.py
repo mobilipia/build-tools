@@ -1,4 +1,4 @@
-'Operations which require involvement of the remote WebMynd build servers'
+'Operations which require involvement of the remote Forge build servers'
 from cookielib import LWPCookieJar
 from getpass import getpass
 import json
@@ -13,10 +13,10 @@ import time
 from urlparse import urljoin, urlsplit
 import zipfile
 
-import webmynd
-from webmynd import ForgeError
-from webmynd import defaults
-from webmynd import lib
+import forge
+from forge import ForgeError
+from forge import defaults
+from forge import lib
 
 LOG = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class Remote(object):
 	POLL_DELAY = 10
 
 	def __init__(self, config):
-		'Start new remote WebMynd builds'
+		'Start new remote Forge builds'
 		self.config = config
 		cookie_path = path.join(defaults.FORGE_ROOT, 'cookies.txt')
 		self.cookies = LWPCookieJar(cookie_path)
@@ -103,8 +103,8 @@ class Remote(object):
 
 	@property
 	def server(self):
-		'The URL of the build server to use (default http://www.webmynd.com/api/)'
-		return self.config.get('main', {}).get('server', 'http://www.webmynd.com/api/')
+		'The URL of the build server to use (default https://trigger.io/api/)'
+		return self.config.get('main', {}).get('server', 'https://trigger.io/api/')
 
 	def _csrf_token(self):
 		'''Return the server-negotiated CSRF token, if we have one
@@ -126,7 +126,7 @@ class Remote(object):
 		if method == "POST":
 			# must have CSRF token
 			data = kw.get("data", {})
-			data['build_tools_version'] = webmynd.get_version()
+			data['build_tools_version'] = forge.get_version()
 			data["csrfmiddlewaretoken"] = self._csrf_token()
 			kw["data"] = data
 		kw['cookies'] = self.cookies
@@ -207,8 +207,8 @@ class Remote(object):
 			LOG.debug('already authenticated via cookie - continuing')
 			return
 
-		email = webmynd.request_username()
-		password = webmynd.request_password()
+		email = forge.request_username()
+		password = forge.request_password()
 
 		LOG.info('authenticating as "%s"' % email)
 		credentials = {
@@ -272,7 +272,7 @@ class Remote(object):
 
 	def check_version(self):
 		result = self._api_get(
-			'version_check/{version}/'.format(version=webmynd.get_version().replace('.','/'))
+			'version_check/{version}/'.format(version=forge.get_version().replace('.','/'))
 		)
 
 		if result['result'] == 'ok':
@@ -284,7 +284,7 @@ class Remote(object):
 			if result.get('upgrade') == 'required':
 				raise ForgeError("""An update to these command line tools is required
 
-The newest tools can be obtained from https://webmynd.com/forge/upgrade/
+The newest tools can be obtained from https://trigger.io/forge/upgrade/
 """)
 		else:
 			LOG.info('Upgrade check failed.')
