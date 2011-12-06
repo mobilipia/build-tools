@@ -50,7 +50,7 @@ class Generate(object):
 			"chrome": "chrome",
 			"firefox": "firefox",
 			"ie": "ie",
-			"webmynd.safariextension": "webmynd.safariextension",
+			"webmynd.safariextension": "safari",
 			"android": "android",
 			"ios": "ios",
 		}
