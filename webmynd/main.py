@@ -17,7 +17,7 @@ from webmynd import defaults, build_config, ForgeError
 from webmynd.generate import Generate
 from webmynd.remote import Remote
 from webmynd.templates import Manager
-from webmynd.android import CouldNotLocate, run_android
+from webmynd.android import run_android
 from webmynd.ios import IOSRunner
 from webmynd.lib import try_a_few_times
 
@@ -133,7 +133,8 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 
 	1) Go to chrome:extensions in the Chrome browser
 	2) Make sure "developer mode" is on (top right corner)')
-	3) Use "Load unpacked extension" and browse to ./development/chrome"""
+	3) Use "Load unpacked extension" and browse to ./development/chrome
+"""
 			raise argparse.ArgumentTypeError(msg)
 		return text
 
@@ -157,7 +158,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 	if args.platform == 'android':
 		try:
 			run_android(build_type_dir, args.sdk, args.device)
-		except CouldNotLocate as e:
+		except Exception as e:
 			LOG.error(e)
 	elif args.platform == 'ios':
 		config = build_config.load_app()
