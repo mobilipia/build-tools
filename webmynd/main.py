@@ -14,11 +14,10 @@ from os import path, devnull
 
 import webmynd
 from webmynd import defaults, build_config, ForgeError
+from webmynd import build
 from webmynd.generate import Generate
 from webmynd.remote import Remote
 from webmynd.templates import Manager
-from webmynd.android import run_android
-from webmynd.ios import IOSRunner
 from webmynd.lib import try_a_few_times
 
 LOG = None
@@ -155,26 +154,26 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		_assert_have_development_folder()
 	_assert_have_target_folder(build_type_dir, args.platform)
 	
+	generate_dynamic = build.import_generate_dynamic()
+	
 	if args.platform == 'android':
-		try:
-			run_android(build_type_dir, args.sdk, args.device)
-		except Exception as e:
-			LOG.error(e)
+		build_to_run = build.create_build(build_type_dir)
+		build_to_run.add_steps(
+			generate_dynamic.customer_phases.run_android_phase(build_type_dir, args.sdk, args.device)
+		)
+		build_to_run.run()
 	elif args.platform == 'ios':
-		config = build_config.load_app()
-		runner = IOSRunner(build_type_dir)
-		runner.run_iphone_simulator_with(config['name'])
+		build_to_run = build.create_build(build_type_dir)
+		build_to_run.add_steps(
+			generate_dynamic.customer_phases.run_ios_phase(build_type_dir)
+		)
+		build_to_run.run()
 	elif args.platform == 'firefox':
-		original_harness_options = os.path.join(build_type_dir, 'firefox', 'harness-options.json')
-		backup_harness_options = os.path.join(build_type_dir, 'firefox', 'harness-options-bak.json')
-		shutil.move(original_harness_options, backup_harness_options)
-		try:
-			with codecs.open(backup_harness_options, encoding='utf8') as harness_file:
-				harness_config = json.load(harness_file)
-			from cuddlefish.runner import run_app
-			run_app(os.path.join(build_type_dir, 'firefox'), harness_config, "firefox", verbose=True)
-		finally:
-			shutil.move(backup_harness_options, original_harness_options)
+		build_to_run = build.create_build(build_type_dir)
+		build_to_run.add_steps(
+			generate_dynamic.customer_phases.run_firefox_phase(build_type_dir)
+		)
+		build_to_run.run()
 
 def create():
 	'Create a new development environment'

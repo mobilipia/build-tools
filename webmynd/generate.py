@@ -19,6 +19,7 @@ import sys
 from glob import glob
 
 from webmynd import build, build_config
+from webmynd.build import import_generate_dynamic
 from webmynd.lib import walk2
 
 LOG = logging.getLogger(__name__)
@@ -46,11 +47,12 @@ class Generate(object):
 		:param target_dir: the parent directory of the per-platform builds
 		:param user_dir: the directory holding user's code
 		'''
-		build_to_run = build.create_build(build_type_dir)
+		build_to_run = build.create_build(target_dir)
+		generate_dynamic = import_generate_dynamic()
 		
-		build_to_run.add_steps(customer_phases.resolve_urls())
-		build_to_run.add_steps(customer_phases.copy_user_source_to_template(server=False))
-		build_to_run.add_steps(customer_phases.include_platform_in_html(server=False))
-		build_to_run.add_steps(customer_phases.include_icons())
+		build_to_run.add_steps(generate_dynamic.customer_phases.resolve_urls())
+		build_to_run.add_steps(generate_dynamic.customer_phases.copy_user_source_to_template(server=False))
+		build_to_run.add_steps(generate_dynamic.customer_phases.include_platform_in_html(server=False))
+		build_to_run.add_steps(generate_dynamic.customer_phases.include_icons())
 		
 		build_to_run.run()
