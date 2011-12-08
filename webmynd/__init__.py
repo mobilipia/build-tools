@@ -3,7 +3,7 @@ from getpass import getpass
 import sys
 from os import path
 
-VERSION = '2.1.0'
+VERSION = '2.2.0'
 
 def _check_version():
 	'''Throw error if we're on Python < 2.6'''
