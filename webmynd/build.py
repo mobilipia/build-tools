@@ -1,7 +1,7 @@
 import logging
 import os
 
-from webmynd import build_config, defaults
+from forge import build_config, defaults
 
 LOG = logging.getLogger(__name__)
 
