@@ -82,10 +82,12 @@ class TestCreate(object):
 			main.create()
 
 class TestRun(object):
+	@mock.patch('forge.main.build')
 	@mock.patch('forge.main.argparse')
 	@mock.patch('forge.main._assert_have_development_folder')
 	@mock.patch('forge.main._assert_have_target_folder')
-	def test_not_android(self, _assert_have_target_folder, _assert_have_development_folder, argparse):
+	def test_not_android(self, _assert_have_target_folder, _assert_have_development_folder,
+			argparse, build):
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
 		args.platform = 'chrome'
@@ -96,10 +98,10 @@ class TestRun(object):
 
 		parser.parse_args.assert_called_once()
 
-	@mock.patch('forge.main.run_android')
+	@mock.patch('forge.main.build')
 	@mock.patch('forge.main.argparse')
 	@mock.patch('forge.main._assert_have_target_folder')
-	def test_found_jdk_and_sdk(self, _assert_have_development_folder, argparse, run_android):
+	def test_found_jdk_and_sdk(self, _assert_have_development_folder, argparse, build):
 		main._assert_have_development_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
@@ -116,12 +118,13 @@ class TestRun(object):
 		main.run()
 		
 		parser.parse_args.assert_called_once()
-		run_android.assert_called_once_with('development', 'sdk', 'device')
+		build.create_build.assert_called_once()
+		build.create_build.return_value.run.assert_called_once()
 	
-	@mock.patch('forge.main.run_android')
+	@mock.patch('forge.main.build')
 	@mock.patch('forge.main.argparse')
 	@mock.patch('forge.main._assert_have_target_folder')
-	def test_prod_android(self, _assert_have_development_folder, argparse, run_android):
+	def test_prod_android(self, _assert_have_development_folder, argparse, build):
 		main._assert_have_production_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
@@ -132,14 +135,17 @@ class TestRun(object):
 		parser.parse_args.return_value = args
 		
 		main.run()
-		
-		run_android.assert_called_once_with('production', 'sdk', "device")
-	
+
+		build.create_build.assert_called_once()
+		build.create_build.return_value.run.assert_called_once()
+		build.import_generate_dynamic.assert_called_once()
+		build.import_generate_dynamic.return_value.customer_phases.run_android_phase.assert_called_once()
+
+	@mock.patch('forge.main.build')
 	@mock.patch('forge.main.build_config')
-	@mock.patch('forge.main.IOSRunner')
 	@mock.patch('forge.main.argparse')
 	@mock.patch('forge.main._assert_have_target_folder')
-	def test_prod_ios(self, _assert_have_development_folder, argparse, IOSRunner, build_config):
+	def test_prod_ios(self, _assert_have_development_folder, argparse, build_config, build):
 		main._assert_have_production_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
@@ -149,9 +155,11 @@ class TestRun(object):
 		build_config.load_app.return_value = {"name": "dummy name"}
 		
 		main.run()
-		
-		IOSRunner.assert_called_once_with('production')
-		IOSRunner.return_value.run_iphone_simulator_with.assert_called_once_with("dummy name")
+
+		build.create_build.assert_called_once()
+		build.create_build.return_value.run.assert_called_once()
+		build.import_generate_dynamic.assert_called_once()
+		build.import_generate_dynamic.return_value.customer_phases.run_ios_phase.assert_called_once()
 		
 class Test_AssertNotSubdirectoryOfForgeRoot(object):
 	@mock.patch('forge.main.os.getcwd')

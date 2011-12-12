@@ -18,7 +18,8 @@ import tempfile
 import sys
 from glob import glob
 
-from forge import build_config
+from forge import build, build_config
+from forge.build import import_generate_dynamic
 from forge.lib import walk2
 
 LOG = logging.getLogger(__name__)
@@ -46,30 +47,12 @@ class Generate(object):
 		:param target_dir: the parent directory of the per-platform builds
 		:param user_dir: the directory holding user's code
 		'''
-		directory_to_platform = {
-			"chrome": "chrome",
-			"firefox": "firefox",
-			"ie": "ie",
-			"forge.safariextension": "safari",
-			"android": "android",
-			"ios": "ios",
-		}
+		build_to_run = build.create_build(target_dir)
+		generate_dynamic = import_generate_dynamic()
 		
-		enabled_platforms = []
-		for directory in os.listdir(target_dir):
-			if directory in directory_to_platform:
-				enabled_platforms.append(directory_to_platform[directory])
-
-		# XXX: we were hoping to just get .template into the PYTHONPATH environment variable,
-		# but it seems like we were doing it too early so we're doing it here.
-		sys.path.insert(0, '.template')
-		from generate_dynamic import build, customer_phases, customer_tasks, predicates
-
-		build_to_run = build.Build(self.app_config, user_dir, target_dir, enabled_platforms=enabled_platforms)
-		
-		build_to_run.add_steps(customer_phases.resolve_urls())
-		build_to_run.add_steps(customer_phases.copy_user_source_to_template(server=False))
-		build_to_run.add_steps(customer_phases.include_platform_in_html(server=False))
-		build_to_run.add_steps(customer_phases.include_icons())
+		build_to_run.add_steps(generate_dynamic.customer_phases.resolve_urls())
+		build_to_run.add_steps(generate_dynamic.customer_phases.copy_user_source_to_template(server=False))
+		build_to_run.add_steps(generate_dynamic.customer_phases.include_platform_in_html(server=False))
+		build_to_run.add_steps(generate_dynamic.customer_phases.include_icons())
 		
 		build_to_run.run()
