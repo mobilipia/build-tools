@@ -6,8 +6,10 @@ import subprocess
 import mock
 from mock import MagicMock, Mock, patch
 from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
+import requests
 
 from forge import defaults, ForgeError, VERSION
+from forge import remote
 from forge.remote import Remote, RequestError
 from forge.tests import dummy_config
 from lib import assert_raises_regexp
@@ -359,3 +361,84 @@ class TestGenerateInstructions(TestRemote):
 
 		cd.assert_called_once_with('my/path')
 		unzip_with_permissions.assert_called_once_with('instructions.zip')
+
+class TestCheckApiResponseForError(TestRemote):
+	
+	'''Check an API response from the website to see if there was an error. Checks for one of the following:
+
+	No status code, as in, no valid response from the server.
+	
+	HTTP status code is not 200 but get a JSON response
+	HTTP status code is not 200 and the response is not a valid JSON response
+
+	Code 200 with a valid JSON response and the 'result' property is set to 'error'
+	Code 200 with no JSON response
+
+	:param url: The API url used in the request
+	:param method: The HTTP method used in the request (e.g. GET or POST)
+	:param resp: The response from the API call
+	:raises: RequestException if the response is an error or malformed
+'''
+	def setup(self):
+		super(TestCheckApiResponseForError, self).setup()
+		self.resp = requests.get('will:fail:///now/')
+	
+	def test_500_valid_json(self):
+		resp = mock.Mock(spec=self.resp)
+		resp.content = json.dumps({'result': 'error', 'text': 'Internal error: testing'})
+		resp.status_code = 500
+		resp.ok = False
+		
+		assert_raises_regexp(RequestError, 'Internal error: testing',
+			remote._check_api_response_for_error,
+			'http://dummy.trigger.io/',
+			'GET',
+			resp,
+		)
+	def test_500_invalid_json(self):
+		resp = mock.Mock(spec=self.resp)
+		resp.content = "wat!["
+		resp.status_code = 500
+		resp.ok = False
+		
+		assert_raises_regexp(RequestError, 'GET to http://dummy.trigger.io/ failed',
+			remote._check_api_response_for_error,
+			'http://dummy.trigger.io/',
+			'GET',
+			resp,
+		)
+	def test_200_error(self):
+		resp = mock.Mock(spec=self.resp)
+		resp.content = json.dumps({'result': 'error', 'text': 'Internal error: testing'})
+		resp.status_code = 200
+		resp.ok = True
+		
+		assert_raises_regexp(RequestError, 'Internal error: testing',
+			remote._check_api_response_for_error,
+			'http://dummy.trigger.io/',
+			'GET',
+			resp,
+		)
+	def test_200_invalid_json(self):
+		resp = mock.Mock(spec=self.resp)
+		resp.content = "wat!["
+		resp.status_code = 200
+		resp.ok = True
+		
+		assert_raises_regexp(RequestError, 'Server meant to respond with JSON, but response content was',
+			remote._check_api_response_for_error,
+			'http://dummy.trigger.io/',
+			'GET',
+			resp,
+		)
+	def test_no_status_code(self):
+		resp = mock.Mock(spec=self.resp)
+		resp.status_code = None
+		resp.ok = False
+		
+		assert_raises_regexp(RequestError, 'got no response',
+			remote._check_api_response_for_error,
+			'http://dummy.trigger.io/',
+			'GET',
+			resp,
+		)

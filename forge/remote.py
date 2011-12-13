@@ -45,7 +45,7 @@ def _check_api_response_for_error(url, method, resp, error_message=None):
 	LOG.debug("checking API response for success or error")
 
 	error_template = "Forge API call to {url} went wrong: {reason}"
-
+	
 	if not resp.ok:
 		if resp.status_code is None:
 			raise RequestError("Request to {url} got no response".format(url=url))
