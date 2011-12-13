@@ -153,7 +153,6 @@ class TestFetchUnpackaged(TestRemote):
 	# TODO refactor tests to go after _fetch_output directly
 	@patch('forge.remote.path.isdir', new=mock.Mock(return_value=False))
 	@patch('forge.remote.path.abspath', new=mock.Mock(side_effect=lambda x: '/absolute/path/'+x))
-
 	@patch('forge.remote.os.remove')
 	@patch('forge.remote.os.mkdir')
 	@patch('forge.remote.lib.unzip_with_permissions')
