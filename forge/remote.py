@@ -103,8 +103,8 @@ class Remote(object):
 
 	@property
 	def server(self):
-		'The URL of the build server to use (default https://trigger.io/api/)'
-		return self.config.get('main', {}).get('server', 'https://trigger.io/api/')
+		'The URL of the build server to use (default https://webmynd.com/api/)'
+		return self.config.get('main', {}).get('server', 'https://webmynd.com/api/')
 
 	def _csrf_token(self):
 		'''Return the server-negotiated CSRF token, if we have one
@@ -284,7 +284,7 @@ class Remote(object):
 			if result.get('upgrade') == 'required':
 				raise ForgeError("""An update to these command line tools is required
 
-The newest tools can be obtained from https://trigger.io/forge/upgrade/
+The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 """)
 		else:
 			LOG.info('Upgrade check failed.')

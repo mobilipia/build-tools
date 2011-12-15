@@ -42,7 +42,7 @@ assert_user_have_python () {
 	if [ $? -ne 0 ]
 	then
 		echo 'Python not found.'
-		echo 'You can download it from here: https://trigger.io/forge/requirements/'
+		echo 'You can download it from here: https://webmynd.com/forge/requirements/'
 		failure
 		return 1
 	fi
@@ -53,7 +53,7 @@ assert_have_python () {
 	if [ $? -ne 0 ]
 	then
 		echo 'Python not found.'
-		echo 'You can download it from here: https://trigger.io/forge/requirements/'
+		echo 'You can download it from here: https://webmynd.com/forge/requirements/'
 		failure
 		return 1
 	fi

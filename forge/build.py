@@ -18,7 +18,7 @@ def _enabled_platforms(build_type_dir):
 		"chrome": "chrome",
 		"firefox": "firefox",
 		"ie": "ie",
-		"webmynd.safariextension": "safari",
+		"forge.safariextension": "safari",
 		"android": "android",
 		"ios": "ios",
 	}

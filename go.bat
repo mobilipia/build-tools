@@ -109,7 +109,7 @@ GOTO success
 :nopython
 ECHO.
 ECHO Python not found, make sure Python is installed and in your path.
-ECHO you can download it here: https://trigger.io/forge/requirements/#Python
+ECHO you can download it here: https://webmynd.com/forge/requirements/#Python
 GOTO failure
 
 :failure
