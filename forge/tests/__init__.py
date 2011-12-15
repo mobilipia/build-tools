@@ -2,6 +2,6 @@ def dummy_config():
 	return {
 		'uuid': 'TEST-UUID',
 		'main': {
-			'server': 'https://test.webmynd.com/api/'
+			'server': 'https://test.trigger.io/api/'
 		}
 	}
