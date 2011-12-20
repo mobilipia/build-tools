@@ -149,6 +149,32 @@ class TestUpdateSdk(object):
 		eq_(Popen.call_args_list[0][0][0], ['android', "update", "sdk", "--no-ui", "--filter", "platform-tool,tool,android-8"])
 		eq_(Popen.call_args_list[1][0][0], ["adb", "kill-server"])
 
+class TestShouldInstallSdk(object):
+	def test_answer_1(self):
+		mock_raw_input = Mock()
+		mock_raw_input.return_value = '1'
+		with patch('__builtin__.raw_input', mock_raw_input):
+			result = android._should_install_sdk('dummy path')
+		
+		assert result
+	def test_answer_2(self):
+		mock_raw_input = Mock()
+		mock_raw_input.return_value = '2'
+		with patch('__builtin__.raw_input', mock_raw_input):
+			result = android._should_install_sdk('dummy path')
+		
+		assert not result
+	def test_answer_y_then_2(self):
+		y2 = ['y', '2']
+		def y_then_2(*args, **kw):
+			return y2.pop(0)
+		mock_raw_input = Mock()
+		mock_raw_input.side_effect = y_then_2
+		with patch('__builtin__.raw_input', mock_raw_input):
+			result = android._should_install_sdk('dummy path')
+		
+		assert not result
+
 class TestCheckForSdk(object):
 	@patch('webmynd.android.path')
 	def test_found_manual_no_slash(self, path):

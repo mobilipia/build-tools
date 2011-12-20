@@ -122,8 +122,12 @@ No Android SDK found, would you like to:
 (2) Install the SDK yourself and rerun this command with the --sdk option to specify its location.
 
 Please enter 1 or 2: '''.format(sdk_path=sdk_path))
-	
-	return resp == 2
+	try:
+		answer = int(resp)
+	except ValueError:
+		LOG.warning('Please answer with 1 or 2')
+		return _should_install_sdk(sdk_path)
+	return answer == 1
 
 def _check_for_sdk(dir=None):
 	# Some sensible places to look for the Android SDK
