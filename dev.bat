@@ -1,5 +1,5 @@
 @echo off
-set LOG_FILE=webmynd-install.log
+set LOG_FILE=forge-install.log
 del %LOG_FILE%
 
 python -V 1>%LOG_FILE% 2>&1
@@ -15,20 +15,20 @@ IF ERRORLEVEL 1 GOTO novirtualenv
 ECHO virtualenv found.
 
 :virtualenvinstalled
-IF EXIST webmynd-environment GOTO virtualenvcreated
-virtualenv --no-site-packages webmynd-environment
+IF EXIST forge-environment GOTO virtualenvcreated
+virtualenv --no-site-packages forge-environment
 IF ERRORLEVEL 1 GOTO createvirtualenvfail
-ECHO WebMynd virtual env created.
+ECHO Forge virtual env created.
 
 :virtualenvcreated
 SET FORGE_ROOT=%CD%
-CALL webmynd-environment\Scripts\activate.bat
+CALL forge-environment\Scripts\activate.bat
 
 SET PYTHONPATH=%FORGE_ROOT%;%PYTHONPATH%
 SET PATH=%FORGE_ROOT%\scripts;%PATH%
 
 IF ERRORLEVEL 1 GOTO activatevirtualenvfail
-ECHO Entered WebMynd virtual env.
+ECHO Entered Forge virtual env.
 
 pip --version 1>%LOG_FILE% 2>&1
 IF ERRORLEVEL 1 GOTO nopip
@@ -42,7 +42,7 @@ ECHO Requirements found and installed.
 
 :setupcomplete
 
-ECHO WebMynd environment ready, entering command line interface.
+ECHO Forge environment ready, entering command line interface.
 GOTO success
 
 :nopip
@@ -66,7 +66,7 @@ GOTO failure
 
 :reqfail
 ECHO.
-ECHO WebMynd setup failed
+ECHO Forge setup failed
 GOTO failure
 
 :easyinstallfail

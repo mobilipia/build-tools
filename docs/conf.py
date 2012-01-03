@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# WebMynd Build Tools documentation build configuration file, created by
+# Forge Build Tools documentation build configuration file, created by
 # sphinx-quickstart on Wed Aug 10 11:06:01 2011.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -40,7 +40,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'WebMynd Build Tools'
+project = u'Forge Build Tools'
 copyright = u'2011, James Brady'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -164,7 +164,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'WebMyndBuildToolsdoc'
+htmlhelp_basename = 'ForgeBuildToolsdoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -178,7 +178,7 @@ htmlhelp_basename = 'WebMyndBuildToolsdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'WebMyndBuildTools.tex', u'WebMynd Build Tools Documentation',
+  ('index', 'ForgeBuildTools.tex', u'Forge Build Tools Documentation',
    u'James Brady', 'manual'),
 ]
 
@@ -211,7 +211,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'webmyndbuildtools', u'WebMynd Build Tools Documentation',
+    ('index', 'forgebuildtools', u'Forge Build Tools Documentation',
      [u'James Brady'], 1)
 ]
 

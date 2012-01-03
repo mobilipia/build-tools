@@ -1,12 +1,12 @@
-WebMynd Development Tools
+Forge Development Tools
 =========================
 Note that this repository is currently mainly intended to aid tool distribution to our users: although we don't currently expect much community participation, pull requests are gratefully received!
 
 Overview
 --------
-WebMynd aims to be as unobtrusive as possible as you're developing and testing your application.
+Forge aims to be as unobtrusive as possible as you're developing and testing your application.
 
-This repository holds a number of command-line tools to work with your local WebMynd development environments, so that you can use whatever editor, build system and source control you want.
+This repository holds a number of command-line tools to work with your local Forge development environments, so that you can use whatever editor, build system and source control you want.
 
 Getting Started
 ---------------

@@ -18,7 +18,7 @@ fi
 # lots of functions defined in here
 . ./common.sh
 
-LOG_FILE='.webmynd-install.log'
+LOG_FILE='.forge-install.log'
 rm -f $LOG_FILE
 touch $LOG_FILE
 

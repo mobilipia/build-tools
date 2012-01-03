@@ -18,7 +18,7 @@ fi
 # lots of functions defined in here
 . ./common.sh
 
-LOG_FILE='.webmynd-install.log'
+LOG_FILE='.forge-install.log'
 rm -f $LOG_FILE
 touch $LOG_FILE
 
@@ -36,11 +36,11 @@ install_pip_if_necessary &&
 install_dev_dependencies &&
 
 # don't need to install the library as the wm- scripts locate it
-# install_webmynd_library &&
+# install_forge_library &&
 put_wm_scripts_in_path &&
 
 
-echo 'WebMynd environment ready, entering command line interface.' &&
+echo 'Forge environment ready, entering command line interface.' &&
 echo
 
 undefine_functions

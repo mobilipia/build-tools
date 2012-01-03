@@ -1,5 +1,5 @@
 Build Tools Entry Points
 ========================
 
-.. automodule:: webmynd.main
+.. automodule:: forge.main
   :members:
