@@ -20,7 +20,7 @@ from forge.remote import Remote
 from forge.templates import Manager
 from forge.lib import try_a_few_times
 
-LOG = None
+LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
 
 class RunningInForgeRoot(Exception):
