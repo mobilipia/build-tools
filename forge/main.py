@@ -319,7 +319,7 @@ COMMANDS = {
 	'run': run
 }
 
-if __name__ == "__main__":
+def main():
 	# The main entry point for the program.
 
 	# Parses enough to figure out what subparser to hand off to, sets up logging and error handling
