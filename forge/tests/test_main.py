@@ -89,6 +89,7 @@ class TestRun(object):
 	@mock.patch('forge.main.argparse')
 	@mock.patch('forge.main._assert_have_development_folder')
 	@mock.patch('forge.main._assert_have_target_folder')
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
 	def test_not_android(self, _assert_have_target_folder, _assert_have_development_folder,
 			argparse, build):
 		parser = argparse.ArgumentParser.return_value
@@ -104,6 +105,7 @@ class TestRun(object):
 	@mock.patch('forge.main.build')
 	@mock.patch('forge.main.argparse')
 	@mock.patch('forge.main._assert_have_target_folder')
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
 	def test_found_jdk_and_sdk(self, _assert_have_development_folder, argparse, build):
 		main._assert_have_development_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
@@ -127,6 +129,7 @@ class TestRun(object):
 	@mock.patch('forge.main.build')
 	@mock.patch('forge.main.argparse')
 	@mock.patch('forge.main._assert_have_target_folder')
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
 	def test_prod_android(self, _assert_have_development_folder, argparse, build):
 		main._assert_have_production_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
@@ -148,6 +151,7 @@ class TestRun(object):
 	@mock.patch('forge.main.build_config')
 	@mock.patch('forge.main.argparse')
 	@mock.patch('forge.main._assert_have_target_folder')
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
 	def test_prod_ios(self, _assert_have_development_folder, argparse, build_config, build):
 		main._assert_have_production_folder = mock.Mock()
 		parser = argparse.ArgumentParser.return_value
@@ -222,6 +226,7 @@ class TestBuild(object):
 	@mock.patch('forge.main.build_config')
 	@mock.patch('forge.main.os.path.isdir')
 	@mock.patch('forge.main.argparse')
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
 	@raises(forge.ForgeError)
 	def test_user_dir_not_there(self, argparse, isdir, build_config):
 		isdir.return_value = False
@@ -240,6 +245,7 @@ class TestBuild(object):
 	@mock.patch('forge.main.Remote')
 	@mock.patch('forge.main.Manager')
 	@mock.patch('forge.main.argparse')
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
 	def test_dev_no_conf_change(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		args = parser.parse_args.return_value
@@ -272,6 +278,7 @@ class TestBuild(object):
 	@mock.patch('forge.main.Remote')
 	@mock.patch('forge.main.Manager')
 	@mock.patch('forge.main.argparse')
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
 	def test_dev_conf_change(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		args = parser.parse_args.return_value
@@ -305,6 +312,7 @@ class TestBuild(object):
 	@mock.patch('forge.main.os.path.isdir')
 	@mock.patch('forge.main.Remote')
 	@mock.patch('forge.main.argparse')
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
 	def test_prod(self, argparse, Remote, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		Remote.return_value.build.return_value = -1

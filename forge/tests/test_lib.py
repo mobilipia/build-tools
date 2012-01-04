@@ -37,7 +37,7 @@ class TestPathToConfigFile(object):
 		mock_env = {'LOCALAPPDATA': 'path to dummy appdata'}
 		mock_sys.platform = 'win32'
 
-		with patch('webmynd.os.environ', new=mock_env):
+		with patch('forge.os.environ', new=mock_env):
 			result = lib.path_to_config_file()
 
 		eq_(
@@ -45,8 +45,8 @@ class TestPathToConfigFile(object):
 			os.path.join(mock_env['LOCALAPPDATA'], 'forge')
 		)
 
-	@patch('forge.lib.sys')
 	@patch('forge.lib.os.path')
+	@patch('forge.lib.sys')
 	def test_on_darwin_should_use_home_directory(self, mock_sys, path):
 		mock_sys.platform = 'darwin'
 		path.expanduser.return_value = 'path to dummy home directory'
@@ -57,9 +57,9 @@ class TestPathToConfigFile(object):
 			os.path.join('path to dummy home directory', '.forge')
 		)
 
-	@patch('forge.lib.sys')
 	@patch('forge.lib.os.path')
-	def test_on_darwin_should_use_home_directory(self, mock_sys, path):
+	@patch('forge.lib.sys')
+	def test_on_linux_should_use_home_directory(self, mock_sys, path):
 		mock_sys.platform = 'linux'
 		path.expanduser.return_value = 'path to dummy home directory'
 
