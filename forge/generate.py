@@ -8,19 +8,10 @@ in simple situations.
 from __future__ import with_statement
 
 import codecs
-import json
 import logging
-from StringIO import StringIO
-import os
-from os import path
-import shutil
-import tempfile
-import sys
-from glob import glob
 
 from forge import build, build_config
 from forge.build import import_generate_dynamic
-from forge.lib import walk2
 
 LOG = logging.getLogger(__name__)
 
