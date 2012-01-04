@@ -32,7 +32,7 @@ class TestUnzipWithPermissions(object):
 
 class TestPathToConfigFile(object):
 
-	@patch('webmynd.lib.sys')
+	@patch('forge.lib.sys')
 	def test_on_windows_should_use_localappdata_from_environment(self, mock_sys):
 		mock_env = {'LOCALAPPDATA': 'path to dummy appdata'}
 		mock_sys.platform = 'win32'
@@ -45,8 +45,8 @@ class TestPathToConfigFile(object):
 			os.path.join(mock_env['LOCALAPPDATA'], 'forge')
 		)
 
-	@patch('webmynd.lib.sys')
-	@patch('webmynd.lib.os.path')
+	@patch('forge.lib.sys')
+	@patch('forge.lib.os.path')
 	def test_on_darwin_should_use_home_directory(self, mock_sys, path):
 		mock_sys.platform = 'darwin'
 		path.expanduser.return_value = 'path to dummy home directory'
@@ -57,8 +57,8 @@ class TestPathToConfigFile(object):
 			os.path.join('path to dummy home directory', '.forge')
 		)
 
-	@patch('webmynd.lib.sys')
-	@patch('webmynd.lib.os.path')
+	@patch('forge.lib.sys')
+	@patch('forge.lib.os.path')
 	def test_on_darwin_should_use_home_directory(self, mock_sys, path):
 		mock_sys.platform = 'linux'
 		path.expanduser.return_value = 'path to dummy home directory'
