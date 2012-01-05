@@ -1,5 +1,6 @@
 import logging
-import os
+import warnings
+import os as real_os
 import mock
 from nose.tools import ok_, eq_, raises
 
@@ -52,7 +53,7 @@ class TestCreate(object):
 	@mock.patch('forge.main.Remote')
 	@mock.patch('forge.main.argparse')
 	def test_normal(self, argparse, Remote, mock_os, build_config):
-		mock_os.sep = os.sep
+		mock_os.sep = real_os.sep
 		parser = argparse.ArgumentParser.return_value
 		parser.parse_args.return_value.name = None
 
@@ -74,7 +75,7 @@ class TestCreate(object):
 	@mock.patch('forge.main.argparse')
 	@raises(forge.ForgeError)
 	def test_user_dir_there(self, argparse, Remote, mock_os):
-		mock_os.sep = os.sep
+		mock_os.sep = real_os.sep
 		parser = argparse.ArgumentParser.return_value
 		mock_os.path.exists.return_value = True
 		mock_raw_input = mock.MagicMock()
@@ -335,5 +336,19 @@ class TestWithErrorHandler(object):
 			raise KeyboardInterrupt()
 
 		main.with_error_handler(interrupt)()
-
 		sys.exit.assert_called_once_with(1)
+
+class TestMain(object):
+	@mock.patch('forge.main._dispatch_command')
+	@mock.patch('forge.main.argparse')
+	def test_if_using_deprecated_command_then_should_warn(self, argparse, dispatch):
+		args = mock.Mock()
+		args.command = 'create'
+		argparse.ArgumentParser.return_value.parse_known_args.return_value = (args, [])
+
+		main._using_deprecated_command('create')
+		mock_logging = mock.Mock()
+		with mock.patch('forge.main.logging', new=mock_logging):
+			main.main()
+		warning = mock_logging.getLogger.return_value.warning
+		warning.assert_called_with("Using wm-create which is now deprecated and will eventually be unsupported, instead, please use: 'forge create'\n\n")
