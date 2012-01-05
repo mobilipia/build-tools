@@ -222,6 +222,10 @@ class Remote(object):
 		LOG.info('authentication successful')
 		self._authenticated = True
 
+	def list_apps(self):
+		self._authenticate()
+		return self._api_get('app/')
+
 	def create(self, name):
 		self._authenticate()
 	
@@ -458,7 +462,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 			src_archive = None
 			src_archive = self._create_src_tar(src_archive_filename, src_dir)
 
-			with lib.open_file(src_archive_filename, mode='rb') as user_files:
+			with lib.open_file(src_archive_filename, mode='rb', encoding=None) as user_files:
 				LOG.info('Uploading application source code ({size})...'.format(
 					size=lib.human_readable_file_size(user_files)
 				))

@@ -1,7 +1,9 @@
+import codecs
 from contextlib import contextmanager
 import logging
 import subprocess
 import zipfile
+import sys
 import os
 from os.path import join, isdir, islink
 from os import error, listdir
@@ -10,52 +12,32 @@ import time
 
 LOG = logging.getLogger(__file__)
 
-# modified os.walk() function from Python 2.4 standard library
-def walk2(top, topdown=True, onerror=None, deeplevel=0): # fix 0
-	"""Modified directory tree generator.
+def path_to_data_file(*relative_path):
+	'''This is a helper function that will return the path to a data file bundled inside the application.
 
-	For each directory in the directory tree rooted at top (including top
-	itself, but excluding '.' and '..'), yields a 4-tuple
+	It is aware of whether the application is frozen (e.g. being run from forge.exe) or not.
 
-		dirpath, dirnames, filenames, deeplevel
+	http://www.pyinstaller.org/export/latest/trunk/doc/Manual.html#adapting-to-being-frozen
+	'''
+	return os.path.join(forge.DATA_PATH, *relative_path)
 
-	dirpath is a string, the path to the directory.  dirnames is a list of
-	the names of the subdirectories in dirpath (excluding '.' and '..').
-	filenames is a list of the names of the non-directory files in dirpath.
-	Note that the names in the lists are just names, with no path components.
-	To get a full path (which begins with top) to a file or directory in
-	dirpath, do os.path.join(dirpath, name). 
-
-	----------------------------------------------------------------------
-	+ deeplevel is 0-based deep level from top directory
-	----------------------------------------------------------------------
-	...
-
-	"""
-
-	try:
-		names = listdir(top)
-	except error, err:
-		if onerror is not None:
-			onerror(err)
-		return
-
-	dirs, nondirs = [], []
-	for name in names:
-		if isdir(join(top, name)):
-			dirs.append(name)
-		else:
-			nondirs.append(name)
-
-	if topdown:
-		yield top, dirs, nondirs, deeplevel # fix 1
-	for name in dirs:
-		path = join(top, name)
-		if not islink(path):
-			for x in walk2(path, topdown, onerror, deeplevel+1): # fix 2
-				yield x
-	if not topdown:
-		yield top, dirs, nondirs, deeplevel # fix 3
+def path_to_config_file(*relative_path):
+	if sys.platform.startswith("win"):
+		return os.path.join(
+			os.environ['LOCALAPPDATA'],
+			'forge',
+			*relative_path
+		)
+	elif sys.platform.startswith("darwin"):
+		return os.path.join(
+			os.path.expanduser('~'),
+			'.forge'
+		)
+	elif sys.platform.startswith("linux"):
+		return os.path.join(
+			os.path.expanduser('~'),
+			'.forge'
+		)
 
 def try_a_few_times(f):
 	try_again = 0
@@ -82,7 +64,9 @@ def cd(target_dir):
 @contextmanager
 def open_file(*args, **kw):
 	'Simple wrapper around __builtins__.open for easier testing/mocking'
-	yield open(*args, **kw)
+	if 'encoding' not in kw:
+		kw['encoding'] = 'utf8'
+	yield codecs.open(*args, **kw)
 
 def human_readable_file_size(file):
 	'Takes a python file object and gives back a human readable file size'

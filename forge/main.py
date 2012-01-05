@@ -1,4 +1,4 @@
-'Entry points for the Forge build tools'
+"""Forge subcommands as well as the main entry point for the forge tools"""
 import logging
 import codecs
 import json
@@ -20,7 +20,8 @@ from forge.remote import Remote
 from forge.templates import Manager
 from forge.lib import try_a_few_times
 
-LOG = None
+LOG = logging.getLogger(__name__)
+ENTRY_POINT_NAME = 'forge'
 
 class RunningInForgeRoot(Exception):
 	pass
@@ -34,39 +35,35 @@ def _assert_not_in_subdirectory_of_forge_root():
 	if cwd.startswith(defaults.FORGE_ROOT + os.sep):
 		raise RunningInForgeRoot
 
+def _check_working_directory_is_safe():
+	_assert_outside_of_forge_root()
+	try:
+		_assert_not_in_subdirectory_of_forge_root()
+	except RunningInForgeRoot:
+		LOG.warning(
+			"Working directory is a subdirectory of the forge build tools.\n"
+			"This is probably a bad idea! Please do your app development in a folder outside\n"
+			"of the build tools installation directory.\n"
+		)
+
 def with_error_handler(function):
+
 	def decorated_with_handler(*args, **kwargs):
 		global LOG
 		try:
-			_assert_outside_of_forge_root()
-
-			try:
-				_assert_not_in_subdirectory_of_forge_root()
-			except RunningInForgeRoot:
-				print
-				print """WARNING: running forge commands in a subdirectory of the forge build tools, this is probably a bad idea - please do your app development in a folder outside of the build tools"""
-				print
-
 			function(*args, **kwargs)
 		except RunningInForgeRoot:
-			# XXX: would use logging here, but there's no logging setup at this point - it gets setup
-			# inside the command based on arguments
-			# might be able to setup logging earlier on in this global handler?
-			print
-			print "ERROR: You're trying to run commands in the build tools directory, you need to move to another directory outside of this one first."
+			LOG.error(
+				"You're trying to run commands in the build tools directory.\n"
+				"You need to move to another directory outside of this one first.\n"
+			)
 		except KeyboardInterrupt:
 			sys.stdout.write('\n')
 			LOG.info('exiting...')
 			sys.exit(1)
 		except ForgeError as e:
 			# thrown by us, expected
-			# XXX: want to print this out, going to sort out logging here.
-			if LOG is None:
-				LOG = logging.getLogger(__name__)
-				LOG.addHandler(logging.StreamHandler())
-				LOG.setLevel('DEBUG')
 			LOG.error(e)
-			sys.exit(1)
 		except Exception as e:
 			if LOG is None:
 				LOG = logging.getLogger(__name__)
@@ -101,7 +98,7 @@ def add_general_options(parser):
 	parser.add_argument('-q', '--quiet', action='store_true')
 	parser.add_argument('--username', help='username used to login to the forge website')
 	parser.add_argument('--password', help='password used to login to the forge website')
-	
+
 def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
 	# TODO setup given user/password somewhere accessible by remote.py
@@ -113,17 +110,30 @@ def handle_general_options(args):
 
 def _assert_have_target_folder(directory, target):
 	if not os.path.isdir(path.join(directory, target)):
-		raise ForgeError("Can't run build for '%s', because you haven't built it!" % target) 
+		raise ForgeError("Can't run build for '%s', because you haven't built it!" % target)
 
 def _assert_have_development_folder():
 	if not os.path.exists('development'):
-		raise ForgeError("No folder called 'development' found. You're trying to run your app but you haven't built it yet! Try wm-dev-build first.")
+		message = (
+			"No folder called 'development' found. You're trying to run your app but you haven't built it yet!\n"
+			"Try {prog} dev-build first."
+		).format(
+			prog=ENTRY_POINT_NAME
+		)
+		raise ForgeError(message)
 
 def _assert_have_production_folder():
 	if not os.path.exists('production'):
-		raise ForgeError("No folder called 'production' found. You're trying to run your app but you haven't built it yet! Try wm-prod-build first.")
+		message = (
+			"No folder called 'production' found. You're trying to run your app but you haven't built it yet!\n"
+			"Try {prog} prod-build first."
+		).format(
+			prog=ENTRY_POINT_NAME
+		)
+		raise ForgeError(message)
 
-def run():
+def _parse_run_args(args):
+	parser = argparse.ArgumentParser(prog='%s run' % ENTRY_POINT_NAME, description='Run a built dev app on a particular platform')
 	def not_chrome(text):
 		if text == "chrome":
 			msg = """
@@ -137,15 +147,16 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 			raise argparse.ArgumentTypeError(msg)
 		return text
 
-	parser = argparse.ArgumentParser(prog='wm-run', description='Run a built dev app on a particular platform')
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
 	parser.add_argument('-p', '--production', help="Run a production build, rather than a development build", action='store_true')
 	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox'])
-	add_general_options(parser)
-	args = parser.parse_args()
-	handle_general_options(args)
-	
+	return parser.parse_args(args)
+
+def run(unhandled_args):
+	_check_working_directory_is_safe()
+	args = _parse_run_args(unhandled_args)
+
 	if args.production:
 		build_type_dir = 'production'
 		_assert_have_production_folder()
@@ -153,9 +164,9 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		build_type_dir = 'development'
 		_assert_have_development_folder()
 	_assert_have_target_folder(build_type_dir, args.platform)
-	
+
 	generate_dynamic = build.import_generate_dynamic()
-	
+
 	if args.platform == 'android':
 		build_to_run = build.create_build(build_type_dir)
 		build_to_run.add_steps(
@@ -175,15 +186,15 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 		)
 		build_to_run.run()
 
-def create():
-	'Create a new development environment'
-	parser = argparse.ArgumentParser(prog='wm-create', description='Initialises your development environment')
+def _parse_create_args(args):
+	parser = argparse.ArgumentParser('%s create' % ENTRY_POINT_NAME, description='create a new application')
 	parser.add_argument('-n', '--name')
-	add_general_options(parser)
-	args = parser.parse_args()
+	return parser.parse_args(args)
 
-	handle_general_options(args)
-	
+def create(unhandled_args):
+	'Create a new development environment'
+	_check_working_directory_is_safe()
+	args = _parse_create_args(unhandled_args)
 	config = build_config.load()
 	remote = Remote(config)
 	try:
@@ -193,7 +204,7 @@ def create():
 		return 1
 
 	manager = Manager(config)
-	
+
 	if os.path.exists(defaults.SRC_DIR):
 		raise ForgeError('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
 	else:
@@ -205,22 +216,27 @@ def create():
 		remote.fetch_initial(uuid)
 		LOG.info('App structure created. To proceed:')
 		LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
-		LOG.info('2) Run wm-dev-build to make a development build')
-		LOG.info('3) Run wm-prod-build to make a production build')
+		LOG.info('2) Run %s dev-build to make a development build' % ENTRY_POINT_NAME)
+		LOG.info('3) Run %s prod-build to make a production build' % ENTRY_POINT_NAME)
 
-def development_build():
-	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
-	parser = argparse.ArgumentParser(prog='wm-dev-build', description='Creates new local, unzipped development add-ons with your source and configuration')
+def _parse_development_build_args(args):
+	parser = argparse.ArgumentParser('%s dev-build' % ENTRY_POINT_NAME, description='Creates new local, unzipped development add-ons with your source and configuration')
 	parser.add_argument('-f', '--full', action='store_true', help='Force a complete rebuild on the forge server')
+	return parser.parse_args(args)
 
-	add_general_options(parser)
-	args = parser.parse_args()
-	handle_general_options(args)
-	
+def development_build(unhandled_args):
+	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
+	_check_working_directory_is_safe()
+	args = _parse_development_build_args(unhandled_args)
+
 	if not os.path.isdir(defaults.SRC_DIR):
-		LOG.error('Source folder "%s" does not exist - have you run wm-create yet?' % defaults.SRC_DIR)
-		raise ForgeError
-	
+		raise ForgeError(
+			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
+				src=defaults.SRC_DIR,
+				prog=ENTRY_POINT_NAME,
+			)
+		)
+
 	config = build_config.load()
 	remote = Remote(config)
 	manager = Manager(config)
@@ -241,7 +257,7 @@ def development_build():
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
 		templates_dir = manager.fetch_templates(build_id, clean=args.full)
-		
+
 		# have templates - now fetch injection instructions
 		remote.fetch_generate_instructions(build_id, instructions_dir)
 
@@ -249,26 +265,34 @@ def development_build():
 		shutil.rmtree('development', ignore_errors=True)
 		shutil.copytree(templates_dir, 'development')
 		shutil.rmtree(path.join('development', 'generate_dynamic'), ignore_errors=True)
-	
+
 	# Windows often gives a permission error without a small wait
 	try_a_few_times(move_files_across)
 
 	# have templates and instructions - inject code
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.SRC_DIR)
-	LOG.info("Development build created. Use wm-run to run your app.")
+	LOG.info("Development build created. Use {prog} to run your app.".format(
+		prog=ENTRY_POINT_NAME
+	))
 
-def production_build():
+def _parse_production_build_args(args):
+	parser = argparse.ArgumentParser(
+		prog='%s prod-build' % ENTRY_POINT_NAME,
+		description='Start a new production build and retrieve the packaged and unpackaged output'
+	)
+
+	add_general_options(parser)
+	return parser.parse_args(args)
+
+def production_build(unhandled_args):
 	'Trigger a new build'
 	# TODO commonality between this and development_build
-	parser = argparse.ArgumentParser(prog='wm-prod-build', description='Start a new production build and retrieve the packaged and unpackaged output')
-	add_general_options(parser)
-	args = parser.parse_args()
-	handle_general_options(args)
+	_check_working_directory_is_safe()
+	_parse_production_build_args(unhandled_args)
 
 	if not os.path.isdir(defaults.SRC_DIR):
-		LOG.error('Source folder "%s" does not exist - have you run wm-create yet?' % defaults.SRC_DIR)
-		raise ForgeError
+		raise ForgeError('Source folder "%s" does not exist - have you run %s create yet?' % defaults.SRC_DIR)
 
 	config = build_config.load()
 	remote = Remote(config)
@@ -281,9 +305,32 @@ def production_build():
 	# build_id = int(remote.build(development=True, template_only=False))
 	# TODO implement server-side packaging
 	build_id = int(remote.build(development=False, template_only=False))
-	
+
 	LOG.info('fetching new Forge build')
 	# remote.fetch_packaged(build_id, to_dir='production')
 	# TODO implement server-side packaging
 	remote.fetch_unpackaged(build_id, to_dir='production')
-	LOG.info("Production build created. Use wm-run to run your app.")
+	LOG.info("Production build created. Use %s run to run your app." % ENTRY_POINT_NAME)
+
+COMMANDS = {
+	'create': create,
+	'dev-build': development_build,
+	'prod-build': production_build,
+	'run': run
+}
+
+def main():
+	# The main entry point for the program.
+
+	# Parses enough to figure out what subparser to hand off to, sets up logging and error handling
+	# for the chosen sub-command.
+
+	top_level_parser = argparse.ArgumentParser(prog='forge', add_help=False)
+	top_level_parser.add_argument('command', choices=COMMANDS.keys())
+	add_general_options(top_level_parser)
+
+	handled_args, other_args = top_level_parser.parse_known_args()
+	handle_general_options(handled_args)
+
+	subcommand = COMMANDS[handled_args.command]
+	with_error_handler(subcommand)(other_args)

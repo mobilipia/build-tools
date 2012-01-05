@@ -1,4 +1,5 @@
 '''Forge Build Tools'''
+import os
 from getpass import getpass
 import sys
 from os import path
@@ -38,6 +39,13 @@ def get_version():
 		version += ".{commit_count}".format(commit_count=_get_commit_count())
 
 	return version
+
+if 'frozen' in set(dir(sys)):
+	FROZEN = True
+	DATA_PATH = os.environ['_MEIPASS2']
+else:
+	FROZEN = False
+	DATA_PATH = path.abspath(path.join(__file__, "..", ".."))
 
 settings = {}
 
