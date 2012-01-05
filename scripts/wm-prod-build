@@ -1,0 +1,6 @@
+import sys
+
+from forge import main
+
+sys.argv.insert(1, 'prod-build')
+main.main()
