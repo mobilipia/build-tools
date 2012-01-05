@@ -11,7 +11,7 @@ This repository holds a number of command-line tools to work with your local For
 Getting Started
 ---------------
 
-Run ``go.bat`` (on Windows) or ``go.sh`` (on Mac and Linux) to install our dependencies and create a working environment for the build tools.
+Run ``go.bat`` (on Windows) or ``source go.sh`` (on Mac and Linux) to install our dependencies and create a working environment for the build tools.
 
 Creating a new app
 ------------------
