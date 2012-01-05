@@ -10,8 +10,6 @@ from os import error, listdir
 import os
 import time
 
-import webmynd
-
 LOG = logging.getLogger(__file__)
 
 def path_to_data_file(*relative_path):
@@ -21,7 +19,7 @@ def path_to_data_file(*relative_path):
 
 	http://www.pyinstaller.org/export/latest/trunk/doc/Manual.html#adapting-to-being-frozen
 	'''
-	return os.path.join(webmynd.DATA_PATH, *relative_path)
+	return os.path.join(forge.DATA_PATH, *relative_path)
 
 def path_to_config_file(*relative_path):
 	if sys.platform.startswith("win"):
