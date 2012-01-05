@@ -23,6 +23,20 @@ from forge.lib import try_a_few_times
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
 
+USING_DEPRECATED_COMMAND = None
+
+def _using_deprecated_command(subcommand):
+	global USING_DEPRECATED_COMMAND
+	USING_DEPRECATED_COMMAND = subcommand
+
+def _warn_about_deprecated_command():
+	LOG.warning(
+		"Using wm-{command} which is now deprecated and will eventually be unsupported, instead, please use: '{prog} {command}'\n\n".format(
+			prog=ENTRY_POINT_NAME,
+			command=USING_DEPRECATED_COMMAND
+		)
+	)
+
 class RunningInForgeRoot(Exception):
 	pass
 
@@ -319,6 +333,10 @@ COMMANDS = {
 	'run': run
 }
 
+def _dispatch_command(command, other_args):
+	subcommand = COMMANDS[command]
+	with_error_handler(subcommand)(other_args)
+
 def main():
 	# The main entry point for the program.
 
@@ -332,5 +350,7 @@ def main():
 	handled_args, other_args = top_level_parser.parse_known_args()
 	handle_general_options(handled_args)
 
-	subcommand = COMMANDS[handled_args.command]
-	with_error_handler(subcommand)(other_args)
+	if USING_DEPRECATED_COMMAND is not None:
+		_warn_about_deprecated_command()
+
+	_dispatch_command(handled_args.command, other_args)
