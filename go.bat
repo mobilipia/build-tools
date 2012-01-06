@@ -133,7 +133,7 @@ IF NOT %1.==. (
 ECHO.
 ECHO Welcome to the Forge development environment!
 ECHO.
-ECHO To get started, change to a fresh directory for your app, then run: wm-create
+ECHO To get started, change to a fresh directory for your app, then run: forge create
 ECHO.
 cmd /k
 :end

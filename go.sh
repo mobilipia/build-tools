@@ -31,7 +31,7 @@ put_wm_scripts_in_path &&
 	echo
 	echo Welcome to the Forge development environment!
 	echo
-	echo To get started, change to a fresh directory for your app, then run: wm-create
+	echo To get started, change to a fresh directory for your app, then run: forge create
 	echo
 )
 
