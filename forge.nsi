@@ -63,7 +63,7 @@ Section "Dummy Section" SecDummy
   SetOutPath "$INSTDIR"
   
   ;ADD YOUR OWN FILES HERE...
-  File webmynd_build.json
+  File forge_build.json
   File forge.exe
   File debug.keystore
   
@@ -100,7 +100,7 @@ Section "Uninstall"
 
   Delete "$INSTDIR\Uninstall.exe"
   
-  Delete "$INSTDIR\webmynd_build.json"
+  Delete "$INSTDIR\forge_build.json"
   Delete "$INSTDIR\forge.exe"
   Delete "$INSTDIR\debug.keystore"
   

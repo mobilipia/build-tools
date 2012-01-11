@@ -35,12 +35,12 @@ a = Analysis([
 	# HOMEPATH refers to the path to the pyinstaller installation
 	os.path.join(HOMEPATH,'support', '_mountzlib.py'),
 	os.path.join(HOMEPATH,'support', 'useUnicode.py'),
-	os.path.join('webmynd', 'main.py'),
+	os.path.join('forge', 'main.py'),
 ],[
 	# path of places to grab dependencies from (the standard python 3rd party library directories
 	# are also searched)
 	os.getcwd(),
-	os.path.join(os.getcwd(), 'webmynd-dependencies'),
+	os.path.join(os.getcwd(), 'forge-dependencies'),
 ], hookspath=[
 	os.path.join(os.getcwd(), 'pyinstaller-hooks')
 ],

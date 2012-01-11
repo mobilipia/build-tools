@@ -86,7 +86,7 @@ def with_error_handler(function):
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:");
 			LOG.error(e);
-			LOG.error("Please contact support@webmynd.com");
+			LOG.error("Please contact support@trigger.io");
 			sys.exit(1)
 
 	return decorated_with_handler
