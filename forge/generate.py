@@ -11,7 +11,7 @@ import codecs
 import logging
 
 from forge import build, build_config
-from forge.build import import_generate_dynamic
+from forge.build import create_build, import_generate_dynamic
 
 LOG = logging.getLogger(__name__)
 
@@ -38,12 +38,10 @@ class Generate(object):
 		:param target_dir: the parent directory of the per-platform builds
 		:param user_dir: the directory holding user's code
 		'''
-		build_to_run = build.create_build(target_dir)
 		generate_dynamic = import_generate_dynamic()
-
-		build_to_run.add_steps(generate_dynamic.customer_phases.resolve_urls())
-		build_to_run.add_steps(generate_dynamic.customer_phases.copy_user_source_to_template(server=False))
-		build_to_run.add_steps(generate_dynamic.customer_phases.include_platform_in_html(server=False))
-		build_to_run.add_steps(generate_dynamic.customer_phases.include_icons())
-
-		build_to_run.run()
+		
+		generate_dynamic.customer_goals.generate_app_from_template(
+			generate_module=generate_dynamic,
+			build_to_run=create_build(target_dir),
+			server=False,
+		)

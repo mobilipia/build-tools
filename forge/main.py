@@ -180,25 +180,15 @@ def run(unhandled_args):
 	_assert_have_target_folder(build_type_dir, args.platform)
 
 	generate_dynamic = build.import_generate_dynamic()
-
-	if args.platform == 'android':
-		build_to_run = build.create_build(build_type_dir)
-		build_to_run.add_steps(
-			generate_dynamic.customer_phases.run_android_phase(build_type_dir, args.sdk, args.device)
-		)
-		build_to_run.run()
-	elif args.platform == 'ios':
-		build_to_run = build.create_build(build_type_dir)
-		build_to_run.add_steps(
-			generate_dynamic.customer_phases.run_ios_phase(build_type_dir)
-		)
-		build_to_run.run()
-	elif args.platform == 'firefox':
-		build_to_run = build.create_build(build_type_dir)
-		build_to_run.add_steps(
-			generate_dynamic.customer_phases.run_firefox_phase(build_type_dir)
-		)
-		build_to_run.run()
+	
+	generate_dynamic.customer_goals.run_app(
+		generate_module=generate_dynamic,
+		build_to_run=build.create_build(build_type_dir),
+		target=args.platform,
+		server=False,
+		sdk=args.sdk,
+		device=args.device,
+	)
 
 def _parse_create_args(args):
 	parser = argparse.ArgumentParser('%s create' % ENTRY_POINT_NAME, description='create a new application')
