@@ -22,6 +22,7 @@ from forge.lib import try_a_few_times
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
+TARGETS_WE_CAN_PACKAGE_FOR = ('ios',)
 
 USING_DEPRECATED_COMMAND = None
 
@@ -286,7 +287,6 @@ def _parse_production_build_args(args):
 		description='Start a new production build and retrieve the packaged and unpackaged output'
 	)
 
-	add_general_options(parser)
 	return parser.parse_args(args)
 
 def production_build(unhandled_args):
@@ -316,11 +316,63 @@ def production_build(unhandled_args):
 	remote.fetch_unpackaged(build_id, to_dir='production')
 	LOG.info("Production build created. Use %s run to run your app." % ENTRY_POINT_NAME)
 
+def _parse_package_args(args):
+	parser = argparse.ArgumentParser(
+		prog='%s package' % ENTRY_POINT_NAME,
+		description='Package up a dev-build for distribution',
+	)
+	parser.add_argument('platform', choices=TARGETS_WE_CAN_PACKAGE_FOR)
+	parser.add_argument('-c', '--certificate', help="Name of the certificate to sign an iOS app with")
+	parser.add_argument('-p', '--provisioning-profile', help="Name of a provisioning profile to embed into an iOS app")
+	parser.add_argument('-o', '--output', help="Path of where to output the ipa file to")
+
+	return parser.parse_args(args)
+
+def _package_dev_build_for_platform(platform, **kw):
+	generate_dynamic = build.import_generate_dynamic()
+	build_type_dir = 'development'
+	
+	generate_dynamic.customer_goals.package_app(
+		generate_module=generate_dynamic,
+		build_to_run=build.create_build(build_type_dir),
+		target=platform,
+		server=False,
+
+		# pass in platform specific config via keyword args
+		**kw
+	)
+
+def package(unhandled_args):
+	#TODO: ensure dev build has been done first (probably lower down?)
+	args = _parse_package_args(unhandled_args)
+	extra_package_config = {}
+
+	if args.platform == 'ios':
+		if args.provisioning_profile is None:
+			raise ForgeError("When packaging iOS apps, you need to provide the name of a provisioning profile using -p or --provisioning-profile")
+
+		if args.output is None:
+			raise ForgeError("When packaging iOS apps, you need to provide where to output the ipa file to with -o or --output")
+
+		extra_package_config.update(
+			dict(
+				provisioning_profile=args.provisioning_profile,
+				certificate_to_sign_with=args.certificate,
+				output_path_for_ipa=args.output,
+			)
+		)
+
+	_package_dev_build_for_platform(
+		args.platform,
+		**extra_package_config
+	)
+
 COMMANDS = {
 	'create': create,
 	'dev-build': development_build,
 	'prod-build': production_build,
-	'run': run
+	'run': run,
+	'package': package,
 }
 
 def _dispatch_command(command, other_args):
