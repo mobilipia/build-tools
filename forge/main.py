@@ -131,7 +131,7 @@ def _assert_have_development_folder():
 	if not os.path.exists('development'):
 		message = (
 			"No folder called 'development' found. You're trying to run your app but you haven't built it yet!\n"
-			"Try {prog} dev-build first."
+			"Try {prog} build first."
 		).format(
 			prog=ENTRY_POINT_NAME
 		)
@@ -206,10 +206,11 @@ def create(unhandled_args):
 		remote.fetch_initial(uuid)
 		LOG.info('App structure created. To proceed:')
 		LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
-		LOG.info('2) Run %s dev-build to make a development build' % ENTRY_POINT_NAME)
+		LOG.info('2) Run %s build to make a build' % ENTRY_POINT_NAME)
+		LOG.info('3) Run %s run to test out your build' % ENTRY_POINT_NAME)
 
 def _parse_development_build_args(args):
-	parser = argparse.ArgumentParser('%s dev-build' % ENTRY_POINT_NAME, description='Creates new local, unzipped development add-ons with your source and configuration')
+	parser = argparse.ArgumentParser('%s build' % ENTRY_POINT_NAME, description='Creates new local, unzipped development add-ons with your source and configuration')
 	parser.add_argument('-f', '--full', action='store_true', help='Force a complete rebuild on the forge server')
 	return parser.parse_args(args)
 
@@ -268,7 +269,7 @@ def development_build(unhandled_args):
 def _parse_package_args(args):
 	parser = argparse.ArgumentParser(
 		prog='%s package' % ENTRY_POINT_NAME,
-		description='Package up a dev-build for distribution',
+		description='Package up a build for distribution',
 	)
 	parser.add_argument('platform', choices=TARGETS_WE_CAN_PACKAGE_FOR)
 	parser.add_argument('-c', '--certificate', help="Name of the certificate to sign an iOS app with")
@@ -324,7 +325,7 @@ def package(unhandled_args):
 
 COMMANDS = {
 	'create': create,
-	'dev-build': development_build,
+	'build': development_build,
 	'run': run,
 	'package': package,
 }
