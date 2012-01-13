@@ -272,7 +272,7 @@ def _parse_package_args(args):
 	)
 	parser.add_argument('platform', choices=TARGETS_WE_CAN_PACKAGE_FOR)
 	parser.add_argument('-c', '--certificate', help="Name of the certificate to sign an iOS app with")
-	parser.add_argument('-p', '--provisioning-profile', help="Name of a provisioning profile to embed into an iOS app")
+	parser.add_argument('-p', '--provisioning-profile', help="Path to a provisioning profile to embed into an iOS app")
 	parser.add_argument('-o', '--output', help="Path of where to output the ipa file to")
 
 	return parser.parse_args(args)
@@ -301,16 +301,19 @@ def package(unhandled_args):
 			raise ForgeError("Detected that you're not running this from OSX. Currently, packaging iOS apps for devices is only possible on OSX.")
 
 		if args.provisioning_profile is None:
-			raise ForgeError("When packaging iOS apps, you need to provide the name of a provisioning profile using -p or --provisioning-profile")
+			raise ForgeError("When packaging iOS apps, you need to provide a path to of a provisioning profile using -p or --provisioning-profile")
 
 		if args.output is None:
 			raise ForgeError("When packaging iOS apps, you need to provide where to output the ipa file to with -o or --output")
 
+		abs_path_to_output = os.path.abspath(args.output)
+		abs_path_to_profile = os.path.abspath(args.provisioning_profile)
+
 		extra_package_config.update(
 			dict(
-				provisioning_profile=args.provisioning_profile,
+				provisioning_profile=abs_path_to_profile,
 				certificate_to_sign_with=args.certificate,
-				output_path_for_ipa=args.output,
+				output_path_for_ipa=abs_path_to_output,
 			)
 		)
 
