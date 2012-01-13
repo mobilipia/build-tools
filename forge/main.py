@@ -277,7 +277,7 @@ def development_build(unhandled_args):
 	# have templates and instructions - inject code
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.SRC_DIR)
-	LOG.info("Development build created. Use {prog} to run your app.".format(
+	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
 	))
 
