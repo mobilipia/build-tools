@@ -348,6 +348,9 @@ def package(unhandled_args):
 	extra_package_config = {}
 
 	if args.platform == 'ios':
+		if not sys.platform.startswith("darwin"):
+			raise ForgeError("Detected that you're not running this from OSX. Currently, packaging iOS apps for devices is only possible on OSX.")
+
 		if args.provisioning_profile is None:
 			raise ForgeError("When packaging iOS apps, you need to provide the name of a provisioning profile using -p or --provisioning-profile")
 
