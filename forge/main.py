@@ -137,16 +137,6 @@ def _assert_have_development_folder():
 		)
 		raise ForgeError(message)
 
-def _assert_have_production_folder():
-	if not os.path.exists('production'):
-		message = (
-			"No folder called 'production' found. You're trying to run your app but you haven't built it yet!\n"
-			"Try {prog} prod-build first."
-		).format(
-			prog=ENTRY_POINT_NAME
-		)
-		raise ForgeError(message)
-
 def _parse_run_args(args):
 	parser = argparse.ArgumentParser(prog='%s run' % ENTRY_POINT_NAME, description='Run a built dev app on a particular platform')
 	def not_chrome(text):
@@ -164,7 +154,6 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
-	parser.add_argument('-p', '--production', help="Run a production build, rather than a development build", action='store_true')
 	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox'])
 	return parser.parse_args(args)
 
@@ -172,12 +161,8 @@ def run(unhandled_args):
 	_check_working_directory_is_safe()
 	args = _parse_run_args(unhandled_args)
 
-	if args.production:
-		build_type_dir = 'production'
-		_assert_have_production_folder()
-	else:
-		build_type_dir = 'development'
-		_assert_have_development_folder()
+	build_type_dir = 'development'
+	_assert_have_development_folder()
 	_assert_have_target_folder(build_type_dir, args.platform)
 
 	generate_dynamic = build.import_generate_dynamic()
@@ -222,7 +207,6 @@ def create(unhandled_args):
 		LOG.info('App structure created. To proceed:')
 		LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
 		LOG.info('2) Run %s dev-build to make a development build' % ENTRY_POINT_NAME)
-		LOG.info('3) Run %s prod-build to make a production build' % ENTRY_POINT_NAME)
 
 def _parse_development_build_args(args):
 	parser = argparse.ArgumentParser('%s dev-build' % ENTRY_POINT_NAME, description='Creates new local, unzipped development add-ons with your source and configuration')
@@ -281,41 +265,6 @@ def development_build(unhandled_args):
 		prog=ENTRY_POINT_NAME
 	))
 
-def _parse_production_build_args(args):
-	parser = argparse.ArgumentParser(
-		prog='%s prod-build' % ENTRY_POINT_NAME,
-		description='Start a new production build and retrieve the packaged and unpackaged output'
-	)
-
-	return parser.parse_args(args)
-
-def production_build(unhandled_args):
-	'Trigger a new build'
-	# TODO commonality between this and development_build
-	_check_working_directory_is_safe()
-	_parse_production_build_args(unhandled_args)
-
-	if not os.path.isdir(defaults.SRC_DIR):
-		raise ForgeError('Source folder "%s" does not exist - have you run %s create yet?' % defaults.SRC_DIR)
-
-	config = build_config.load()
-	remote = Remote(config)
-	try:
-		remote.check_version()
-	except Exception as e:
-		LOG.error(e)
-		return 1
-
-	# build_id = int(remote.build(development=True, template_only=False))
-	# TODO implement server-side packaging
-	build_id = int(remote.build(development=False, template_only=False))
-
-	LOG.info('fetching new Forge build')
-	# remote.fetch_packaged(build_id, to_dir='production')
-	# TODO implement server-side packaging
-	remote.fetch_unpackaged(build_id, to_dir='production')
-	LOG.info("Production build created. Use %s run to run your app." % ENTRY_POINT_NAME)
-
 def _parse_package_args(args):
 	parser = argparse.ArgumentParser(
 		prog='%s package' % ENTRY_POINT_NAME,
@@ -373,7 +322,6 @@ def package(unhandled_args):
 COMMANDS = {
 	'create': create,
 	'dev-build': development_build,
-	'prod-build': production_build,
 	'run': run,
 	'package': package,
 }

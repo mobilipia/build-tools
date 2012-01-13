@@ -9,9 +9,9 @@ LOG = logging.getLogger(__name__)
 def _enabled_platforms(build_type_dir):
 	'''Return a list of the platforms enabled for this app
 	
-	Assumes the working directory is alongside src and {development,production}
+	Assumes the working directory is alongside src and development
 	
-	:param build_type_dir: development or production
+	:param build_type_dir: currently always "development"
 	'''
 
 	directory_to_platform = {
@@ -46,9 +46,9 @@ def import_generate_dynamic():
 def create_build(build_type_dir):
 	'''Helper to instantiate a Build object from the dynamic generate code
 	
-	Assumes the working directory is alongside src and {development,production}
+	Assumes the working directory is alongside src and development
 	
-	:param build_type_dir: development or production
+	:param build_type_dir: currently always "development"
 	'''
 	generate_dynamic = import_generate_dynamic()
 	app_config = build_config.load_app(defaults.APP_CONFIG_FILE)
