@@ -28,7 +28,7 @@ def _enabled_platforms(build_type_dir):
 		if directory in directory_to_platform:
 			enabled_platforms.append(directory_to_platform[directory])
 		else:
-			LOG.debug("ignoring non-target directory {}".format(directory))
+			LOG.debug("ignoring non-target directory {0}".format(directory))
 	return enabled_platforms
 
 def import_generate_dynamic():
@@ -39,7 +39,7 @@ def import_generate_dynamic():
 		try:
 			import generate_dynamic
 		except ImportError as e:
-			raise ForgeError("Couldn't import generation code: {}".format(e))
+			raise ForgeError("Couldn't import generation code: {0}".format(e))
 	
 	return generate_dynamic
 
