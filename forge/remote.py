@@ -325,10 +325,6 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		lib.unzip_with_permissions(initial_zip_filename)
 		LOG.debug('Extracted initial project template')
 
-		# XXX: shouldn't do the renaming here
-		# need to fix the server to serve up the correct structure
-		shutil.move('user', defaults.SRC_DIR)
-
 		os.remove(initial_zip_filename)
 		LOG.debug('Removed downloaded file "%s"' % initial_zip_filename)
 
