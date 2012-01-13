@@ -5,4 +5,5 @@ import sys
 from forge import main
 
 sys.argv.insert(1, 'create')
+main._using_deprecated_command('wm-create', 'forge create')
 main.main()

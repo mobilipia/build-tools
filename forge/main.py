@@ -25,16 +25,18 @@ ENTRY_POINT_NAME = 'forge'
 TARGETS_WE_CAN_PACKAGE_FOR = ('ios',)
 
 USING_DEPRECATED_COMMAND = None
+USE_INSTEAD = None
 
-def _using_deprecated_command(subcommand):
-	global USING_DEPRECATED_COMMAND
-	USING_DEPRECATED_COMMAND = subcommand
+def _using_deprecated_command(command, use_instead):
+	global USING_DEPRECATED_COMMAND, USE_INSTEAD
+	USING_DEPRECATED_COMMAND = command
+	USE_INSTEAD = use_instead
 
 def _warn_about_deprecated_command():
 	LOG.warning(
-		"Using wm-{command} which is now deprecated and will eventually be unsupported, instead, please use: '{prog} {command}'\n\n".format(
-			prog=ENTRY_POINT_NAME,
-			command=USING_DEPRECATED_COMMAND
+		"Using {command} which is now deprecated and will eventually be unsupported, instead, please use: '{new}'\n\n".format(
+			command=USING_DEPRECATED_COMMAND,
+			new=USE_INSTEAD,
 		)
 	)
 
