@@ -9,9 +9,9 @@ LOG = logging.getLogger(__name__)
 def _enabled_platforms(build_type_dir):
 	'''Return a list of the platforms enabled for this app
 	
-	Assumes the working directory is alongside src and {development,production}
+	Assumes the working directory is alongside src and development
 	
-	:param build_type_dir: development or production
+	:param build_type_dir: currently always "development"
 	'''
 
 	directory_to_platform = {
@@ -28,7 +28,7 @@ def _enabled_platforms(build_type_dir):
 		if directory in directory_to_platform:
 			enabled_platforms.append(directory_to_platform[directory])
 		else:
-			LOG.debug("ignoring non-target directory {}".format(directory))
+			LOG.debug("ignoring non-target directory {0}".format(directory))
 	return enabled_platforms
 
 def import_generate_dynamic():
@@ -39,16 +39,16 @@ def import_generate_dynamic():
 		try:
 			import generate_dynamic
 		except ImportError as e:
-			raise ForgeError("Couldn't import generation code: {}".format(e))
+			raise ForgeError("Couldn't import generation code: {0}".format(e))
 	
 	return generate_dynamic
 
 def create_build(build_type_dir):
 	'''Helper to instantiate a Build object from the dynamic generate code
 	
-	Assumes the working directory is alongside src and {development,production}
+	Assumes the working directory is alongside src and development
 	
-	:param build_type_dir: development or production
+	:param build_type_dir: currently always "development"
 	'''
 	generate_dynamic = import_generate_dynamic()
 	app_config = build_config.load_app(defaults.APP_CONFIG_FILE)

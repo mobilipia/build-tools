@@ -22,18 +22,21 @@ from forge.lib import try_a_few_times
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
+TARGETS_WE_CAN_PACKAGE_FOR = ('ios',)
 
 USING_DEPRECATED_COMMAND = None
+USE_INSTEAD = None
 
-def _using_deprecated_command(subcommand):
-	global USING_DEPRECATED_COMMAND
-	USING_DEPRECATED_COMMAND = subcommand
+def _using_deprecated_command(command, use_instead):
+	global USING_DEPRECATED_COMMAND, USE_INSTEAD
+	USING_DEPRECATED_COMMAND = command
+	USE_INSTEAD = use_instead
 
 def _warn_about_deprecated_command():
 	LOG.warning(
-		"Using wm-{command} which is now deprecated and will eventually be unsupported, instead, please use: '{prog} {command}'\n\n".format(
-			prog=ENTRY_POINT_NAME,
-			command=USING_DEPRECATED_COMMAND
+		"Using {command} which is now deprecated and will eventually be unsupported, instead, please use: '{new}'\n\n".format(
+			command=USING_DEPRECATED_COMMAND,
+			new=USE_INSTEAD,
 		)
 	)
 
@@ -130,17 +133,7 @@ def _assert_have_development_folder():
 	if not os.path.exists('development'):
 		message = (
 			"No folder called 'development' found. You're trying to run your app but you haven't built it yet!\n"
-			"Try {prog} dev-build first."
-		).format(
-			prog=ENTRY_POINT_NAME
-		)
-		raise ForgeError(message)
-
-def _assert_have_production_folder():
-	if not os.path.exists('production'):
-		message = (
-			"No folder called 'production' found. You're trying to run your app but you haven't built it yet!\n"
-			"Try {prog} prod-build first."
+			"Try {prog} build first."
 		).format(
 			prog=ENTRY_POINT_NAME
 		)
@@ -163,7 +156,6 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
-	parser.add_argument('-p', '--production', help="Run a production build, rather than a development build", action='store_true')
 	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox'])
 	return parser.parse_args(args)
 
@@ -171,12 +163,8 @@ def run(unhandled_args):
 	_check_working_directory_is_safe()
 	args = _parse_run_args(unhandled_args)
 
-	if args.production:
-		build_type_dir = 'production'
-		_assert_have_production_folder()
-	else:
-		build_type_dir = 'development'
-		_assert_have_development_folder()
+	build_type_dir = 'development'
+	_assert_have_development_folder()
 	_assert_have_target_folder(build_type_dir, args.platform)
 
 	generate_dynamic = build.import_generate_dynamic()
@@ -220,11 +208,11 @@ def create(unhandled_args):
 		remote.fetch_initial(uuid)
 		LOG.info('App structure created. To proceed:')
 		LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
-		LOG.info('2) Run %s dev-build to make a development build' % ENTRY_POINT_NAME)
-		LOG.info('3) Run %s prod-build to make a production build' % ENTRY_POINT_NAME)
+		LOG.info('2) Run %s build to make a build' % ENTRY_POINT_NAME)
+		LOG.info('3) Run %s run to test out your build' % ENTRY_POINT_NAME)
 
 def _parse_development_build_args(args):
-	parser = argparse.ArgumentParser('%s dev-build' % ENTRY_POINT_NAME, description='Creates new local, unzipped development add-ons with your source and configuration')
+	parser = argparse.ArgumentParser('%s build' % ENTRY_POINT_NAME, description='Creates new local, unzipped development add-ons with your source and configuration')
 	parser.add_argument('-f', '--full', action='store_true', help='Force a complete rebuild on the forge server')
 	return parser.parse_args(args)
 
@@ -276,51 +264,72 @@ def development_build(unhandled_args):
 	# have templates and instructions - inject code
 	generator = Generate(defaults.APP_CONFIG_FILE)
 	generator.all('development', defaults.SRC_DIR)
-	LOG.info("Development build created. Use {prog} to run your app.".format(
+	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
 	))
 
-def _parse_production_build_args(args):
+def _parse_package_args(args):
 	parser = argparse.ArgumentParser(
-		prog='%s prod-build' % ENTRY_POINT_NAME,
-		description='Start a new production build and retrieve the packaged and unpackaged output'
+		prog='%s package' % ENTRY_POINT_NAME,
+		description='Package up a build for distribution',
 	)
+	parser.add_argument('platform', choices=TARGETS_WE_CAN_PACKAGE_FOR)
+	parser.add_argument('-c', '--certificate', help="Name of the certificate to sign an iOS app with")
+	parser.add_argument('-p', '--provisioning-profile', help="Path to a provisioning profile to embed into an iOS app")
+	parser.add_argument('-o', '--output', help="Path of where to output the ipa file to")
 
-	add_general_options(parser)
 	return parser.parse_args(args)
 
-def production_build(unhandled_args):
-	'Trigger a new build'
-	# TODO commonality between this and development_build
-	_check_working_directory_is_safe()
-	_parse_production_build_args(unhandled_args)
+def _package_dev_build_for_platform(platform, **kw):
+	generate_dynamic = build.import_generate_dynamic()
+	build_type_dir = 'development'
+	
+	generate_dynamic.customer_goals.package_app(
+		generate_module=generate_dynamic,
+		build_to_run=build.create_build(build_type_dir),
+		target=platform,
+		server=False,
 
-	if not os.path.isdir(defaults.SRC_DIR):
-		raise ForgeError('Source folder "%s" does not exist - have you run %s create yet?' % defaults.SRC_DIR)
+		# pass in platform specific config via keyword args
+		**kw
+	)
 
-	config = build_config.load()
-	remote = Remote(config)
-	try:
-		remote.check_version()
-	except Exception as e:
-		LOG.error(e)
-		return 1
+def package(unhandled_args):
+	#TODO: ensure dev build has been done first (probably lower down?)
+	args = _parse_package_args(unhandled_args)
+	extra_package_config = {}
 
-	# build_id = int(remote.build(development=True, template_only=False))
-	# TODO implement server-side packaging
-	build_id = int(remote.build(development=False, template_only=False))
+	if args.platform == 'ios':
+		if not sys.platform.startswith("darwin"):
+			raise ForgeError("Detected that you're not running this from OSX. Currently, packaging iOS apps for devices is only possible on OSX.")
 
-	LOG.info('fetching new Forge build')
-	# remote.fetch_packaged(build_id, to_dir='production')
-	# TODO implement server-side packaging
-	remote.fetch_unpackaged(build_id, to_dir='production')
-	LOG.info("Production build created. Use %s run to run your app." % ENTRY_POINT_NAME)
+		if args.provisioning_profile is None:
+			raise ForgeError("When packaging iOS apps, you need to provide a path to of a provisioning profile using -p or --provisioning-profile")
+
+		if args.output is None:
+			raise ForgeError("When packaging iOS apps, you need to provide where to output the ipa file to with -o or --output")
+
+		abs_path_to_output = os.path.abspath(args.output)
+		abs_path_to_profile = os.path.abspath(args.provisioning_profile)
+
+		extra_package_config.update(
+			dict(
+				provisioning_profile=abs_path_to_profile,
+				certificate_to_sign_with=args.certificate,
+				output_path_for_ipa=abs_path_to_output,
+			)
+		)
+
+	_package_dev_build_for_platform(
+		args.platform,
+		**extra_package_config
+	)
 
 COMMANDS = {
 	'create': create,
-	'dev-build': development_build,
-	'prod-build': production_build,
-	'run': run
+	'build': development_build,
+	'run': run,
+	'package': package,
 }
 
 def _dispatch_command(command, other_args):

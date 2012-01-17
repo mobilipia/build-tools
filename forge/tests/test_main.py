@@ -96,7 +96,6 @@ class TestRun(object):
 		parser = argparse.ArgumentParser.return_value
 		args = mock.Mock()
 		args.platform = 'chrome'
-		args.production = False
 		parser.parse_args.return_value = args
 
 		main.run([])
@@ -114,7 +113,6 @@ class TestRun(object):
 		args.platform = 'android'
 		args.device = 'device'
 		args.sdk = 'sdk'
-		args.production = False
 		parser.parse_args.return_value = args
 
 		values = ['jdk', 'sdk']
@@ -126,48 +124,6 @@ class TestRun(object):
 		parser.parse_args.assert_called_once()
 		build.create_build.assert_called_once()
 		build.create_build.return_value.run.assert_called_once()
-
-	@mock.patch('forge.main.build')
-	@mock.patch('forge.main.argparse')
-	@mock.patch('forge.main._assert_have_target_folder')
-	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
-	def test_prod_android(self, _assert_have_development_folder, argparse, build):
-		main._assert_have_production_folder = mock.Mock()
-		parser = argparse.ArgumentParser.return_value
-		args = mock.Mock()
-		args.platform = 'android'
-		args.device = 'device'
-		args.sdk = 'sdk'
-		args.production = True
-		parser.parse_args.return_value = args
-
-		main.run([])
-
-		build.create_build.assert_called_once()
-		build.create_build.return_value.run.assert_called_once()
-		build.import_generate_dynamic.assert_called_once()
-		build.import_generate_dynamic.return_value.customer_phases.run_android_phase.assert_called_once()
-
-	@mock.patch('forge.main.build')
-	@mock.patch('forge.main.build_config')
-	@mock.patch('forge.main.argparse')
-	@mock.patch('forge.main._assert_have_target_folder')
-	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
-	def test_prod_ios(self, _assert_have_development_folder, argparse, build_config, build):
-		main._assert_have_production_folder = mock.Mock()
-		parser = argparse.ArgumentParser.return_value
-		args = mock.Mock()
-		args.platform = 'ios'
-		args.production = True
-		parser.parse_args.return_value = args
-		build_config.load_app.return_value = {"name": "dummy name"}
-
-		main.run([])
-
-		build.create_build.assert_called_once()
-		build.create_build.return_value.run.assert_called_once()
-		build.import_generate_dynamic.assert_called_once()
-		build.import_generate_dynamic.return_value.customer_phases.run_ios_phase.assert_called_once()
 
 class Test_AssertNotSubdirectoryOfForgeRoot(object):
 	@mock.patch('forge.main.os.getcwd')
@@ -220,9 +176,6 @@ class TestBuild(object):
 		Manager.assert_called_once_with(dummy_config())
 		Generate.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		self._check_common_setup(parser, Remote)
-
-	def _check_prod_setup(self, parser, Remote):
-		eq_(parser.add_argument.call_args_list, general_argparse)
 
 	@mock.patch('forge.main.build_config')
 	@mock.patch('forge.main.os.path.isdir')
@@ -308,24 +261,6 @@ class TestBuild(object):
 		])
 		shutil.copytree.assert_called_once_with(Manager.return_value.fetch_templates.return_value, 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
-
-	@mock.patch('forge.main.build_config')
-	@mock.patch('forge.main.os.path.isdir')
-	@mock.patch('forge.main.Remote')
-	@mock.patch('forge.main.argparse')
-	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
-	def test_prod(self, argparse, Remote, isdir, build_config):
-		parser = argparse.ArgumentParser.return_value
-		Remote.return_value.build.return_value = -1
-		isdir.return_value = True
-		build_config.load.return_value = dummy_config()
-
-		main.production_build([])
-
-		self._check_prod_setup(parser, Remote)
-
-		Remote.return_value.build.assert_called_once_with(development=False, template_only=False)
-		Remote.return_value.fetch_unpackaged.assert_called_once_with(Remote.return_value.build.return_value, to_dir='production')
 
 class TestWithErrorHandler(object):
 	@mock.patch('forge.main._assert_outside_of_forge_root')

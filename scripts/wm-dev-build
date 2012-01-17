@@ -4,5 +4,6 @@ import sys
 
 from forge import main
 
-sys.argv.insert(1, 'dev-build')
+sys.argv.insert(1, 'build')
+main._using_deprecated_command('wm-dev-build', 'forge build')
 main.main()

@@ -126,29 +126,9 @@ class TestFetchInitial(TestRemote):
 			'https://test.trigger.io/api/app/TEST-UUID/initial_files/',
 			write_to_path='initial.zip'
 		)
-
-		shutil.move.assert_called_once_with('user', 'src')
+		
 		unzip_with_permissions.assert_called_once_with('initial.zip')
 		os.remove.assert_called_once_with('initial.zip')
-
-class TestFetchPackaged(TestRemote):
-	@patch('forge.remote.os')
-	def test_fetch_packaged(self, os):
-		output_dir = 'output dir'
-		self.remote._authenticate = Mock()
-		
-		with patch('forge.remote.Remote._fetch_output') as _fetch_output:
-			_fetch_output.return_value = ['dummy filename']
-			resp = self.remote.fetch_packaged(-1, output_dir)
-		
-		self.remote._authenticate.assert_called_once_with()
-		eq_(os.chdir.call_args_list[-1][0][0], os.getcwd.return_value)
-		eq_(_fetch_output.call_args_list[0][0][:2], (-1, output_dir))
-		eq_(resp, _fetch_output.return_value)
-		
-class Test_HandlePackaged(TestRemote):
-	def test_normal(self):
-		self.remote._handle_packaged('platform', 'filename')
 
 class TestFetchUnpackaged(TestRemote):
 
@@ -273,15 +253,11 @@ class TestBuild(TestRemote):
 		with patch('forge.remote.lib.cd', new=cd):
 			with patch('forge.remote.lib.open_file', new=mock_open):
 				resp = self.remote.build()
-			
-		tmp_file = mock_open.call_args_list[0][0][0]
-		cd.assert_called_once_with(defaults.SRC_DIR)
-		tarfile.open.assert_called_once_with(tmp_file, mode='w:bz2')
-		tarfile.open.return_value.close.assert_called_once_with()
-		os.listdir.assert_called_once_with('.')
-		tarfile.open.return_value.add.assert_called_once_with('file.txt')
-		eq_(len(mock_open.call_args_list), 1)
-		os.remove.assert_called_once_with(tmp_file)
+				
+		eq_(resp, -1)
+		self.remote._api_post.assert_called_once_with('app/TEST-UUID/template/development',
+			files=None, data={}
+		)
 		
 	@patch('forge.remote.path')
 	def test_fail(self, path):

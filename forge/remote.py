@@ -325,16 +325,8 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		lib.unzip_with_permissions(initial_zip_filename)
 		LOG.debug('Extracted initial project template')
 
-		# XXX: shouldn't do the renaming here
-		# need to fix the server to serve up the correct structure
-		shutil.move('user', defaults.SRC_DIR)
-
 		os.remove(initial_zip_filename)
 		LOG.debug('Removed downloaded file "%s"' % initial_zip_filename)
-
-	def _handle_packaged(self, platform, filename):
-		'No-op'
-		pass
 
 	def _handle_unpackaged(self, platform, filename):
 		'''De-compress a built output tree.
@@ -352,24 +344,6 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		os.remove(filename)
 		LOG.debug('removed downloaded file "%s"' % filename)
 
-	def fetch_packaged(self, build_id, to_dir='production'):
-		'''Retrieves the packaged artefacts for a particular build.
-		
-		:param build_id: primary key of the build
-		:param to_dir: directory that will hold the packaged output
-		'''
-		LOG.info('fetching packaged artefacts for build %s into "%s"' % (build_id, to_dir))
-		self._authenticate()
-
-		orig_dir = os.getcwd()
-		try:
-			filenames = self._fetch_output(build_id, to_dir, 'packaged', self._handle_packaged)
-		finally:
-			os.chdir(orig_dir)
-
-		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
-		return filenames
-		
 	def fetch_unpackaged(self, build_id, to_dir='development'):
 		'''Retrieves the unpackaged artefacts for a particular build.
 		
@@ -454,31 +428,6 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		src_archive.close()
 		return src_archive
 
-	def _request_production_build(self):
-		src_dir = defaults.SRC_DIR
-		src_archive_filename = 'user.%s.tar.bz2' % time.time()
-
-		try:
-			src_archive = None
-			src_archive = self._create_src_tar(src_archive_filename, src_dir)
-
-			with lib.open_file(src_archive_filename, mode='rb', encoding=None) as user_files:
-				LOG.info('Uploading application source code ({size})...'.format(
-					size=lib.human_readable_file_size(user_files)
-				))
-
-				return self._request_build(
-					development=False,
-					template_only=False,
-					files={'user.tar.bz2': user_files}
-				)
-		finally:
-			try:
-				os.remove(src_archive_filename)
-			except OSError:
-				# wasn't created
-				pass
-
 	def _poll_until_build_complete(self, build_id):
 		build = self._api_get('build/{id}/detail/'.format(id=build_id))
 
@@ -516,18 +465,12 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		if not path.isdir(src_dir):
 			raise ForgeError("No {0} directory found: are you currently in the right directory?".format(src_dir))
 
-		if template_only:
-			resp = self._request_development_build()
-		else:
-			resp = self._request_production_build()
+		resp = self._request_development_build()
 
 		build_id = resp['build_id']
 		LOG.info('Build %s started...' % build_id)
 
-		if development:
-			LOG.info('This could take a while, but will only happen again if you modify config.json')
-		else:
-			LOG.info('This could take a while, any production build requires a full build with the Forge service')
+		LOG.info('This could take a while, but will only happen again if you modify config.json')
 
 		self._poll_until_build_complete(build_id)
 		return build_id
