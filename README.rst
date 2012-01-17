@@ -15,7 +15,7 @@ Run ``go.bat`` (on Windows) or ``source go.sh`` (on Mac and Linux) to install ou
 
 Creating a new app
 ------------------
-Run ``wm-create`` to create a new app and set up your local development environment.
+Run ``forge create`` to create a new app and set up your local development environment.
 
 This command will create a ``user`` directory, with an initial app configuration file for you to customise.
 
@@ -27,9 +27,9 @@ Grab the ``user`` directory for your app from version control, or whatever metho
 
 Running your first build
 ------------------------
-After creating a new app, or getting the source for an existing app, we can run ``wm-dev-build`` to create local runnable builds for your app::
+After creating a new app, or getting the source for an existing app, we can run ``forge build`` to create local runnable builds for your app::
 
-  wm-dev-build
+  forge build
 
 You will now have a ``development`` directory, under which there are a number of directories - one for each platform you have enabled for your app.
 
@@ -47,7 +47,7 @@ The generated add-ons in the ``development`` directory can be used directly in b
 
 Expected workflow
 -----------------
-After every change to your source code, you should run ``wm-dev-build`` to re-create the runnable apps, before refreshing / restarting the affected browsers and verifying your changes have taken effect.
+After every change to your source code, you should run ``forge build`` to re-create the runnable apps, before refreshing / restarting the affected browsers and verifying your changes have taken effect.
 
 We've made a number of optimisations so that most work you do *which don't change your app configuration file* will be very quick to build.
 
