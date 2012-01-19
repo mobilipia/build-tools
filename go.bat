@@ -89,7 +89,7 @@ if "%PYTHONINSTALL%" EQU "" (
 
 :foundpython
 
-if "%PYTHONINSTALL%" NEQ "" (
+if %PYTHONINSTALL% NEQ "" (
   SET "PATH=%PATH%;%PYTHONINSTALL%"
 )
 
