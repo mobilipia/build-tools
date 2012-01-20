@@ -27,7 +27,7 @@ def _check_api_response_for_error(url, method, resp, error_message=None):
 	'''Check an API response from the website to see if there was an error. Checks for one of the following:
 
 	No status code, as in, no valid response from the server.
-	
+
 	HTTP status code is not 200 but get a JSON response
 	HTTP status code is not 200 and the response is not a valid JSON response
 
@@ -45,7 +45,7 @@ def _check_api_response_for_error(url, method, resp, error_message=None):
 	LOG.debug("checking API response for success or error")
 
 	error_template = "Forge API call to {url} went wrong: {reason}"
-	
+
 	if not resp.ok:
 		if resp.status_code is None:
 			raise RequestError("Request to {url} got no response".format(url=url))
@@ -108,7 +108,7 @@ class Remote(object):
 
 	def _csrf_token(self):
 		'''Return the server-negotiated CSRF token, if we have one
-		
+
 		:raises Exception: if we don't have a CSRF token
 		'''
 		for cookie in self.cookies:
@@ -122,7 +122,7 @@ class Remote(object):
 		'''
 		method = kw['__method']
 		del kw['__method']
-		
+
 		if method == "POST":
 			# must have CSRF token
 			data = kw.get("data", {})
@@ -147,7 +147,7 @@ class Remote(object):
 
 	def _api_post(self, url, *args, **kw):
 		'''Make a POST request.
-		
+
 		:param url: see :module:`requests`
 		:param *args: see :module:`requests`
 		'''
@@ -161,7 +161,7 @@ class Remote(object):
 
 	def _api_get(self, url, *args, **kw):
 		'''Make a GET request.
-		
+
 		:param url: see :module:`requests`
 		:param *args: see :module:`requests`
 		'''
@@ -174,7 +174,7 @@ class Remote(object):
 
 	def _get(self, url, *args, **kw):
 		'''Make a GET request.
-		
+
 		:param url: see :module:`requests`
 		:param *args: see :module:`requests`
 		'''
@@ -185,7 +185,7 @@ class Remote(object):
 
 	def _post(self, url, *args, **kw):
 		'''Make a GET request.
-		
+
 		:param url: see :module:`requests`
 		:param *args: see :module:`requests`
 		'''
@@ -210,17 +210,7 @@ class Remote(object):
 		email = forge.request_username()
 		password = forge.request_password()
 
-		LOG.info('authenticating as "%s"' % email)
-		credentials = {
-			'email': email,
-			'password': password
-		}
-
-		self._api_get('auth/hello')
-		
-		self._api_post('auth/verify', data=credentials)
-		LOG.info('authentication successful')
-		self._authenticated = True
+		self.login(email, password)
 
 	def list_apps(self):
 		self._authenticate()
@@ -228,7 +218,7 @@ class Remote(object):
 
 	def create(self, name):
 		self._authenticate()
-	
+
 		data = {
 			'name': name
 		}
@@ -236,7 +226,7 @@ class Remote(object):
 
 	def _fetch_output(self, build_id, to_dir, output_key, post_get_fn):
 		'''Helper function for common file-getting logic of the fetch* methods.
-		
+
 		:param build_id: primary key of the build
 		:param to_dir: directory name to fetch the files into
 		:param output_key: which section of the build detail to look inside
@@ -250,7 +240,7 @@ class Remote(object):
 			# too chatty, and already seen this after build completed
 			del build['log_output']
 		LOG.debug('build detail: %s' % build)
-		
+
 		filenames = []
 		if not path.isdir(to_dir):
 			LOG.warning('creating output directory "%s"' % to_dir)
@@ -284,7 +274,7 @@ class Remote(object):
 				LOG.info('Update result: %s' % result['message'])
 			else:
 				LOG.debug('Update result: %s' % result['message'])
-			
+
 			if result.get('upgrade') == 'required':
 				raise ForgeError("""An update to these command line tools is required
 
@@ -310,7 +300,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 
 	def fetch_initial(self, uuid):
 		'''Retrieves the initial project template
-		
+
 		:param uuid: project uuid
 		'''
 		LOG.info('Fetching initial project template')
@@ -330,7 +320,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 
 	def _handle_unpackaged(self, platform, filename):
 		'''De-compress a built output tree.
-		
+
 		:param platform: e.g. "chrome", "ios" - we expect the contents of the ZIP file to
 			contain a directory named after the relevant platform
 		:param filename: the ZIP file to extract
@@ -346,7 +336,7 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 
 	def fetch_unpackaged(self, build_id, to_dir='development'):
 		'''Retrieves the unpackaged artefacts for a particular build.
-		
+
 		:param build_id: primary key of the build
 		:param to_dir: directory that will hold all the unpackged build trees
 		'''
@@ -354,23 +344,23 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		self._authenticate()
 
 		filenames = self._fetch_output(build_id, to_dir, 'unpackaged', self._handle_unpackaged)
-			
+
 		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
 		return filenames
-	
+
 	def fetch_generate_instructions(self, build_id, to_dir):
 		'''Retreive the generation instructions for a particular build.
-		
+
 		Rather than hard-coding these instructions - how to inject customer
 		code into the apps - they are loaded dynamically from the server to
 		allow for different platforms versions to work with a larger number
 		of build-tools versions.
-		
+
 		:param build_id: primary key of the build to get instructions for
 		:param to_dir: where the instructions will be put
 		'''
 		LOG.info("fetching generation instructions for build {build_id} into {to_dir}".format(**locals()))
-		
+
 		self._authenticate()
 
 		temp_instructions_file = 'instructions.zip'
@@ -446,9 +436,9 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 
 	def build(self, development=True, template_only=False):
 		'''Start a build on the remote server.
-		
+
 		**NB:** this method blocks until the remote build has completed!
-		
+
 		:param development: if ``True``, we will not do any packaging of the
 			build; it will be left in an expanded directory layout
 		:param template_only: internal use only: if ``True`` we will not use
@@ -474,6 +464,19 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 
 		self._poll_until_build_complete(build_id)
 		return build_id
+
+	def login(self, email, password):
+		LOG.info('authenticating as "%s"' % email)
+		credentials = {
+			'email': email,
+			'password': password
+		}
+
+		self._api_get('auth/hello')
+
+		self._api_post('auth/verify', data=credentials)
+		LOG.info('authentication successful')
+		self._authenticated = True
 
 	def logout(self):
 		return self._api_post('auth/logout')
