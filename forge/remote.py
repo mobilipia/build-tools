@@ -474,3 +474,6 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 
 		self._poll_until_build_complete(build_id)
 		return build_id
+
+	def logout(self):
+		return self._api_post('auth/logout')
