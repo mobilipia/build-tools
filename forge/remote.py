@@ -212,15 +212,20 @@ class Remote(object):
 
 		self.login(email, password)
 
+	def list_teams(self):
+		self._authenticate()
+		return self._api_get('team/')
+
 	def list_apps(self):
 		self._authenticate()
 		return self._api_get('app/')
 
-	def create(self, name):
+	def create(self, name, team):
 		self._authenticate()
 
 		data = {
-			'name': name
+			'name': name,
+			'team': team
 		}
 		return self._api_post('app/', data=data)['uuid']
 

@@ -204,7 +204,28 @@ def create(unhandled_args):
 			name = args.name
 		else:
 			name = raw_input('Enter app name: ')
-		uuid = remote.create(name)
+		teams_dict = remote.list_teams()
+		del teams_dict['result']
+		teams = {
+			en[0]: (teams_dict[en[1]], en[1])
+			for en in enumerate(sorted(teams_dict.keys()), 1)
+		}
+		map(lambda x: LOG.info(str(x) + ": " + teams[x][0]), teams)
+		
+		
+		input_ok = False
+		while not input_ok:
+			select_string = raw_input("Select Team [1-" + str(len(teams)) + "]:")
+			try:
+				select_id = int(select_string)
+				if select_id not in teams.keys():
+					LOG.error('Selection not in range, please try again.')
+				else:
+					input_ok = True
+			except ValueError:
+				LOG.error('Non-numeric input, please try again.')
+		
+		uuid = remote.create(name, teams[select_id][1])
 		remote.fetch_initial(uuid)
 		LOG.info('App structure created. To proceed:')
 		LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
