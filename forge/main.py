@@ -212,7 +212,8 @@ def create(unhandled_args):
 		}
 		map(lambda x: LOG.info(str(x) + ": " + teams[x][0]), teams)
 		
-		
+		LOG.info('')
+		LOG.info('')
 		input_ok = False
 		while not input_ok:
 			select_string = raw_input("Select Team [1-" + str(len(teams)) + "]:")
@@ -321,6 +322,7 @@ def check(unhandled_args):
 	Run basic linting on project JS to save the user some trouble.
 	'''
 	import subprocess
+	import platform
 	
 	if not os.path.isdir(defaults.SRC_DIR):
 		raise ForgeError(
@@ -330,8 +332,12 @@ def check(unhandled_args):
 			)
 		)
 	
+	LOG.info('Checking all JS files in src folder. No news is good news.')
 	if sys.platform.startswith("linux"):
-		command = defaults.FORGE_ROOT + "/bin/jsl"
+		if platform.architecture()[0] == '64bit':
+			command = defaults.FORGE_ROOT + "/bin/jsl-64"
+		else:
+			command = defaults.FORGE_ROOT + "/bin/jsl"
 	elif sys.platform.startswith("darwin"):
 		command = defaults.FORGE_ROOT + "/bin/jsl-mac"
 	elif sys.platform.startswith("win"):
@@ -353,7 +359,7 @@ def check(unhandled_args):
 		],
 		stdout=subprocess.PIPE
 	).communicate()[0]
-	LOG.info(data)
+	map(LOG.info, data.split('\n'))
 
 
 def package(unhandled_args):
