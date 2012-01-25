@@ -294,6 +294,47 @@ def _package_dev_build_for_platform(platform, **kw):
 		**kw
 	)
 
+@with_error_handler
+def check(unhandled_args):
+	'''
+	Run basic linting on project JS to save the user some trouble.
+	'''
+	import subprocess
+	
+	if not os.path.isdir(defaults.SRC_DIR):
+		raise ForgeError(
+			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
+				src=defaults.SRC_DIR,
+				prog=ENTRY_POINT_NAME,
+			)
+		)
+	
+	if sys.platform.startswith("linux"):
+		command = defaults.FORGE_ROOT + "/bin/jsl"
+	elif sys.platform.startswith("darwin"):
+		command = defaults.FORGE_ROOT + "/bin/jsl-mac"
+	elif sys.platform.startswith("win"):
+		command = defaults.FORGE_ROOT + "/bin/jsl.exe"
+	
+	data = subprocess.Popen(
+		[
+			command,
+			"-conf",
+			defaults.FORGE_ROOT + "/jsl.conf",
+
+			"-process",
+			os.getcwd() + "/src/*.js",
+
+			"-nologo",
+			"-nofilelisting",
+			"-nocontext",
+			"-nosummary"
+		],
+		stdout=subprocess.PIPE
+	).communicate()[0]
+	LOG.info(data)
+
+
 def package(unhandled_args):
 	#TODO: ensure dev build has been done first (probably lower down?)
 	args = _parse_package_args(unhandled_args)
@@ -326,10 +367,11 @@ def package(unhandled_args):
 	)
 
 COMMANDS = {
-	'create': create,
-	'build': development_build,
-	'run': run,
-	'package': package,
+	'create'  : create,
+	'build'   : development_build,
+	'run'     : run,
+	'package' : package,
+	'check'   : check
 }
 
 def _dispatch_command(command, other_args):
