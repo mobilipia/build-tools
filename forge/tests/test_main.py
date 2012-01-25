@@ -281,7 +281,7 @@ class TestMain(object):
 		args.command = 'create'
 		argparse.ArgumentParser.return_value.parse_known_args.return_value = (args, [])
 
-		main._using_deprecated_command('create')
+		main._using_deprecated_command('wm-create', 'forge create')
 		mock_logging = mock.Mock()
 		with mock.patch('forge.main.logging', new=mock_logging):
 			main.main()
