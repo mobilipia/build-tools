@@ -183,6 +183,15 @@ def _parse_create_args(args):
 	parser.add_argument('-n', '--name')
 	return parser.parse_args(args)
 
+def get_name():
+	'''
+	Thin wrapper around raw_input(), for mocking
+	'''
+	return raw_input('Enter app name: ')
+
+def select_team(teams):
+	return raw_input("Select Team [1-" + str(len(teams)) + "]:")
+
 def create(unhandled_args):
 	'Create a new development environment'
 	_check_working_directory_is_safe()
@@ -203,7 +212,7 @@ def create(unhandled_args):
 		if args.name:
 			name = args.name
 		else:
-			name = raw_input('Enter app name: ')
+			name = get_name()
 		teams_dict = remote.list_teams()
 		del teams_dict['result']
 		teams = {
@@ -215,7 +224,7 @@ def create(unhandled_args):
 		
 		input_ok = False
 		while not input_ok:
-			select_string = raw_input("Select Team [1-" + str(len(teams)) + "]:")
+			select_string = select_team(teams)
 			try:
 				select_id = int(select_string)
 				if select_id not in teams.keys():

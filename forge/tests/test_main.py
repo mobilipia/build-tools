@@ -58,16 +58,23 @@ class TestCreate(object):
 		parser.parse_args.return_value.name = None
 
 		mock_os.path.exists.return_value = False
-		mock_raw_input = mock.MagicMock()
-		mock_raw_input.return_value = 'user input'
+		
+		mock_get_name = mock.MagicMock()
+		mock_get_name.return_value = 'New App'
+		
+		mock_select_team = mock.MagicMock()
+		mock_select_team.return_value = '1'
+		
 		remote = Remote.return_value
 		build_config.load.return_value = dummy_config()
-
-		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
-			main.create([])
+		
+		remote.list_teams.return_value={'result': 'ok', '1': "team one"}
+		with mock.patch('forge.main.get_name', new=mock_get_name):
+			with mock.patch('forge.main.select_team', new=mock_select_team):
+				main.create([])
 
 		mock_os.path.exists.assert_called_once_with(defaults.SRC_DIR)
-		remote.create.assert_called_once_with(mock_raw_input.return_value)
+		remote.create.assert_called_once_with(mock_get_name.return_value, '1')
 		remote.fetch_initial.assert_called_once_with(remote.create.return_value)
 
 	@mock.patch('forge.main.os')
