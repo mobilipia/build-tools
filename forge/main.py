@@ -1,7 +1,6 @@
 """Forge subcommands as well as the main entry point for the forge tools"""
 import logging
 import codecs
-import json
 import shutil
 import sys
 
@@ -187,7 +186,7 @@ def create(unhandled_args):
 	'Create a new development environment'
 	_check_working_directory_is_safe()
 	args = _parse_create_args(unhandled_args)
-	config = build_config.load()
+	config = build_config.load(expect_app_config=False)
 	remote = Remote(config)
 	try:
 		remote.check_version()
@@ -262,7 +261,7 @@ def development_build(unhandled_args):
 	try_a_few_times(move_files_across)
 
 	# have templates and instructions - inject code
-	generator = Generate(defaults.APP_CONFIG_FILE)
+	generator = Generate()
 	generator.all('development', defaults.SRC_DIR)
 	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME

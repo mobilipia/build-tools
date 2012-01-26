@@ -9,12 +9,15 @@ class TestLoadApp(object):
 		self.codecs_open = self.codecs.open.return_value.__enter__.return_value
 		
 	def test_argument_is_none(self):
-		self.codecs_open.read.return_value = '[]'
+		self.codecs_open.read.return_value = '{}'
 		
 		with mock.patch('forge.build_config.codecs', new=self.codecs):
 			build_config.load_app()
 		
-		self.codecs.open.assert_called_once_with(defaults.APP_CONFIG_FILE, encoding="utf8")
+		eq_(self.codecs.open.call_args_list, [
+			((defaults.APP_CONFIG_FILE, ), dict(encoding="utf8")),
+			((defaults.IDENTITY_FILE, ), dict(encoding="utf8")),
+		])
 	
 	@raises(ForgeError)
 	def test_malformed_json(self):
@@ -24,9 +27,9 @@ class TestLoadApp(object):
 			build_config.load_app()
 	
 	def test_normal_json(self):
-		self.codecs_open.read.return_value = '[{"a": 1}, "b", null, true]'
+		self.codecs_open.read.return_value = '{"a": 1, "b": [null, true]}'
 		
 		with mock.patch('forge.build_config.codecs', new=self.codecs):
 			resp = build_config.load_app()
 		
-		eq_(resp, [{"a": 1}, "b",  None, True])
+		eq_(resp, {"a": 1, "b": [None, True]})
