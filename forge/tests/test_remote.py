@@ -106,10 +106,10 @@ class TestCreate(TestRemote):
 		self.remote._authenticate = Mock()
 		self.remote._api_post = Mock(return_value={'result': 'ok', 'uuid': 'SERVER-TEST-UUID'})
 		
-		result = self.remote.create('test name')
+		result = self.remote.create('test name', 1)
 		
 		self.remote._authenticate.assert_called_once_with( )
-		self.remote._api_post.assert_called_once_with('app/', data={'name': 'test name'})
+		self.remote._api_post.assert_called_once_with('app/', data={'name': 'test name', 'team': 1})
 		eq_(result, 'SERVER-TEST-UUID')
 
 class TestFetchInitial(TestRemote):
