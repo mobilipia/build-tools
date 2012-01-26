@@ -86,8 +86,8 @@ rm $PAYLOAD_APP/embedded.mobileprovision
 cp -p $PROV_P "$PAYLOAD_APP/embedded.mobileprovision"
 
 echo "Doing horrific things to the binary"
-# sed -e "s/YGP57GM255/$SEED_ID/g" -i .bak $PAYLOAD_APP/Forge
-sed -e "s/5ARZY8MX8B/$SEED_ID/g" -i .bak $PAYLOAD_APP/Forge
+sed -e "s/YGP57GM255/$SEED_ID/g" -i .bak $PAYLOAD_APP/Forge
+# sed -e "s/5ARZY8MX8B/$SEED_ID/g" -i .bak $PAYLOAD_APP/Forge
 
 echo "Signing"
 codesign --force --preserve-metadata --sign "$CERT" --resource-rules=$PAYLOAD_APP/ResourceRules.plist $PAYLOAD_APP
