@@ -174,7 +174,7 @@ class TestBuild(object):
 		)
 
 		Manager.assert_called_once_with(dummy_config())
-		Generate.assert_called_once_with(defaults.APP_CONFIG_FILE)
+		Generate.assert_called_once_with()
 		self._check_common_setup(parser, Remote)
 
 	@mock.patch('forge.main.build_config')

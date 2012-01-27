@@ -64,7 +64,7 @@ def create_build(build_type_dir):
 	:param build_type_dir: currently always "development"
 	'''
 	generate_dynamic = import_generate_dynamic()
-	app_config = build_config.load_app(defaults.APP_CONFIG_FILE)
+	app_config = build_config.load_app()
 	ignore_patterns = _get_ignore_patterns_for_src(defaults.SRC_DIR)
 	
 	build_to_run = generate_dynamic.build.Build(app_config, defaults.SRC_DIR,

@@ -14,9 +14,7 @@ from urlparse import urljoin, urlsplit
 import zipfile
 
 import forge
-from forge import ForgeError
-from forge import defaults
-from forge import lib
+from forge import build_config, defaults, ForgeError, lib
 
 LOG = logging.getLogger(__name__)
 
@@ -388,10 +386,8 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		if data is None:
 			data = {}
 
-		# TODO can we just use self.config here?
-		if path.isfile(defaults.APP_CONFIG_FILE):
-			with lib.open_file(defaults.APP_CONFIG_FILE) as app_config:
-				data['config'] = app_config.read()
+		app_config = build_config.load_app()
+		data['config'] = json.dumps(app_config)
 
 		url = 'app/%s/%s/%s' % (
 			self.config.get('uuid'),
