@@ -1,10 +1,10 @@
-import codecs
 import json
 import logging
 from os import path
 
 import forge
 from forge import defaults
+from forge.lib import open_file
 
 LOG = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def load_app():
 	'''
 	app_config_file = defaults.APP_CONFIG_FILE
 
-	with codecs.open(app_config_file, encoding='utf8') as app_config:
+	with open_file(app_config_file) as app_config:
 		try:
 			config = json.load(app_config)
 		except ValueError as e:
@@ -48,7 +48,18 @@ def load_app():
 	
 	identity_file = defaults.IDENTITY_FILE
 	
-	with codecs.open(identity_file, encoding='utf8') as identity:
+	if not path.isfile(identity_file):
+		if 'uuid' in config:
+			# old-style config, where uuid was in config.json, rather than identity.json
+			identity_contents = {"uuid": config["uuid"]}
+			LOG.warning("we need to update your configuration to include an 'identity.json' file")
+			with open_file(identity_file, 'w') as identity:
+				json.dump(identity_contents, identity)
+			LOG.info("configuration updated: 'identity.json' created")
+		else:
+			raise IOError("'identity.json' file is missing")
+			
+	with open_file(identity_file) as identity:
 		try:
 			identity_config = json.load(identity)
 		except ValueError as e:
