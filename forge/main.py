@@ -81,6 +81,7 @@ def with_error_handler(function):
 		except ForgeError as e:
 			# thrown by us, expected
 			LOG.error(e)
+			sys.exit(1)
 		except Exception as e:
 			if LOG is None:
 				LOG = logging.getLogger(__name__)
