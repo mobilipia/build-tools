@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from forge import build_config, defaults, ForgeError
+from forge import build_config, defaults, ForgeError, lib
 
 LOG = logging.getLogger(__name__)
 
@@ -43,6 +43,19 @@ def import_generate_dynamic():
 	
 	return generate_dynamic
 
+def _get_ignore_patterns_for_src(src_dir):
+	"""Returns the set of match_patterns
+	:param src_dir: Relative path to src directory containing user's code
+	"""
+
+	try:
+		with lib.open_file(os.path.join(src_dir, '.forgeignore')) as ignore_file:
+			ignores = map(lambda s: s.strip(), ignore_file.readlines())
+	except:
+		ignores = []
+
+	return list(set(ignores) | set(defaults.IGNORES))
+
 def create_build(build_type_dir):
 	'''Helper to instantiate a Build object from the dynamic generate code
 	
@@ -52,8 +65,9 @@ def create_build(build_type_dir):
 	'''
 	generate_dynamic = import_generate_dynamic()
 	app_config = build_config.load_app(defaults.APP_CONFIG_FILE)
+	ignore_patterns = _get_ignore_patterns_for_src(defaults.SRC_DIR)
 	
 	build_to_run = generate_dynamic.build.Build(app_config, defaults.SRC_DIR,
-		build_type_dir, enabled_platforms=_enabled_platforms(build_type_dir))
+		build_type_dir, enabled_platforms=_enabled_platforms(build_type_dir), ignore_patterns=ignore_patterns)
 	
 	return build_to_run

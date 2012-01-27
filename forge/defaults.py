@@ -21,3 +21,5 @@ SRC_DIR = 'src'
 APP_CONFIG_FILE = path.join(SRC_DIR, 'config.json')
 TEMPLATE_DIR = '.template'
 INSTRUCTIONS_DIR = path.join(TEMPLATE_DIR, 'generate_dynamic')
+
+IGNORES = ['.hg', '.git', '.svn', '.cvs', '.bzr', '.darcs']
