@@ -51,10 +51,10 @@ def _get_ignore_patterns_for_src(src_dir):
 	try:
 		with lib.open_file(os.path.join(src_dir, '.forgeignore')) as ignore_file:
 			ignores = map(lambda s: s.strip(), ignore_file.readlines())
-	except:
+	except Exception:
 		ignores = []
 
-	return list(set(ignores) | set(defaults.IGNORES))
+	return list(set(ignores))
 
 def create_build(build_type_dir):
 	'''Helper to instantiate a Build object from the dynamic generate code
