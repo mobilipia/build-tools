@@ -21,7 +21,7 @@ from forge.lib import try_a_few_times
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
-TARGETS_WE_CAN_PACKAGE_FOR = ('ios',)
+TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android')
 
 USING_DEPRECATED_COMMAND = None
 USE_INSTEAD = None
@@ -274,9 +274,16 @@ def _parse_package_args(args):
 		description='Package up a build for distribution',
 	)
 	parser.add_argument('platform', choices=TARGETS_WE_CAN_PACKAGE_FOR)
-	parser.add_argument('-c', '--certificate', help="Name of the certificate to sign an iOS app with")
-	parser.add_argument('-p', '--provisioning-profile', help="Path to a provisioning profile to embed into an iOS app")
-	parser.add_argument('-o', '--output', help="Path of where to output the ipa file to")
+	parser.add_argument('-c', '--certificate', help="(iOS) name of the developer certificate to sign an iOS app with")
+	parser.add_argument('-p', '--provisioning-profile', help="(iOS) path to a provisioning profile to use")
+
+	parser.add_argument('--keystore', help="(Android) location of your release keystore")
+	parser.add_argument('--storepass', help="(Android) password for your release keystore")
+	parser.add_argument('--keyalias', help="(Android) alias of your release key")
+	parser.add_argument('--keypass', help="(Android) password for your release key")
+	parser.add_argument('--sdk', help="(Android) location of the Android SDK")
+
+	parser.add_argument('-o', '--output', help="path of where to write the output file to")
 
 	return parser.parse_args(args)
 
@@ -319,6 +326,23 @@ def package(unhandled_args):
 				output_path_for_ipa=abs_path_to_output,
 			)
 		)
+	elif args.platform == 'android':
+		if args.output is None:
+			raise ForgeError("When packaging Android apps, you need to specify the output APK file with -o or --output")
+
+		abs_path_to_output = os.path.abspath(args.output)
+		abs_path_to_keystore = os.path.abspath(args.keystore) if args.keystore else args.keystore
+		
+		extra_package_config.update(
+			dict(
+				keystore=abs_path_to_keystore,
+				storepass=args.storepass,
+				keyalias=args.keyalias,
+				keypass=args.keypass,
+				sdk=args.sdk,
+				output=abs_path_to_output
+			)
+		)
 
 	_package_dev_build_for_platform(
 		args.platform,
@@ -349,7 +373,7 @@ def main():
 	handled_args, other_args = top_level_parser.parse_known_args()
 	handle_general_options(handled_args)
 
-	if USING_DEPRECATED_COMMAND is not None:
+	if USING_DEPRECATED_COMMAND:
 		_warn_about_deprecated_command()
 
 	_dispatch_command(handled_args.command, other_args)
