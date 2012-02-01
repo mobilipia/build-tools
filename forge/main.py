@@ -293,7 +293,7 @@ def _package_dev_build_for_platform(platform, **kw):
 	
 	generate_dynamic.customer_goals.package_app(
 		generate_module=generate_dynamic,
-		build_to_run=build.create_build(build_type_dir),
+		build_to_run=build.create_build(build_type_dir, targets=[platform]),
 		target=platform,
 		server=False,
 
