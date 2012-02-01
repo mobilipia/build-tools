@@ -21,6 +21,7 @@ def _enabled_platforms(build_type_dir):
 		"forge.safariextension": "safari",
 		"android": "android",
 		"ios": "ios",
+		"web": "web",
 	}
 	
 	enabled_platforms = []
