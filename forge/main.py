@@ -1,15 +1,12 @@
 """Forge subcommands as well as the main entry point for the forge tools"""
 import logging
-import codecs
 import shutil
 import sys
 
 import argparse
 import os
-import time
 
-from subprocess import Popen
-from os import path, devnull
+from os import path
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -91,7 +88,7 @@ def with_error_handler(function):
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:")
 			LOG.error(e)
-			LOG.error("See %s for more details" % PATH_TO_ERROR_LOG)
+			LOG.error("See %s for more details" % ERROR_LOG_FILE)
 			LOG.error("Please contact support@trigger.io")
 			sys.exit(1)
 
