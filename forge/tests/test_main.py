@@ -9,12 +9,14 @@ from forge.tests import dummy_config, lib
 from forge import main, defaults
 from os import path
 
+@mock.patch('forge.main._setup_logging_to_stdout')
+@mock.patch('forge.main._setup_error_logging_to_file')
 @mock.patch('forge.main.logging')
-def _logging_test(args, level, logging):
+def _logging_test(args, level, logging, _setup_error_logging_to_file, _setup_logging_to_stdout):
 	main.setup_logging(args)
 
-	logging.basicConfig.assert_called_once_with(level=getattr(logging, level),
-		format='[%(levelname)7s] %(message)s')
+	_setup_error_logging_to_file.assert_called_once_with()
+	_setup_logging_to_stdout.assert_called_once_with(getattr(logging, level))
 	logging.getLogger.assert_called_once_with('forge.main')
 
 
