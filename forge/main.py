@@ -385,3 +385,6 @@ def main():
 		_warn_about_deprecated_command()
 
 	_dispatch_command(handled_args.command, other_args)
+
+if __name__ == "__main__":
+	main()
