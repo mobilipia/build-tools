@@ -1,7 +1,6 @@
 """Forge subcommands as well as the main entry point for the forge tools"""
 import logging
 import codecs
-import json
 import shutil
 import sys
 
@@ -22,10 +21,12 @@ from forge.lib import try_a_few_times
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
-TARGETS_WE_CAN_PACKAGE_FOR = ('ios',)
+TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android')
 
 USING_DEPRECATED_COMMAND = None
 USE_INSTEAD = None
+
+_interactive_mode = True
 
 def _using_deprecated_command(command, use_instead):
 	global USING_DEPRECATED_COMMAND, USE_INSTEAD
@@ -81,15 +82,16 @@ def with_error_handler(function):
 		except ForgeError as e:
 			# thrown by us, expected
 			LOG.error(e)
+			sys.exit(1)
 		except Exception as e:
 			if LOG is None:
 				LOG = logging.getLogger(__name__)
 				LOG.addHandler(logging.StreamHandler())
 				LOG.setLevel('DEBUG')
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
-			LOG.error("Something went wrong that we didn't expect:");
-			LOG.error(e);
-			LOG.error("Please contact support@trigger.io");
+			LOG.error("Something went wrong that we didn't expect:")
+			LOG.error(e)
+			LOG.error("Please contact support@trigger.io")
 			sys.exit(1)
 
 	return decorated_with_handler
@@ -113,16 +115,20 @@ def add_general_options(parser):
 	'Generic command-line arguments'
 	parser.add_argument('-v', '--verbose', action='store_true')
 	parser.add_argument('-q', '--quiet', action='store_true')
+	parser.add_argument('--no-interactive', action='store_true')
 	parser.add_argument('--username', help='username used to login to the forge website')
 	parser.add_argument('--password', help='password used to login to the forge website')
 
 def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
+	global _interactive_mode
 	# TODO setup given user/password somewhere accessible by remote.py
 	if args.username:
 		forge.settings['username'] = args.username
 	if args.password:
 		forge.settings['password'] = args.password
+	if args.no_interactive:
+		_interactive_mode = False
 	setup_logging(args)
 
 def _assert_have_target_folder(directory, target):
@@ -168,7 +174,7 @@ def run(unhandled_args):
 	_assert_have_target_folder(build_type_dir, args.platform)
 
 	generate_dynamic = build.import_generate_dynamic()
-	
+
 	generate_dynamic.customer_goals.run_app(
 		generate_module=generate_dynamic,
 		build_to_run=build.create_build(build_type_dir),
@@ -176,6 +182,7 @@ def run(unhandled_args):
 		server=False,
 		sdk=args.sdk,
 		device=args.device,
+		interactive=_interactive_mode,
 	)
 
 def _parse_create_args(args):
@@ -187,7 +194,7 @@ def create(unhandled_args):
 	'Create a new development environment'
 	_check_working_directory_is_safe()
 	args = _parse_create_args(unhandled_args)
-	config = build_config.load()
+	config = build_config.load(expect_app_config=False)
 	remote = Remote(config)
 	try:
 		remote.check_version()
@@ -284,7 +291,7 @@ def development_build(unhandled_args):
 	try_a_few_times(move_files_across)
 
 	# have templates and instructions - inject code
-	generator = Generate(defaults.APP_CONFIG_FILE)
+	generator = Generate()
 	generator.all('development', defaults.SRC_DIR)
 	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
@@ -296,21 +303,29 @@ def _parse_package_args(args):
 		description='Package up a build for distribution',
 	)
 	parser.add_argument('platform', choices=TARGETS_WE_CAN_PACKAGE_FOR)
-	parser.add_argument('-c', '--certificate', help="Name of the certificate to sign an iOS app with")
-	parser.add_argument('-p', '--provisioning-profile', help="Path to a provisioning profile to embed into an iOS app")
-	parser.add_argument('-o', '--output', help="Path of where to output the ipa file to")
+	parser.add_argument('-c', '--certificate', help="(iOS) name of the developer certificate to sign an iOS app with")
+	parser.add_argument('-p', '--provisioning-profile', help="(iOS) path to a provisioning profile to use")
+
+	parser.add_argument('--keystore', help="(Android) location of your release keystore")
+	parser.add_argument('--storepass', help="(Android) password for your release keystore")
+	parser.add_argument('--keyalias', help="(Android) alias of your release key")
+	parser.add_argument('--keypass', help="(Android) password for your release key")
+	parser.add_argument('--sdk', help="(Android) location of the Android SDK")
+
+	parser.add_argument('-o', '--output', help="path of where to write the output file to")
 
 	return parser.parse_args(args)
 
 def _package_dev_build_for_platform(platform, **kw):
 	generate_dynamic = build.import_generate_dynamic()
 	build_type_dir = 'development'
-	
+
 	generate_dynamic.customer_goals.package_app(
 		generate_module=generate_dynamic,
-		build_to_run=build.create_build(build_type_dir),
+		build_to_run=build.create_build(build_type_dir, targets=[platform]),
 		target=platform,
 		server=False,
+		interactive = _interactive_mode,
 
 		# pass in platform specific config via keyword args
 		**kw
@@ -387,6 +402,23 @@ def package(unhandled_args):
 				output_path_for_ipa=abs_path_to_output,
 			)
 		)
+	elif args.platform == 'android':
+		if args.output is None:
+			raise ForgeError("When packaging Android apps, you need to specify the output APK file with -o or --output")
+
+		abs_path_to_output = os.path.abspath(args.output)
+		abs_path_to_keystore = os.path.abspath(args.keystore) if args.keystore else args.keystore
+
+		extra_package_config.update(
+			dict(
+				keystore=abs_path_to_keystore,
+				storepass=args.storepass,
+				keyalias=args.keyalias,
+				keypass=args.keypass,
+				sdk=args.sdk,
+				output=abs_path_to_output
+			)
+		)
 
 	_package_dev_build_for_platform(
 		args.platform,
@@ -418,7 +450,7 @@ def main():
 	handled_args, other_args = top_level_parser.parse_known_args()
 	handle_general_options(handled_args)
 
-	if USING_DEPRECATED_COMMAND is not None:
+	if USING_DEPRECATED_COMMAND:
 		_warn_about_deprecated_command()
 
 	_dispatch_command(handled_args.command, other_args)

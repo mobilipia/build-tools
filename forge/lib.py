@@ -63,7 +63,7 @@ def cd(target_dir):
 
 @contextmanager
 def open_file(*args, **kw):
-	'Simple wrapper around __builtins__.open for easier testing/mocking'
+	'Simple wrapper around codecs.open for easier testing/mocking'
 	if 'encoding' not in kw:
 		kw['encoding'] = 'utf8'
 	yield codecs.open(*args, **kw)

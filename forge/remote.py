@@ -14,9 +14,7 @@ from urlparse import urljoin, urlsplit
 import zipfile
 
 import forge
-from forge import ForgeError
-from forge import defaults
-from forge import lib
+from forge import build_config, defaults, ForgeError, lib
 
 LOG = logging.getLogger(__name__)
 
@@ -103,8 +101,8 @@ class Remote(object):
 
 	@property
 	def server(self):
-		'The URL of the build server to use (default https://webmynd.com/api/)'
-		return self.config.get('main', {}).get('server', 'https://webmynd.com/api/')
+		'The URL of the build server to use (default https://trigger.io/api/)'
+		return self.config.get('main', {}).get('server', 'https://trigger.io/api/')
 
 	def _csrf_token(self):
 		'''Return the server-negotiated CSRF token, if we have one
@@ -283,7 +281,7 @@ class Remote(object):
 			if result.get('upgrade') == 'required':
 				raise ForgeError("""An update to these command line tools is required
 
-The newest tools can be obtained from https://webmynd.com/forge/upgrade/
+The newest tools can be obtained from https://trigger.io/forge/upgrade/
 """)
 		else:
 			LOG.info('Upgrade check failed.')
@@ -393,10 +391,8 @@ The newest tools can be obtained from https://webmynd.com/forge/upgrade/
 		if data is None:
 			data = {}
 
-		# TODO can we just use self.config here?
-		if path.isfile(defaults.APP_CONFIG_FILE):
-			with lib.open_file(defaults.APP_CONFIG_FILE) as app_config:
-				data['config'] = app_config.read()
+		app_config = build_config.load_app()
+		data['config'] = json.dumps(app_config)
 
 		url = 'app/%s/%s/%s' % (
 			self.config.get('uuid'),
