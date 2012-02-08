@@ -1,15 +1,12 @@
 """Forge subcommands as well as the main entry point for the forge tools"""
 import logging
-import codecs
 import shutil
 import sys
 
 import argparse
 import os
-import time
 
-from subprocess import Popen
-from os import path, devnull
+from os import path
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -195,8 +192,6 @@ def create(unhandled_args):
 		LOG.error(e)
 		return 1
 
-	manager = Manager(config)
-
 	if os.path.exists(defaults.SRC_DIR):
 		raise ForgeError('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
 	else:
@@ -283,8 +278,6 @@ def _parse_package_args(args):
 	parser.add_argument('--keypass', help="(Android) password for your release key")
 	parser.add_argument('--sdk', help="(Android) location of the Android SDK")
 
-	parser.add_argument('-o', '--output', help="path of where to write the output file to")
-
 	return parser.parse_args(args)
 
 def _package_dev_build_for_platform(platform, **kw):
@@ -313,24 +306,15 @@ def package(unhandled_args):
 		if args.provisioning_profile is None:
 			raise ForgeError("When packaging iOS apps, you need to provide a path to of a provisioning profile using -p or --provisioning-profile")
 
-		if args.output is None:
-			raise ForgeError("When packaging iOS apps, you need to provide where to output the ipa file to with -o or --output")
-
-		abs_path_to_output = os.path.abspath(args.output)
 		abs_path_to_profile = os.path.abspath(args.provisioning_profile)
 
 		extra_package_config.update(
 			dict(
 				provisioning_profile=abs_path_to_profile,
 				certificate_to_sign_with=args.certificate,
-				output_path_for_ipa=abs_path_to_output,
 			)
 		)
 	elif args.platform == 'android':
-		if args.output is None:
-			raise ForgeError("When packaging Android apps, you need to specify the output APK file with -o or --output")
-
-		abs_path_to_output = os.path.abspath(args.output)
 		abs_path_to_keystore = os.path.abspath(args.keystore) if args.keystore else args.keystore
 		
 		extra_package_config.update(
@@ -340,7 +324,6 @@ def package(unhandled_args):
 				keyalias=args.keyalias,
 				keypass=args.keypass,
 				sdk=args.sdk,
-				output=abs_path_to_output
 			)
 		)
 
