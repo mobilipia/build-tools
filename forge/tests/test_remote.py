@@ -1,14 +1,11 @@
-import cookielib
 import json
-from os import path
-import subprocess
 
 import mock
 from mock import MagicMock, Mock, patch
-from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
+from nose.tools import raises, eq_, ok_
 import requests
 
-from forge import defaults, ForgeError, VERSION
+from forge import VERSION
 from forge import remote
 from forge.remote import Remote, RequestError
 from forge.tests import dummy_config
@@ -25,7 +22,7 @@ class Test__Init__(object):
 	def test_cookies_there(self, os, LWPCookieJar):
 		os.path.exists.return_value = True
 		os.getcwd.return_value = '/here'
-		remote = Remote(dummy_config())
+		Remote(dummy_config())
 		
 		LWPCookieJar.return_value.load.assert_called_once_with()
 	@mock.patch('forge.remote.LWPCookieJar')
@@ -33,8 +30,7 @@ class Test__Init__(object):
 	def test_cookies_not_there(self, os, LWPCookieJar):
 		os.path.exists.return_value = False
 		os.getcwd.return_value = '/here'
-		
-		remote = Remote(dummy_config())
+		Remote(dummy_config())
 		
 		LWPCookieJar.return_value.save.assert_called_once_with()
 
@@ -211,8 +207,8 @@ class TestBuild(TestRemote):
 		
 		eq_(resp, -1)
 		self.remote._api_post.assert_called_once_with(
-			'app/TEST-UUID/template/development',
-			files=None, data={"config": "{}"}
+			'app/TEST-UUID/template',
+			data={"config": "{}"}
 		)
 		eq_(self.remote._api_get.call_args_list,
 			[(('build/-1/detail/',), {})] * 3
@@ -231,8 +227,8 @@ class TestBuild(TestRemote):
 		# what does -1 signify here?
 		eq_(resp, -1)
 		self.remote._api_post.assert_called_once_with(
-			'app/TEST-UUID/template/development',
-			files=None, data={'config': json.dumps(app_config)}
+			'app/TEST-UUID/template',
+			data={'config': json.dumps(app_config)}
 		)
 		self.remote._api_get.assert_called_once_with('build/-1/detail/')
 	
@@ -254,8 +250,8 @@ class TestBuild(TestRemote):
 			resp = self.remote.build()
 				
 		eq_(resp, -1)
-		self.remote._api_post.assert_called_once_with('app/TEST-UUID/template/development',
-			files=None, data={"config": "{}"}
+		self.remote._api_post.assert_called_once_with('app/TEST-UUID/template',
+			data={"config": "{}"}
 		)
 		
 	@patch('forge.remote.path')
