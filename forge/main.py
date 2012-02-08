@@ -23,6 +23,8 @@ TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android')
 USING_DEPRECATED_COMMAND = None
 USE_INSTEAD = None
 
+_interactive_mode = True
+
 def _using_deprecated_command(command, use_instead):
 	global USING_DEPRECATED_COMMAND, USE_INSTEAD
 	USING_DEPRECATED_COMMAND = command
@@ -110,16 +112,20 @@ def add_general_options(parser):
 	'Generic command-line arguments'
 	parser.add_argument('-v', '--verbose', action='store_true')
 	parser.add_argument('-q', '--quiet', action='store_true')
+	parser.add_argument('--no-interactive', action='store_true')
 	parser.add_argument('--username', help='username used to login to the forge website')
 	parser.add_argument('--password', help='password used to login to the forge website')
 
 def handle_general_options(args):
 	'Parameterise our option based on common command-line arguments'
+	global _interactive_mode
 	# TODO setup given user/password somewhere accessible by remote.py
 	if args.username:
 		forge.settings['username'] = args.username
 	if args.password:
 		forge.settings['password'] = args.password
+	if args.no_interactive:
+		_interactive_mode = False
 	setup_logging(args)
 
 def _assert_have_target_folder(directory, target):
@@ -165,7 +171,7 @@ def run(unhandled_args):
 	_assert_have_target_folder(build_type_dir, args.platform)
 
 	generate_dynamic = build.import_generate_dynamic()
-	
+
 	generate_dynamic.customer_goals.run_app(
 		generate_module=generate_dynamic,
 		build_to_run=build.create_build(build_type_dir),
@@ -173,6 +179,7 @@ def run(unhandled_args):
 		server=False,
 		sdk=args.sdk,
 		device=args.device,
+		interactive=_interactive_mode,
 	)
 
 def _parse_create_args(args):
@@ -283,12 +290,13 @@ def _parse_package_args(args):
 def _package_dev_build_for_platform(platform, **kw):
 	generate_dynamic = build.import_generate_dynamic()
 	build_type_dir = 'development'
-	
+
 	generate_dynamic.customer_goals.package_app(
 		generate_module=generate_dynamic,
-		build_to_run=build.create_build(build_type_dir),
+		build_to_run=build.create_build(build_type_dir, targets=[platform]),
 		target=platform,
 		server=False,
+		interactive = _interactive_mode,
 
 		# pass in platform specific config via keyword args
 		**kw
@@ -316,7 +324,7 @@ def package(unhandled_args):
 		)
 	elif args.platform == 'android':
 		abs_path_to_keystore = os.path.abspath(args.keystore) if args.keystore else args.keystore
-		
+
 		extra_package_config.update(
 			dict(
 				keystore=abs_path_to_keystore,
@@ -360,3 +368,6 @@ def main():
 		_warn_about_deprecated_command()
 
 	_dispatch_command(handled_args.command, other_args)
+
+if __name__ == "__main__":
+	main()
