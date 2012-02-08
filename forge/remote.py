@@ -222,46 +222,6 @@ class Remote(object):
 		}
 		return self._api_post('app/', data=data)['uuid']
 
-	def _fetch_output(self, build_id, to_dir, output_key, post_get_fn):
-		'''Helper function for common file-getting logic of the fetch* methods.
-
-		:param build_id: primary key of the build
-		:param to_dir: directory name to fetch the files into
-		:param output_key: which section of the build detail to look inside
-			(normally "unpackaged" or "packaged")
-		:param post_get_fn: function to invoke with two parameters: the name of the current
-			platform and the name of the downloaded file. Will be invoked in the same directory
-			as the file was downloaded to.
-		'''
-		build = self._api_get('build/{id}/detail/'.format(id=build_id))
-		if 'log_output' in build:
-			# too chatty, and already seen this after build completed
-			del build['log_output']
-		LOG.debug('build detail: %s' % build)
-
-		filenames = []
-		if not path.isdir(to_dir):
-			LOG.warning('creating output directory "%s"' % to_dir)
-			os.mkdir(to_dir)
-
-		with lib.cd(to_dir):
-			locations = build[output_key]
-			available_platforms = [plat for plat, url in locations.iteritems() if url]
-
-			for platform in available_platforms:
-				filename = urlsplit(locations[platform]).path.split('/')[-1]
-
-				LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
-				self._get_file(
-					locations[platform],
-					write_to_path=filename
-				)
-
-				post_get_fn(platform, filename)
-
-				filenames.append(path.abspath(platform))
-			return filenames
-
 	def check_version(self):
 		result = self._api_get(
 			'version_check/{version}/'.format(version=forge.get_version().replace('.','/'))
@@ -334,15 +294,43 @@ The newest tools can be obtained from https://trigger.io/forge/upgrade/
 
 	def fetch_unpackaged(self, build_id, to_dir='development'):
 		'''Retrieves the unpackaged artefacts for a particular build.
-
+		
 		:param build_id: primary key of the build
 		:param to_dir: directory that will hold all the unpackged build trees
 		'''
 		LOG.info('fetching unpackaged artefacts for build %s into "%s"' % (build_id, to_dir))
 		self._authenticate()
-
-		filenames = self._fetch_output(build_id, to_dir, 'unpackaged', self._handle_unpackaged)
-
+		
+		output_key = 'unpackaged'
+		build = self._api_get('build/{id}/detail/'.format(id=build_id))
+		
+		if 'log_output' in build:
+			# too chatty, and already seen this after build completed
+			del build['log_output']
+		LOG.debug('build detail: %s' % build)
+		
+		filenames = []
+		if not path.isdir(to_dir):
+			LOG.info('creating output directory "%s"' % to_dir)
+			os.mkdir(to_dir)
+			
+		with lib.cd(to_dir):
+			locations = build[output_key]
+			available_platforms = [plat for plat, url in locations.iteritems() if url]
+			
+			for platform in available_platforms:
+				filename = urlsplit(locations[platform]).path.split('/')[-1]
+				
+				LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
+				self._get_file(
+					locations[platform],
+					write_to_path=filename
+				)
+				
+				self._handle_unpackaged(platform, filename)
+				
+				filenames.append(path.abspath(platform))
+		
 		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
 		return filenames
 
@@ -382,37 +370,13 @@ The newest tools can be obtained from https://trigger.io/forge/upgrade/
 
 		return to_dir
 
-	def _request_build(self, development, template_only, data=None, files=None):
-		if data is None:
-			data = {}
-
+	def _request_development_build(self):
+		data = {}
 		app_config = build_config.load_app()
 		data['config'] = json.dumps(app_config)
-
-		url = 'app/%s/%s/%s' % (
-			self.config.get('uuid'),
-			'template' if template_only else 'build',
-			'development' if development else ''
-		)
-		return self._api_post(url, data=data, files=files)
-
-	def _request_development_build(self):
-		return self._request_build(
-			development=True,
-			template_only=True,
-		)
-
-	def _create_src_tar(self, archive_filename, directory_to_archive):
-		# TODO skip over files specified by some .forgeignore file
-		src_archive = tarfile.open(archive_filename, mode='w:bz2')
-
-		with lib.cd(directory_to_archive):
-			for user_file in os.listdir('.'):
-				src_archive.add(user_file)
-				LOG.debug('added "%s" to user archive' % user_file)
-
-		src_archive.close()
-		return src_archive
+		
+		url = 'app/{uuid}/template'.format(uuid=self.config.get('uuid'))
+		return self._api_post(url, data=data)
 
 	def _poll_until_build_complete(self, build_id):
 		build = self._api_get('build/{id}/detail/'.format(id=build_id))
