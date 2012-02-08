@@ -1,1 +1,5 @@
-/Users/james/forge_build.local.json
+{
+	"main": {
+		"server": "https://trigger.io/api/"
+	}
+}
