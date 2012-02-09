@@ -18,7 +18,7 @@ from forge.lib import try_a_few_times
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
-TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android')
+TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android', 'web')
 
 USING_DEPRECATED_COMMAND = None
 USE_INSTEAD = None
@@ -159,7 +159,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
-	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox'])
+	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox', 'web'])
 	return parser.parse_args(args)
 
 def run(unhandled_args):
@@ -332,6 +332,12 @@ def package(unhandled_args):
 				keyalias=args.keyalias,
 				keypass=args.keypass,
 				sdk=args.sdk,
+			)
+		)
+	elif args.platform == 'web':
+		extra_package_config.update(
+			# whatever extra parameters are required
+			dict(
 			)
 		)
 
