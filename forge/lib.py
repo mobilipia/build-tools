@@ -116,7 +116,7 @@ def unzip_with_permissions(filename):
 
 class AccidentHandler(logging.Handler):
 	def __init__(self, capacity, flush_level, target):
-		super(AccidentHandler, self).__init__()
+		logging.Handler.__init__(self)
 		self.records = collections.deque(maxlen=capacity)
 		self.capacity = capacity
 		if isinstance(flush_level, str):
