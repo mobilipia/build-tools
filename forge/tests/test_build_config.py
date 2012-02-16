@@ -69,3 +69,23 @@ class TestLoadApp(object):
 			((defaults.IDENTITY_FILE,), {}),
 		])
 		
+
+class TestLoadLocal(object):
+	def test_should_return_json_as_dict(self):
+		open_file = mock.MagicMock()
+		opened_file = open_file.return_value.__enter__.return_value
+		opened_file.read.return_value = '{"provisioning_profile": "dummy pp"}'
+
+		with mock.patch('forge.build_config.open_file', new=open_file):
+			local_config = build_config.load_local()
+
+		eq_(local_config, {'provisioning_profile': 'dummy pp'})
+
+	def test_if_no_config_file_should_return_empty_dict(self):
+		open_file = mock.MagicMock()
+		open_file.side_effect = IOError
+
+		with mock.patch('forge.build_config.open_file', new=open_file):
+			local_config = build_config.load_local()
+
+		eq_(local_config, {})

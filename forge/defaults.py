@@ -20,5 +20,6 @@ PASSWORD = "your password"
 SRC_DIR = 'src'
 APP_CONFIG_FILE = path.join(SRC_DIR, 'config.json')
 IDENTITY_FILE = path.join(SRC_DIR, 'identity.json')
+LOCAL_CONFIG_FILE = 'local_config.json'
 TEMPLATE_DIR = '.template'
 INSTRUCTIONS_DIR = path.join(TEMPLATE_DIR, 'generate_dynamic')

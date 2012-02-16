@@ -67,3 +67,18 @@ def load_app():
 	
 	config.update(identity_config)
 	return config
+
+def load_local():
+	"""Read in and parse local configuration containing things like location of 
+	provisioning profiles, certificates, deployment details
+	"""
+	local_config_path = defaults.LOCAL_CONFIG_FILE
+
+	try:
+		with open_file(local_config_path) as local_config_file:
+			local_config_dict = json.load(local_config_file)
+	except IOError as e:
+		LOG.debug("Couldn't load local_config.json", exc_info=True)
+		local_config_dict = {}
+
+	return local_config_dict
