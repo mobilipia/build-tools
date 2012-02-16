@@ -127,6 +127,24 @@ class TestRun(object):
 		build.create_build.assert_called_once()
 		build.create_build.return_value.run.assert_called_once()
 
+	@mock.patch('forge.main.build')
+	@mock.patch('forge.main._parse_run_args')
+	@mock.patch('forge.main.build_config.load_local')
+	@mock.patch('forge.main._assert_have_target_folder', new=mock.Mock())
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
+	def test_uses_sdk_from_local_config(self, load_local, _parse_run_args, build):
+		args = _parse_run_args.return_value
+		args.platform = 'android'
+		args.sdk = None
+
+		load_local.return_value = {'sdk':'dummy android sdk'}
+		generate_dynamic = build.import_generate_dynamic.return_value
+
+		main.run([])
+		args, kwargs = generate_dynamic.customer_goals.run_app.call_args_list[0]
+
+		eq_(kwargs['sdk'], 'dummy android sdk', "run_app should have been called with android_sdk from local_config")
+
 class Test_AssertNotSubdirectoryOfForgeRoot(object):
 	@mock.patch('forge.main.os.getcwd')
 	@raises(main.RunningInForgeRoot)
@@ -289,3 +307,23 @@ class TestMain(object):
 			main.main()
 		warning = mock_logging.getLogger.return_value.warning
 		warning.assert_called_with("Using wm-create which is now deprecated and will eventually be unsupported, instead, please use: 'forge create'\n\n")
+
+class TestPackage(object):
+	@mock.patch('forge.main.build')
+	@mock.patch('forge.main.build_config.load_local')
+	@mock.patch('forge.main._parse_package_args')
+	def test_should_pass_through_local_config(self, _parse_package_args, load_local, build):
+		args = _parse_package_args.return_value
+		args.sdk = None
+
+		load_local.return_value = {'sdk': 'dummy sdk'}
+
+		generate_dynamic = build.import_generate_dynamic.return_value
+		package_app = generate_dynamic.customer_goals.package_app
+
+		main.package([])
+
+		package_app.assert_called_once()
+		kwargs = package_app.call_args_list[0][1]
+
+		eq_(kwargs['sdk'], 'dummy sdk')

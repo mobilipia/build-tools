@@ -198,6 +198,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 def run(unhandled_args):
 	_check_working_directory_is_safe()
 	args = _parse_run_args(unhandled_args)
+	local_config = build_config.load_local()
 
 	build_type_dir = 'development'
 	_assert_have_development_folder()
@@ -205,12 +206,19 @@ def run(unhandled_args):
 
 	generate_dynamic = build.import_generate_dynamic()
 
+	android_sdk = None
+
+	if args.sdk:
+		android_sdk = args.sdk
+	elif 'sdk' in local_config:
+		android_sdk = local_config['sdk']
+
 	generate_dynamic.customer_goals.run_app(
 		generate_module=generate_dynamic,
 		build_to_run=build.create_build(build_type_dir),
 		target=args.platform,
 		server=False,
-		sdk=args.sdk,
+		sdk=android_sdk,
 		device=args.device,
 		interactive=_interactive_mode,
 	)
@@ -338,7 +346,7 @@ def _package_dev_build_for_platform(platform, **kw):
 def package(unhandled_args):
 	#TODO: ensure dev build has been done first (probably lower down?)
 	args = _parse_package_args(unhandled_args)
-	extra_package_config = {}
+	extra_package_config = build_config.load_local()
 
 	if args.platform == 'ios':
 		if not sys.platform.startswith("darwin"):
