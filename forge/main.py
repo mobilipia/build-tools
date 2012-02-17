@@ -208,6 +208,9 @@ def run(unhandled_args):
 	# load local config file and mix in cmdline args
 	extra_config = build_config.load_local()
 
+	if 'sdk' not in extra_config:
+		extra_config['sdk'] = None
+
 	if args.sdk:
 		extra_config['sdk'] = args.sdk
 
