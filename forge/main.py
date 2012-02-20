@@ -205,14 +205,23 @@ def run(unhandled_args):
 
 	generate_dynamic = build.import_generate_dynamic()
 
+	# load local config file and mix in cmdline args
+	extra_config = build_config.load_local()
+
+	if 'sdk' not in extra_config:
+		extra_config['sdk'] = None
+
+	if args.sdk:
+		extra_config['sdk'] = args.sdk
+
 	generate_dynamic.customer_goals.run_app(
 		generate_module=generate_dynamic,
 		build_to_run=build.create_build(build_type_dir),
 		target=args.platform,
 		server=False,
-		sdk=args.sdk,
 		device=args.device,
 		interactive=_interactive_mode,
+		**extra_config
 	)
 
 def _parse_create_args(args):
@@ -338,7 +347,7 @@ def _package_dev_build_for_platform(platform, **kw):
 def package(unhandled_args):
 	#TODO: ensure dev build has been done first (probably lower down?)
 	args = _parse_package_args(unhandled_args)
-	extra_package_config = {}
+	extra_package_config = build_config.load_local()
 
 	if args.platform == 'ios':
 		if not sys.platform.startswith("darwin"):
