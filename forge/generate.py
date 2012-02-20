@@ -26,11 +26,8 @@ def _read_encoded_file(f_name, encoding='utf8'):
 class Generate(object):
 	'Local re-creation of files, based on server-supplied instructions'
 
-	def __init__(self, app_config_file, **kw):
-		'''
-		:param app_config_file: file containing the JSON app configuration
-		'''
-		self.app_config = build_config.load_app(app_config_file)
+	def __init__(self, **kw):
+		self.app_config = build_config.load_app()
 
 	def all(self, target_dir, user_dir):
 		'''Re-create all local files in built targets
