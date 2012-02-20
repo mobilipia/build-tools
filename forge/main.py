@@ -12,6 +12,10 @@ import time
 from subprocess import Popen
 from os import path, devnull
 
+
+import subprocess
+import platform
+
 import forge
 from forge import defaults, build_config, ForgeError
 from forge import build
@@ -299,8 +303,6 @@ def check(unhandled_args):
 	'''
 	Run basic linting on project JS to save the user some trouble.
 	'''
-	import subprocess
-	import platform
 	
 	if not os.path.isdir(defaults.SRC_DIR):
 		raise ForgeError(
