@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tarfile
 import time
+import urlparse
 from urlparse import urljoin, urlsplit
 import zipfile
 
@@ -220,6 +221,10 @@ class Remote(object):
 		data = {
 			'name': name
 		}
+		LOG.info('Registering new app "{name}" with {hostname}...'.format(
+			name=name,
+			hostname=urlparse.urlparse(self.server).hostname
+		))
 		return self._api_post('app/', data=data)['uuid']
 
 	def check_version(self):
