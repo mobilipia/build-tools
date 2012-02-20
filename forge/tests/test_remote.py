@@ -1,14 +1,11 @@
-import cookielib
 import json
-from os import path
-import subprocess
 
 import mock
 from mock import MagicMock, Mock, patch
-from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
+from nose.tools import raises, eq_, ok_
 import requests
 
-from forge import defaults, ForgeError, VERSION
+from forge import VERSION
 from forge import remote
 from forge.remote import Remote, RequestError
 from forge.tests import dummy_config
@@ -25,7 +22,7 @@ class Test__Init__(object):
 	def test_cookies_there(self, os, LWPCookieJar):
 		os.path.exists.return_value = True
 		os.getcwd.return_value = '/here'
-		remote = Remote(dummy_config())
+		Remote(dummy_config())
 		
 		LWPCookieJar.return_value.load.assert_called_once_with()
 	@mock.patch('forge.remote.LWPCookieJar')
@@ -33,8 +30,7 @@ class Test__Init__(object):
 	def test_cookies_not_there(self, os, LWPCookieJar):
 		os.path.exists.return_value = False
 		os.getcwd.return_value = '/here'
-		
-		remote = Remote(dummy_config())
+		Remote(dummy_config())
 		
 		LWPCookieJar.return_value.save.assert_called_once_with()
 
@@ -189,10 +185,13 @@ class TestBuild(TestRemote):
 		
 	@patch('forge.remote.os.listdir')
 	@patch('forge.remote.path')
-	def test_pending(self, path, listdir):
+	@patch('forge.remote.build_config')
+	def test_pending(self, build_config, path, listdir):
 		'''a new build should not be started if a pending one exists,
 		and we should poll until that build completes / aborts
 		'''
+		app_config = {}
+		build_config.load_app.return_value = app_config
 		states = ['pending', 'working', 'complete']
 		path.isfile.return_value = False
 		path.isdir.return_value = True
@@ -208,42 +207,39 @@ class TestBuild(TestRemote):
 		
 		eq_(resp, -1)
 		self.remote._api_post.assert_called_once_with(
-			'app/TEST-UUID/template/development',
-			files=None, data={}
+			'app/TEST-UUID/template',
+			data={"config": "{}"}
 		)
 		eq_(self.remote._api_get.call_args_list,
 			[(('build/-1/detail/',), {})] * 3
 		)
 	@patch('forge.remote.os.listdir')
 	@patch('forge.remote.path')
-	def test_data(self, mock_path, listdir):
-		mock_open = MagicMock()
-		manager = mock_open.return_value.__enter__.return_value
-		app_config = {'test': 'config'}
-		manager.read.return_value = json.dumps(app_config)
+	@patch('forge.remote.build_config')
+	def test_data(self, build_config, mock_path, listdir):
+		app_config = {'uuid': 'DUMMY_UUID', 'test': 'config'}
+		build_config.load_app.return_value = app_config
 		mock_path.isfile.return_value = True
 		mock_path.isdir.return_value = True
 		
-		with patch('forge.remote.lib.open_file', new=mock_open):
-			resp = self.remote.build(template_only=True)
+		resp = self.remote.build(template_only=True)
 
 		# what does -1 signify here?
 		eq_(resp, -1)
 		self.remote._api_post.assert_called_once_with(
-			'app/TEST-UUID/template/development',
-			files=None, data={'config': json.dumps(app_config)}
+			'app/TEST-UUID/template',
+			data={'config': json.dumps(app_config)}
 		)
 		self.remote._api_get.assert_called_once_with('build/-1/detail/')
-		# Fails on windows
-		#mock_open.assert_called_once_with('user/config.json')
 	
 	@patch('forge.remote.path')
 	@patch('forge.remote.os')
 	@patch('forge.remote.tarfile')
 	@patch('forge.remote.lib.human_readable_file_size')
-	def test_user_dir(self, filesize, tarfile, os, path):
-		mock_open = MagicMock()
-		mock_open.return_value.__enter__.return_value = 'opened file'
+	@patch('forge.remote.build_config')
+	def test_user_dir(self, build_config, filesize, tarfile, os, path):
+		app_config = {}
+		build_config.load_app.return_value = app_config
 		path.isfile.return_value = False
 		path.isdir.return_value = True
 		cd = MagicMock()
@@ -251,16 +247,18 @@ class TestBuild(TestRemote):
 		os.listdir.return_value = ['file.txt']
 
 		with patch('forge.remote.lib.cd', new=cd):
-			with patch('forge.remote.lib.open_file', new=mock_open):
-				resp = self.remote.build()
+			resp = self.remote.build()
 				
 		eq_(resp, -1)
-		self.remote._api_post.assert_called_once_with('app/TEST-UUID/template/development',
-			files=None, data={}
+		self.remote._api_post.assert_called_once_with('app/TEST-UUID/template',
+			data={"config": "{}"}
 		)
 		
 	@patch('forge.remote.path')
-	def test_fail(self, path):
+	@patch('forge.remote.build_config')
+	def test_fail(self, build_config, path):
+		app_config = {'uuid': 'DUMMY_UUID', 'test': 'config'}
+		build_config.load_app.return_value = app_config
 		path.isfile.return_value = False
 		path.isdir.return_value = True
 		self.remote._api_get.return_value = {'build_id': -1, 'state': 'aborted', 'log_output': 'test logging'}

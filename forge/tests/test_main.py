@@ -9,12 +9,14 @@ from forge.tests import dummy_config, lib
 from forge import main, defaults
 from os import path
 
+@mock.patch('forge.main._setup_logging_to_stdout')
+@mock.patch('forge.main._setup_error_logging_to_file')
 @mock.patch('forge.main.logging')
-def _logging_test(args, level, logging):
+def _logging_test(args, level, logging, _setup_error_logging_to_file, _setup_logging_to_stdout):
 	main.setup_logging(args)
 
-	logging.basicConfig.assert_called_once_with(level=getattr(logging, level),
-		format='[%(levelname)7s] %(message)s')
+	_setup_error_logging_to_file.assert_called_once_with()
+	_setup_logging_to_stdout.assert_called_once_with(getattr(logging, level))
 	logging.getLogger.assert_called_once_with('forge.main')
 
 
@@ -125,6 +127,24 @@ class TestRun(object):
 		build.create_build.assert_called_once()
 		build.create_build.return_value.run.assert_called_once()
 
+	@mock.patch('forge.main.build')
+	@mock.patch('forge.main._parse_run_args')
+	@mock.patch('forge.main.build_config.load_local')
+	@mock.patch('forge.main._assert_have_target_folder', new=mock.Mock())
+	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
+	def test_uses_sdk_from_local_config(self, load_local, _parse_run_args, build):
+		args = _parse_run_args.return_value
+		args.platform = 'android'
+		args.sdk = None
+
+		load_local.return_value = {'sdk':'dummy android sdk'}
+		generate_dynamic = build.import_generate_dynamic.return_value
+
+		main.run([])
+		args, kwargs = generate_dynamic.customer_goals.run_app.call_args_list[0]
+
+		eq_(kwargs['sdk'], 'dummy android sdk', "run_app should have been called with android_sdk from local_config")
+
 class Test_AssertNotSubdirectoryOfForgeRoot(object):
 	@mock.patch('forge.main.os.getcwd')
 	@raises(main.RunningInForgeRoot)
@@ -174,7 +194,7 @@ class TestBuild(object):
 		)
 
 		Manager.assert_called_once_with(dummy_config())
-		Generate.assert_called_once_with(defaults.APP_CONFIG_FILE)
+		Generate.assert_called_once_with()
 		self._check_common_setup(parser, Remote)
 
 	@mock.patch('forge.main.build_config')
@@ -281,9 +301,29 @@ class TestMain(object):
 		args.command = 'create'
 		argparse.ArgumentParser.return_value.parse_known_args.return_value = (args, [])
 
-		main._using_deprecated_command('create')
+		main._using_deprecated_command('wm-create', 'forge create')
 		mock_logging = mock.Mock()
 		with mock.patch('forge.main.logging', new=mock_logging):
 			main.main()
 		warning = mock_logging.getLogger.return_value.warning
 		warning.assert_called_with("Using wm-create which is now deprecated and will eventually be unsupported, instead, please use: 'forge create'\n\n")
+
+class TestPackage(object):
+	@mock.patch('forge.main.build')
+	@mock.patch('forge.main.build_config.load_local')
+	@mock.patch('forge.main._parse_package_args')
+	def test_should_pass_through_local_config(self, _parse_package_args, load_local, build):
+		args = _parse_package_args.return_value
+		args.sdk = None
+
+		load_local.return_value = {'sdk': 'dummy sdk'}
+
+		generate_dynamic = build.import_generate_dynamic.return_value
+		package_app = generate_dynamic.customer_goals.package_app
+
+		main.package([])
+
+		package_app.assert_called_once()
+		kwargs = package_app.call_args_list[0][1]
+
+		eq_(kwargs['sdk'], 'dummy sdk')

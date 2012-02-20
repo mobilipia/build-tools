@@ -1,9 +1,11 @@
+import collections
 import codecs
 from contextlib import contextmanager
 import logging
 import subprocess
 import zipfile
 import sys
+import forge
 import os
 from os.path import join, isdir, islink
 from os import error, listdir
@@ -63,7 +65,7 @@ def cd(target_dir):
 
 @contextmanager
 def open_file(*args, **kw):
-	'Simple wrapper around __builtins__.open for easier testing/mocking'
+	'Simple wrapper around codecs.open for easier testing/mocking'
 	if 'encoding' not in kw:
 		kw['encoding'] = 'utf8'
 	yield codecs.open(*args, **kw)
@@ -110,3 +112,29 @@ def unzip_with_permissions(filename):
 		output = zip_process.communicate()[0]
 		LOG.debug("unzip output")
 		LOG.debug(output)
+
+
+class AccidentHandler(logging.Handler):
+	def __init__(self, capacity, flush_level, target):
+		logging.Handler.__init__(self)
+		self.records = collections.deque(maxlen=capacity)
+		self.capacity = capacity
+		if isinstance(flush_level, str):
+			self.flush_level = getattr(logging, flush_level)
+		else:
+			self.flush_level = flush_level
+		self.target = target
+		self.should_flush = False
+
+	def flush(self):
+		if self.should_flush:
+			for rec in self.records:
+				self.target.emit(rec)
+			self.records.clear()
+			self.target.flush()
+
+	def emit(self, record):
+		if record.levelno >= self.flush_level:
+			self.should_flush = True
+
+		self.records.append(record)
