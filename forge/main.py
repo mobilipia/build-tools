@@ -332,7 +332,6 @@ def check(unhandled_args):
 
 			"-nologo",
 			"-nofilelisting",
-			"-nocontext",
 			"-nosummary"
 		],
 		stdout=subprocess.PIPE
