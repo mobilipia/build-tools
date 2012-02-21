@@ -196,6 +196,7 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 
 	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
 	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
+	parser.add_argument('-p', '--purge', action='store_true', help='If given will purge previous installs and any user data from the device before reinstalling.')
 	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox', 'web'])
 	return parser.parse_args(args)
 
@@ -225,6 +226,7 @@ def run(unhandled_args):
 		server=False,
 		device=args.device,
 		interactive=_interactive_mode,
+		purge=args.purge,
 		**extra_config
 	)
 
