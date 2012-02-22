@@ -380,7 +380,7 @@ The newest tools can be obtained from https://trigger.io/forge/upgrade/
 		app_config = build_config.load_app()
 		data['config'] = json.dumps(app_config)
 		
-		url = 'app/{uuid}/template'.format(uuid=self.config.get('uuid'))
+		url = 'app/{uuid}/template'.format(uuid=app_config['uuid'])
 		return self._api_post(url, data=data)
 
 	def _poll_until_build_complete(self, build_id):

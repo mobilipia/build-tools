@@ -1,16 +1,12 @@
 """Forge subcommands as well as the main entry point for the forge tools"""
-import logging
-import shutil
-import sys
-
 import argparse
+import logging
 import os
-
 from os import path
-
-
-import subprocess
 import platform
+import shutil
+import subprocess
+import sys
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -22,6 +18,7 @@ from forge.lib import try_a_few_times, AccidentHandler
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
+TARGETS_WE_CAN_RUN_FOR = ('firefox', 'ios', 'android', 'web')
 TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android', 'web')
 
 USING_DEPRECATED_COMMAND = None
@@ -45,6 +42,8 @@ def _warn_about_deprecated_command():
 
 class RunningInForgeRoot(Exception):
 	pass
+class ArgumentError(Exception):
+	pass
 
 def _assert_outside_of_forge_root():
 	if os.getcwd() == defaults.FORGE_ROOT:
@@ -54,6 +53,20 @@ def _assert_not_in_subdirectory_of_forge_root():
 	cwd = str(os.getcwd())
 	if cwd.startswith(defaults.FORGE_ROOT + os.sep):
 		raise RunningInForgeRoot
+
+def _assert_have_target_folder(directory, target):
+	if not os.path.isdir(path.join(directory, target)):
+		raise ForgeError("Can't run build for '%s', because you haven't built it!" % target)
+
+def _assert_have_development_folder():
+	if not os.path.exists('development'):
+		message = (
+			"No folder called 'development' found. You're trying to run your app but you haven't built it yet!\n"
+			"Try {prog} build first."
+		).format(
+			prog=ENTRY_POINT_NAME
+		)
+		raise ForgeError(message)
 
 def _check_working_directory_is_safe():
 	_assert_outside_of_forge_root()
@@ -124,14 +137,16 @@ def _setup_logging_to_stdout(stdout_log_level):
 	logging.root.addHandler(stream_handler)
 
 
-def setup_logging(args):
+def setup_logging(settings):
 	'Adjust logging parameters according to command line switches'
 	global LOG
-	if args.verbose and args.quiet:
-		args.error('Cannot run in quiet and verbose mode at the same time')
-	if args.verbose:
+	verbose = settings.get('verbose')
+	quiet = settings.get('quiet')
+	if verbose and quiet:
+		raise ArgumentError('Cannot run in quiet and verbose mode at the same time')
+	if verbose:
 		stdout_log_level = logging.DEBUG
-	elif args.quiet:
+	elif quiet:
 		stdout_log_level = logging.WARNING
 	else:
 		stdout_log_level = logging.INFO
@@ -145,42 +160,54 @@ def setup_logging(args):
 
 	LOG.info('Forge tools running at version %s' % forge.get_version())
 
-def add_general_options(parser):
-	'Generic command-line arguments'
+def add_primary_options(parser):
+	'''Top-level command-line arguments for settings which affect the running of
+	any command for any platform
+	'''
+	parser.add_argument('command', choices=COMMANDS.keys())
 	parser.add_argument('-v', '--verbose', action='store_true')
 	parser.add_argument('-q', '--quiet', action='store_true')
-	parser.add_argument('--no-interactive', action='store_true')
-	parser.add_argument('--username', help='username used to login to the forge website')
+	parser.add_argument('--username', help='your email address used to login to the forge website')
 	parser.add_argument('--password', help='password used to login to the forge website')
 
-def handle_general_options(args):
+def handle_primary_options(args):
 	'Parameterise our option based on common command-line arguments'
-	global _interactive_mode
+	parser = argparse.ArgumentParser(prog='forge', add_help=False)
+	add_primary_options(parser)
+
+	handled_args, other_args = parser.parse_known_args()
+
 	# TODO setup given user/password somewhere accessible by remote.py
-	if args.username:
-		forge.settings['username'] = args.username
-	if args.password:
-		forge.settings['password'] = args.password
-	if args.no_interactive:
-		_interactive_mode = False
-	setup_logging(args)
+	forge.settings['command'] = handled_args.command
+	if handled_args.username:
+		forge.settings['username'] = handled_args.username
+	if handled_args.password:
+		forge.settings['password'] = handled_args.password
+	forge.settings['verbose'] = bool(handled_args.verbose)
+	forge.settings['quiet'] = bool(handled_args.quiet)
 
-def _assert_have_target_folder(directory, target):
-	if not os.path.isdir(path.join(directory, target)):
-		raise ForgeError("Can't run build for '%s', because you haven't built it!" % target)
+	try:
+		setup_logging(forge.settings)
+	except ArgumentError as e:
+		parser.error(e)
 
-def _assert_have_development_folder():
-	if not os.path.exists('development'):
-		message = (
-			"No folder called 'development' found. You're trying to run your app but you haven't built it yet!\n"
-			"Try {prog} build first."
-		).format(
-			prog=ENTRY_POINT_NAME
-		)
-		raise ForgeError(message)
+	return other_args
 
-def _parse_run_args(args):
-	parser = argparse.ArgumentParser(prog='%s run' % ENTRY_POINT_NAME, description='Run a built dev app on a particular platform')
+def _add_create_options(parser):
+	parser.description = 'create a new application'
+	parser.add_argument('--name', help='name of the application to create')
+def _handle_create_options(handled):
+	if handled.name:
+		forge.settings['name'] = handled.name
+
+def _add_build_options(parser):
+	parser.description = 'Creates new local, unzipped development add-ons with your source and configuration'
+	parser.add_argument('-f', '--full', action='store_true', help='force a complete rebuild of your app')
+def _handle_build_options(handled):
+	forge.settings['full'] = bool(handled.full)
+
+def _add_run_options(parser):
+	parser.description = 'Run a built app on a particular platform'
 	def not_chrome(text):
 		if text == "chrome":
 			msg = """
@@ -189,57 +216,46 @@ Currently it is not possible to launch a Chrome extension via this interface. Th
 
 	1) Go to chrome:extensions in the Chrome browser
 	2) Make sure "developer mode" is on (top right corner)')
-	3) Use "Load unpacked extension" and browse to ./development/chrome
-"""
-			raise argparse.ArgumentTypeError(msg)
+	3) Use "Load unpacked extension" and browse to {cwd}/development/chrome
+""".format(cwd=path.abspath(os.getcwd()))
+			return parser.error(msg)
 		return text
+	parser.add_argument('platform', type=not_chrome, choices=TARGETS_WE_CAN_RUN_FOR)
+def _handle_run_options(handled):
+	forge.settings['platform'] = handled.platform
 
-	parser.add_argument('-s', '--sdk', help='Path to the Android SDK')
-	parser.add_argument('-d', '--device', help='Android device id (to run apk on a specific device)')
-	parser.add_argument('-p', '--purge', action='store_true', help='If given will purge previous installs and any user data from the device before reinstalling.')
-	parser.add_argument('platform', type=not_chrome, choices=['android', 'ios', 'firefox', 'web'])
-	return parser.parse_args(args)
-
-def run(unhandled_args):
-	_check_working_directory_is_safe()
-	args = _parse_run_args(unhandled_args)
-
-	build_type_dir = 'development'
-	_assert_have_development_folder()
-	_assert_have_target_folder(build_type_dir, args.platform)
-
-	generate_dynamic = build.import_generate_dynamic()
-
-	# load local config file and mix in cmdline args
-	extra_config = build_config.load_local()
-
-	if 'sdk' not in extra_config:
-		extra_config['sdk'] = None
-
-	if args.sdk:
-		extra_config['sdk'] = args.sdk
-
-	generate_dynamic.customer_goals.run_app(
-		generate_module=generate_dynamic,
-		build_to_run=build.create_build(build_type_dir),
-		target=args.platform,
-		server=False,
-		device=args.device,
-		interactive=_interactive_mode,
-		purge=args.purge,
-		**extra_config
+def _add_package_options(parser):
+	parser.description='Package up a build for distribution'
+	parser.add_argument('platform', choices=TARGETS_WE_CAN_PACKAGE_FOR)
+def _handle_package_options(handled):
+	forge.settings['platform'] = handled.platform
+	
+def handle_secondary_options(command, args):
+	parser = argparse.ArgumentParser(
+		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command)
 	)
+	options_handlers = {
+		"create": (_add_create_options, _handle_create_options),
+		"build": (_add_build_options, _handle_build_options),
+		"run": (_add_run_options, _handle_run_options),
+		"package": (_add_package_options, _handle_package_options),
+	}
 
-def _parse_create_args(args):
-	parser = argparse.ArgumentParser('%s create' % ENTRY_POINT_NAME, description='create a new application')
-	parser.add_argument('-n', '--name')
-	return parser.parse_args(args)
+	# add command-specific arguments
+	options_handlers[command][0](parser)
+
+	handled, other = parser.parse_known_args(args)
+
+	# parse command-specific arguments
+	options_handlers[command][1](handled)
+
+	return other
 
 def create(unhandled_args):
 	'Create a new development environment'
 	_check_working_directory_is_safe()
 	args = _parse_create_args(unhandled_args)
-	config = build_config.load(expect_app_config=False)
+	config = build_config.load()
 	remote = Remote(config)
 	try:
 		remote.check_version()
@@ -261,15 +277,9 @@ def create(unhandled_args):
 		LOG.info('2) Run %s build to make a build' % ENTRY_POINT_NAME)
 		LOG.info('3) Run %s run to test out your build' % ENTRY_POINT_NAME)
 
-def _parse_development_build_args(args):
-	parser = argparse.ArgumentParser('%s build' % ENTRY_POINT_NAME, description='Creates new local, unzipped development add-ons with your source and configuration')
-	parser.add_argument('-f', '--full', action='store_true', help='Force a complete rebuild on the forge server')
-	return parser.parse_args(args)
-
 def development_build(unhandled_args):
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
 	_check_working_directory_is_safe()
-	args = _parse_development_build_args(unhandled_args)
 
 	if not os.path.isdir(defaults.SRC_DIR):
 		raise ForgeError(
@@ -285,10 +295,10 @@ def development_build(unhandled_args):
 
 	instructions_dir = defaults.INSTRUCTIONS_DIR
 	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
-	if templates_dir and not args.full:
+	if templates_dir and not forge.settings['full']:
 		LOG.info('configuration is unchanged: using existing templates')
 	else:
-		if args.full:
+		if forge.settings['full']:
 			LOG.info('forcing rebuild of templates')
 		else:
 			LOG.info('configuration has changed: creating new templates')
@@ -298,7 +308,7 @@ def development_build(unhandled_args):
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
-		templates_dir = manager.fetch_templates(build_id, clean=args.full)
+		templates_dir = manager.fetch_templates(build_id, clean=forge.settings['full'])
 
 		# have templates - now fetch injection instructions
 		remote.fetch_generate_instructions(build_id, instructions_dir)
@@ -313,41 +323,45 @@ def development_build(unhandled_args):
 
 	# have templates and instructions - inject code
 	generator = Generate()
-	generator.all('development', defaults.SRC_DIR)
+	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args)
 	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
 	))
 
-def _parse_package_args(args):
-	parser = argparse.ArgumentParser(
-		prog='%s package' % ENTRY_POINT_NAME,
-		description='Package up a build for distribution',
+def run(unhandled_args):
+	_check_working_directory_is_safe()
+	build_type_dir = 'development'
+	_assert_have_development_folder()
+	_assert_have_target_folder(build_type_dir, forge.settings['platform'])
+
+	generate_dynamic = build.import_generate_dynamic()
+
+	build_to_run = build.create_build(
+		build_type_dir,
+		targets=[forge.settings['platform']],
+		extra_args=unhandled_args,
 	)
-	parser.add_argument('platform', choices=TARGETS_WE_CAN_PACKAGE_FOR)
-	parser.add_argument('-c', '--certificate', help="(iOS) name of the developer certificate to sign an iOS app with")
-	parser.add_argument('-p', '--provisioning-profile', help="(iOS) path to a provisioning profile to use")
 
-	parser.add_argument('--keystore', help="(Android) location of your release keystore")
-	parser.add_argument('--storepass', help="(Android) password for your release keystore")
-	parser.add_argument('--keyalias', help="(Android) alias of your release key")
-	parser.add_argument('--keypass', help="(Android) password for your release key")
-	parser.add_argument('--sdk', help="(Android) location of the Android SDK")
+	generate_dynamic.customer_goals.run_app(
+		generate_module=generate_dynamic,
+		build_to_run=build_to_run,
+		server=False,
+	)
 
-	return parser.parse_args(args)
-
-def _package_dev_build_for_platform(platform, **kw):
+def package(unhandled_args):
+	#TODO: ensure dev build has been done first (probably lower down?)
 	generate_dynamic = build.import_generate_dynamic()
 	build_type_dir = 'development'
+	build_to_run = build.create_build(
+		build_type_dir,
+		targets=[forge.settings['platform']],
+		extra_args=unhandled_args,
+	)
 
 	generate_dynamic.customer_goals.package_app(
 		generate_module=generate_dynamic,
-		build_to_run=build.create_build(build_type_dir, targets=[platform]),
-		target=platform,
+		build_to_run=build_to_run,
 		server=False,
-		interactive = _interactive_mode,
-
-		# pass in platform specific config via keyword args
-		**kw
 	)
 
 @with_error_handler
@@ -392,50 +406,24 @@ def check(unhandled_args):
 	).communicate()[0]
 	map(LOG.info, data.split('\n'))
 
+def _dispatch_command(command, other_args):
+	other_other_args = handle_secondary_options(command, other_args)
 
-def package(unhandled_args):
-	#TODO: ensure dev build has been done first (probably lower down?)
-	args = _parse_package_args(unhandled_args)
-	extra_package_config = build_config.load_local()
+	subcommand = COMMANDS[command]
+	with_error_handler(subcommand)(other_other_args)
 
-	if args.platform == 'ios':
-		if not sys.platform.startswith("darwin"):
-			raise ForgeError("Detected that you're not running this from OSX. Currently, packaging iOS apps for devices is only possible on OSX.")
+def main():
+	# The main entry point for the program.
 
-		if args.provisioning_profile is None:
-			raise ForgeError("When packaging iOS apps, you need to provide a path to of a provisioning profile using -p or --provisioning-profile")
+	# Parses enough to figure out what subparser to hand off to, sets up logging and error handling
+	# for the chosen sub-command.
 
-		abs_path_to_profile = os.path.abspath(args.provisioning_profile)
+	other_args = handle_primary_options(sys.argv)
 
-		extra_package_config.update(
-			dict(
-				provisioning_profile=abs_path_to_profile,
-				certificate_to_sign_with=args.certificate,
-			)
-		)
-	elif args.platform == 'android':
-		abs_path_to_keystore = os.path.abspath(args.keystore) if args.keystore else args.keystore
+	if USING_DEPRECATED_COMMAND:
+		_warn_about_deprecated_command()
 
-		extra_package_config.update(
-			dict(
-				keystore=abs_path_to_keystore,
-				storepass=args.storepass,
-				keyalias=args.keyalias,
-				keypass=args.keypass,
-				sdk=args.sdk,
-			)
-		)
-	elif args.platform == 'web':
-		extra_package_config.update(
-			# whatever extra parameters are required
-			dict(
-			)
-		)
-
-	_package_dev_build_for_platform(
-		args.platform,
-		**extra_package_config
-	)
+	_dispatch_command(forge.settings['command'], other_args)
 
 COMMANDS = {
 	'create'  : create,
@@ -444,28 +432,6 @@ COMMANDS = {
 	'package' : package,
 	'check'   : check
 }
-
-def _dispatch_command(command, other_args):
-	subcommand = COMMANDS[command]
-	with_error_handler(subcommand)(other_args)
-
-def main():
-	# The main entry point for the program.
-
-	# Parses enough to figure out what subparser to hand off to, sets up logging and error handling
-	# for the chosen sub-command.
-
-	top_level_parser = argparse.ArgumentParser(prog='forge', add_help=False)
-	top_level_parser.add_argument('command', choices=COMMANDS.keys())
-	add_general_options(top_level_parser)
-
-	handled_args, other_args = top_level_parser.parse_known_args()
-	handle_general_options(handled_args)
-
-	if USING_DEPRECATED_COMMAND:
-		_warn_about_deprecated_command()
-
-	_dispatch_command(handled_args.command, other_args)
 
 if __name__ == "__main__":
 	main()

@@ -8,10 +8,8 @@ from forge.lib import open_file
 
 LOG = logging.getLogger(__name__)
 
-def load(filename=None, expect_app_config=True):
-	'''Read in and JSON the app-indendent configuration file (normally forge_build.json)
-	
-	:param expect_app_config: should we panic if the app config (normally src/config.json) doesn't exist?
+def load(filename=None):
+	'''Read in and JSON the app-independent configuration file (normally forge_build.json).
 	'''
 	if filename is None:
 		filename = defaults.CONFIG_FILE
@@ -19,15 +17,6 @@ def load(filename=None, expect_app_config=True):
 	with open(filename) as conf_file:
 		config = json.load(conf_file)
 	
-	try:
-		config['uuid'] = load_app()['uuid']
-	except IOError:
-		if expect_app_config:
-			# i.e. app config should be there, but isn't
-			raise IOError('no app configuration file found at {0}'.format(defaults.APP_CONFIG_FILE))
-	except KeyError:
-		raise IOError('no "uuid" key found in your app configuration')
-
 	LOG.debug('Forge build tools version: %s' % forge.get_version())
 	for key, val in config.iteritems():
 		LOG.debug('%s: %s' % (key, json.dumps(val)))

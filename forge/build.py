@@ -57,7 +57,7 @@ def _get_ignore_patterns_for_src(src_dir):
 
 	return list(set(ignores))
 
-def create_build(build_type_dir, targets=None):
+def create_build(build_type_dir, targets=None, extra_args=None):
 	'''Helper to instantiate a Build object from the dynamic generate code
 	
 	Assumes the working directory is alongside src and development
@@ -66,15 +66,20 @@ def create_build(build_type_dir, targets=None):
 	:param targets: the targets this build will concern itself with;
 		a value of `None` signifies all targets
 	:type targets: iterable
+	:param extra_args: command line arguments that haven't been consumed yet
+	:type extra_args: sequence
 	'''
 	generate_dynamic = import_generate_dynamic()
 	app_config = build_config.load_app()
+	local_config = build_config.load_local()
+	extra_args = [] if extra_args is None else extra_args
 	ignore_patterns = _get_ignore_patterns_for_src(defaults.SRC_DIR)
 	enabled_platforms = _enabled_platforms(build_type_dir)
 	if targets is not None:
 		enabled_platforms = set(enabled_platforms) & set(targets)
 	
 	build_to_run = generate_dynamic.build.Build(app_config, defaults.SRC_DIR,
-		build_type_dir, enabled_platforms=enabled_platforms, ignore_patterns=ignore_patterns)
+		build_type_dir, enabled_platforms=enabled_platforms, ignore_patterns=ignore_patterns,
+		local_config=local_config, extra_args=extra_args)
 	
 	return build_to_run
