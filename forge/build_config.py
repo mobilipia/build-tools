@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 from os import path
 
 import forge
@@ -78,7 +79,8 @@ def load_local():
 		with open_file(local_config_path) as local_config_file:
 			local_config_dict = json.load(local_config_file)
 	except IOError as e:
-		LOG.debug("Couldn't load local_config.json", exc_info=True)
+		LOG.debug("Couldn't load local_config.json")
+		LOG.debug("%s" % traceback.format_exc())
 		local_config_dict = {}
 
 	return local_config_dict
