@@ -89,7 +89,7 @@ def with_error_handler(function):
 			if LOG is None:
 				LOG = logging.getLogger(__name__)
 				LOG.addHandler(logging.StreamHandler())
-				LOG.setLevel('DEBUG')
+				LOG.setLevel(logging.DEBUG)
 			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
 			LOG.error("Something went wrong that we didn't expect:")
 			LOG.error(e)
@@ -106,10 +106,10 @@ def _setup_error_logging_to_file():
 	"""
 	file_handler = logging.FileHandler(ERROR_LOG_FILE, delay=True)
 	file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)7s] %(message)s'))
-	file_handler.setLevel('DEBUG')
+	file_handler.setLevel(logging.DEBUG)
 
 	accident_handler = AccidentHandler(target=file_handler, capacity=9999, flush_level='ERROR')
-	accident_handler.setLevel('DEBUG')
+	accident_handler.setLevel(logging.DEBUG)
 
 	logging.root.addHandler(accident_handler)
 
@@ -136,7 +136,7 @@ def setup_logging(args):
 	else:
 		stdout_log_level = logging.INFO
 
-	logging.root.setLevel('DEBUG')
+	logging.root.setLevel(logging.DEBUG)
 
 	_setup_logging_to_stdout(stdout_log_level)
 	_setup_error_logging_to_file()
