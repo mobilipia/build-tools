@@ -423,10 +423,12 @@ The newest tools can be obtained from https://trigger.io/forge/upgrade/
 		resp = self._request_development_build()
 
 		build_id = resp['build_id']
+		messages = resp.get('build_messages', None)
+		if messages:
+			LOG.warning(messages)
 		LOG.info('Build %s started...' % build_id)
 
 		LOG.info('This could take a while, but will only happen again if you modify config.json')
-
 		self._poll_until_build_complete(build_id)
 		return build_id
 
