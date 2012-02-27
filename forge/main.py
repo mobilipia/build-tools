@@ -169,6 +169,7 @@ def add_primary_options(parser):
 	parser.add_argument('-q', '--quiet', action='store_true')
 	parser.add_argument('--username', help='your email address used to login to the forge website')
 	parser.add_argument('--password', help='password used to login to the forge website')
+	parser.add_argument('--name', help='name of the new app (used during "create" only)')
 
 def handle_primary_options(args):
 	'Parameterise our option based on common command-line arguments'
@@ -185,6 +186,8 @@ def handle_primary_options(args):
 		forge.settings['password'] = handled_args.password
 	forge.settings['verbose'] = bool(handled_args.verbose)
 	forge.settings['quiet'] = bool(handled_args.quiet)
+	if handled_args.name:
+		forge.settings['name'] = handled_args.name
 
 	try:
 		setup_logging(forge.settings)
@@ -254,7 +257,6 @@ def handle_secondary_options(command, args):
 def create(unhandled_args):
 	'Create a new development environment'
 	_check_working_directory_is_safe()
-	args = _parse_create_args(unhandled_args)
 	config = build_config.load()
 	remote = Remote(config)
 	try:
@@ -266,8 +268,8 @@ def create(unhandled_args):
 	if os.path.exists(defaults.SRC_DIR):
 		raise ForgeError('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
 	else:
-		if args.name:
-			name = args.name
+		if "name" in forge.settings and forge.settings["name"]:
+			name = forge.settings["name"]
 		else:
 			name = raw_input('Enter app name: ')
 		uuid = remote.create(name)
