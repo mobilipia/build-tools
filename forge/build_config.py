@@ -63,13 +63,14 @@ def load_local():
 	provisioning profiles, certificates, deployment details
 	"""
 	local_config_path = defaults.LOCAL_CONFIG_FILE
-
+	local_config_dict = {}
 	try:
 		with open_file(local_config_path) as local_config_file:
-			local_config_dict = json.load(local_config_file)
+			local_configs = local_config_file.read()
+		if local_configs:
+			local_config_dict = json.loads(local_config_file)
 	except IOError as e:
 		LOG.debug("Couldn't load local_config.json")
 		LOG.debug("%s" % traceback.format_exc())
-		local_config_dict = {}
 
 	return local_config_dict
