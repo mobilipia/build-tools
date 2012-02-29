@@ -68,7 +68,7 @@ def load_local():
 		with open_file(local_config_path) as local_config_file:
 			local_configs = local_config_file.read()
 		if local_configs:
-			local_config_dict = json.loads(local_config_file)
+			local_config_dict = json.loads(local_configs)
 	except IOError as e:
 		LOG.debug("Couldn't load local_config.json")
 		LOG.debug("%s" % traceback.format_exc())
