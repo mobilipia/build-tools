@@ -176,7 +176,7 @@ def handle_primary_options(args):
 	parser = argparse.ArgumentParser(prog='forge', add_help=False)
 	add_primary_options(parser)
 
-	handled_args, other_args = parser.parse_known_args()
+	handled_args, other_args = parser.parse_known_args(args)
 
 	# TODO setup given user/password somewhere accessible by remote.py
 	forge.settings['command'] = handled_args.command
