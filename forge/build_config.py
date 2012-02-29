@@ -64,13 +64,14 @@ def load_local():
 	"""
 	local_config_path = defaults.LOCAL_CONFIG_FILE
 	local_config_dict = {}
-	try:
-		with open_file(local_config_path) as local_config_file:
-			local_configs = local_config_file.read()
-		if local_configs:
-			local_config_dict = json.loads(local_configs)
-	except IOError as e:
-		LOG.debug("Couldn't load local_config.json")
-		LOG.debug("%s" % traceback.format_exc())
+	if path.isfile(local_config_path):
+		try:
+			with open_file(local_config_path) as local_config_file:
+				local_configs = local_config_file.read()
+			if local_configs:
+				local_config_dict = json.loads(local_configs)
+		except IOError as e:
+			LOG.debug("Couldn't load local_config.json")
+			LOG.debug("%s" % traceback.format_exc())
 
 	return local_config_dict
