@@ -75,3 +75,13 @@ def load_local():
 			LOG.debug("%s" % traceback.format_exc())
 
 	return local_config_dict
+
+def save_local(settings):
+	"""Dump a dict as JSON into local_config.json, overwriting anything currently in there"""
+	local_config_path = defaults.LOCAL_CONFIG_FILE
+
+	with open_file(local_config_path, 'w') as local_config_file:
+		try:
+			json.dump(settings, local_config_file, indent=4)
+		except IOError as e:
+			raise IOError("Couldn't write to local_config.json")
