@@ -240,7 +240,8 @@ def _handle_check_options(handled):
 	
 def handle_secondary_options(command, args):
 	parser = argparse.ArgumentParser(
-		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command)
+		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command),
+		epilog="For more detailed information, see http://docs.trigger.io/en/v1.2/command-line.html",
 	)
 	options_handlers = {
 		"create": (_add_create_options, _handle_create_options),
@@ -380,7 +381,6 @@ def check(unhandled_args):
 	'''
 	Run basic linting on project JS to save the user some trouble.
 	'''
-	
 	if not os.path.isdir(defaults.SRC_DIR):
 		raise ForgeError(
 			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
@@ -403,7 +403,6 @@ def check(unhandled_args):
 	generate_dynamic.customer_goals.check_settings(
 		generate_dynamic,
 		build_to_run,
-		defaults.FORGE_ROOT,
 	)
 
 def _dispatch_command(command, other_args):

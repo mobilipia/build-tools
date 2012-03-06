@@ -82,6 +82,6 @@ def create_build(build_type_dir, targets=None, extra_args=None):
 	
 	build_to_run = generate_dynamic.build.Build(app_config, defaults.SRC_DIR,
 		build_type_dir, enabled_platforms=enabled_platforms, ignore_patterns=ignore_patterns,
-		local_config=local_config, extra_args=extra_args)
+		local_config=local_config, extra_args=extra_args, forge_root=defaults.FORGE_ROOT)
 	
 	return build_to_run
