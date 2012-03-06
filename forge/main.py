@@ -233,6 +233,11 @@ def _add_package_options(parser):
 def _handle_package_options(handled):
 	forge.settings['platform'] = handled.platform
 	
+def _add_check_options(parser):
+	parser.description='Do some testing on the current local configuration settings'
+def _handle_check_options(handled):
+	pass
+	
 def handle_secondary_options(command, args):
 	parser = argparse.ArgumentParser(
 		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command)
@@ -242,6 +247,7 @@ def handle_secondary_options(command, args):
 		"build": (_add_build_options, _handle_build_options),
 		"run": (_add_run_options, _handle_run_options),
 		"package": (_add_package_options, _handle_package_options),
+		"check": (_add_check_options, _handle_check_options),
 	}
 
 	# add command-specific arguments
@@ -300,6 +306,9 @@ def development_build(unhandled_args):
 	if templates_dir and not forge.settings['full']:
 		LOG.info('configuration is unchanged: using existing templates')
 	else:
+		LOG.debug("removing previous templates")
+		shutil.rmtree(instructions_dir, ignore_errors=True)
+
 		if forge.settings['full']:
 			LOG.info('forcing rebuild of templates')
 		else:
@@ -380,33 +389,22 @@ def check(unhandled_args):
 			)
 		)
 	
-	LOG.info('Checking all JS files in src folder. No news is good news.')
-	if sys.platform.startswith("linux"):
-		if platform.architecture()[0] == '64bit':
-			command = defaults.FORGE_ROOT + "/bin/jsl-64"
-		else:
-			command = defaults.FORGE_ROOT + "/bin/jsl"
-	elif sys.platform.startswith("darwin"):
-		command = defaults.FORGE_ROOT + "/bin/jsl-mac"
-	elif sys.platform.startswith("win"):
-		command = defaults.FORGE_ROOT + "/bin/jsl.exe"
-	
-	data = subprocess.Popen(
-		[
-			command,
-			"-conf",
-			defaults.FORGE_ROOT + "/jsl.conf",
-
-			"-process",
-			os.getcwd() + "/src/*.js",
-
-			"-nologo",
-			"-nofilelisting",
-			"-nosummary"
-		],
-		stdout=subprocess.PIPE
-	).communicate()[0]
-	map(LOG.info, data.split('\n'))
+	try:
+		generate_dynamic = build.import_generate_dynamic()
+	except ForgeError:
+		# don't have generate_dynamic available yet
+		LOG.info("Unable to check local settings until a build has completed")
+		return
+	build_to_run = build.create_build(
+		"development",
+		targets=[],
+		extra_args=unhandled_args,
+	)
+	generate_dynamic.customer_goals.check_settings(
+		generate_dynamic,
+		build_to_run,
+		defaults.FORGE_ROOT,
+	)
 
 def _dispatch_command(command, other_args):
 	other_other_args = handle_secondary_options(command, other_args)
@@ -420,7 +418,7 @@ def main():
 	# Parses enough to figure out what subparser to hand off to, sets up logging and error handling
 	# for the chosen sub-command.
 
-	other_args = handle_primary_options(sys.argv)
+	other_args = handle_primary_options(sys.argv[1:])
 
 	if USING_DEPRECATED_COMMAND:
 		_warn_about_deprecated_command()

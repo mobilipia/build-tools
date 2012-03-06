@@ -1,7 +1,6 @@
 'Project-wide default values'
 import sys
 from os import path
-import os
 
 # if we're running the packaged forge.exe
 if 'frozen' in set(dir(sys)):
@@ -22,4 +21,4 @@ APP_CONFIG_FILE = path.join(SRC_DIR, 'config.json')
 IDENTITY_FILE = path.join(SRC_DIR, 'identity.json')
 LOCAL_CONFIG_FILE = 'local_config.json'
 TEMPLATE_DIR = '.template'
-INSTRUCTIONS_DIR = path.join(TEMPLATE_DIR, 'generate_dynamic')
+INSTRUCTIONS_DIR = TEMPLATE_DIR

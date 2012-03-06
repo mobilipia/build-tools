@@ -1,5 +1,6 @@
 import logging
 import os
+from os import path
 import sys
 
 from forge import build_config, defaults, ForgeError, lib
@@ -37,6 +38,7 @@ def import_generate_dynamic():
 		import generate_dynamic
 	except ImportError:
 		sys.path.insert(0, '.template')
+		sys.path.insert(0, path.join('.template', 'lib'))
 		try:
 			import generate_dynamic
 		except ImportError as e:

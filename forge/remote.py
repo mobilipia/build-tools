@@ -1,18 +1,14 @@
 'Operations which require involvement of the remote Forge build servers'
 from cookielib import LWPCookieJar
-from getpass import getpass
 import json
 import logging
 import os
 from os import path
 import requests
 import shutil
-import subprocess
-import tarfile
 import time
 import urlparse
 from urlparse import urljoin, urlsplit
-import zipfile
 
 import forge
 from forge import build_config, defaults, ForgeError, lib
@@ -357,10 +353,9 @@ The newest tools can be obtained from https://trigger.io/forge/upgrade/
 		temp_instructions_file = 'instructions.zip'
 
 		try:
-			# ensure generate_dynamic dir is empty before extracting instructions into it
-			if path.isdir(to_dir):
-				shutil.rmtree(to_dir, ignore_errors=True)
-			os.makedirs(to_dir)
+			# ensure generate_dynamic dir is there before extracting instructions into it
+			if not path.isdir(to_dir):
+				os.makedirs(to_dir)
 
 			with lib.cd(to_dir):
 				self._get_file(
