@@ -1,12 +1,22 @@
-from zipfile import ZipFile
-
 import os
 from os import path
-import zipfile
+from zipfile import ZipFile
+
+def should_ignore(filepath):
+	if filepath.endswith(".pyc"):
+		return True
+	if filepath.endswith(".un~"):
+		return True
+	if filepath.endswith(".swp"):
+		return True
+	if "/tests/" in filepath:
+		return True
 
 def add_folder_to_zip(folder, archive_path_prefix, zip):
 	for root, dirs, files in os.walk(folder):
 		for f in files:
+			if should_ignore(path.join(root, f)):
+				continue
 			path_to_file = path.join(root, f)
 			print "adding: ", path_to_file
 			archive_name = path.join(archive_path_prefix, path_to_file)
@@ -16,6 +26,7 @@ def add_folder_to_zip(folder, archive_path_prefix, zip):
 if __name__ == "__main__":
 
 	required_folders = [
+		'bin',
 		'scripts',
 		'forge',
 		'forge-dependencies',
