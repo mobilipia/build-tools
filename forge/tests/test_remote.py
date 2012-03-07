@@ -190,7 +190,7 @@ class TestBuild(TestRemote):
 		'''a new build should not be started if a pending one exists,
 		and we should poll until that build completes / aborts
 		'''
-		app_config = {}
+		app_config = {"uuid": "TEST-UUID"}
 		build_config.load_app.return_value = app_config
 		states = ['pending', 'working', 'complete']
 		path.isfile.return_value = False
@@ -208,7 +208,7 @@ class TestBuild(TestRemote):
 		eq_(resp, -1)
 		self.remote._api_post.assert_called_once_with(
 			'app/TEST-UUID/template',
-			data={"config": "{}"}
+			data={"config": '{"uuid": "TEST-UUID"}'}
 		)
 		eq_(self.remote._api_get.call_args_list,
 			[(('build/-1/detail/',), {})] * 3
@@ -217,7 +217,7 @@ class TestBuild(TestRemote):
 	@patch('forge.remote.path')
 	@patch('forge.remote.build_config')
 	def test_data(self, build_config, mock_path, listdir):
-		app_config = {'uuid': 'DUMMY_UUID', 'test': 'config'}
+		app_config = {'uuid': 'TEST-UUID', 'test': 'config'}
 		build_config.load_app.return_value = app_config
 		mock_path.isfile.return_value = True
 		mock_path.isdir.return_value = True
@@ -234,11 +234,10 @@ class TestBuild(TestRemote):
 	
 	@patch('forge.remote.path')
 	@patch('forge.remote.os')
-	@patch('forge.remote.tarfile')
 	@patch('forge.remote.lib.human_readable_file_size')
 	@patch('forge.remote.build_config')
-	def test_user_dir(self, build_config, filesize, tarfile, os, path):
-		app_config = {}
+	def test_user_dir(self, build_config, filesize, os, path):
+		app_config = {"uuid": "TEST-UUID"}
 		build_config.load_app.return_value = app_config
 		path.isfile.return_value = False
 		path.isdir.return_value = True
@@ -251,7 +250,7 @@ class TestBuild(TestRemote):
 				
 		eq_(resp, -1)
 		self.remote._api_post.assert_called_once_with('app/TEST-UUID/template',
-			data={"config": "{}"}
+			data={"config": '{"uuid": "TEST-UUID"}'}
 		)
 		
 	@patch('forge.remote.path')

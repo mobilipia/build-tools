@@ -71,7 +71,9 @@ class TestLoadApp(object):
 		
 
 class TestLoadLocal(object):
-	def test_should_return_json_as_dict(self):
+	@mock.patch('forge.build_config.path.isfile')
+	def test_should_return_json_as_dict(self, isfile):
+		isfile.return_value = True
 		open_file = mock.MagicMock()
 		opened_file = open_file.return_value.__enter__.return_value
 		opened_file.read.return_value = '{"provisioning_profile": "dummy pp"}'

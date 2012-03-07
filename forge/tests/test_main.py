@@ -1,46 +1,35 @@
-import logging
-import warnings
 import os as real_os
 import mock
 from nose.tools import ok_, eq_, raises
 
 import forge
-from forge.tests import dummy_config, lib
+from forge.tests import dummy_config
 from forge import main, defaults
 from os import path
 
 @mock.patch('forge.main._setup_logging_to_stdout')
 @mock.patch('forge.main._setup_error_logging_to_file')
 @mock.patch('forge.main.logging')
-def _logging_test(args, level, logging, _setup_error_logging_to_file, _setup_logging_to_stdout):
-	main.setup_logging(args)
+def _logging_test(settings, level, logging, _setup_error_logging_to_file, _setup_logging_to_stdout):
+	main.setup_logging(settings)
 
 	_setup_error_logging_to_file.assert_called_once_with()
 	_setup_logging_to_stdout.assert_called_once_with(getattr(logging, level))
 	logging.getLogger.assert_called_once_with('forge.main')
 
-
 def test_verbose():
-	args = mock.Mock()
-	args.verbose = True
-	args.quiet = False
-	_logging_test(args, 'DEBUG')
+	settings = dict(verbose = True)
+	_logging_test(settings, 'DEBUG')
 def test_quiet():
-	args = mock.Mock()
-	args.verbose = False
-	args.quiet = True
-	_logging_test(args, 'WARNING')
+	settings = dict(quiet = True)
+	_logging_test(settings, 'WARNING')
 def test_default():
-	args = mock.Mock()
-	args.verbose = False
-	args.quiet = False
-	_logging_test(args, 'INFO')
+	settings = dict()
+	_logging_test(settings, 'INFO')
+@raises(main.ArgumentError)
 def test_both():
-	args = mock.Mock()
-	args.quiet = True
-	args.verbose = True
-	_logging_test(args, 'DEBUG')
-	ok_(args.error.called)
+	settings = dict(quiet = True, verbose = True)
+	_logging_test(settings, 'DEBUG')
 
 general_argparse = [
 	(('-v', '--verbose'), {'action': 'store_true'}),
@@ -89,61 +78,15 @@ class TestCreate(object):
 
 class TestRun(object):
 	@mock.patch('forge.main.build')
-	@mock.patch('forge.main.argparse')
 	@mock.patch('forge.main._assert_have_development_folder')
 	@mock.patch('forge.main._assert_have_target_folder')
 	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
-	def test_not_android(self, _assert_have_target_folder, _assert_have_development_folder,
-			argparse, build):
-		parser = argparse.ArgumentParser.return_value
-		args = mock.Mock()
-		args.platform = 'chrome'
-		parser.parse_args.return_value = args
-
+	def test_not_android(self, _assert_have_target_folder, _assert_have_development_folder, build):
+		main.handle_secondary_options('run', ['firefox'])
 		main.run([])
 
-		parser.parse_args.assert_called_once()
-
-	@mock.patch('forge.main.build')
-	@mock.patch('forge.main.argparse')
-	@mock.patch('forge.main._assert_have_target_folder')
-	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
-	def test_found_jdk_and_sdk(self, _assert_have_development_folder, argparse, build):
-		main._assert_have_development_folder = mock.Mock()
-		parser = argparse.ArgumentParser.return_value
-		args = mock.Mock()
-		args.platform = 'android'
-		args.device = 'device'
-		args.sdk = 'sdk'
-		parser.parse_args.return_value = args
-
-		values = ['jdk', 'sdk']
-		def get_dir(*args, **kw):
-			return values.pop()
-
-		main.run([])
-
-		parser.parse_args.assert_called_once()
-		build.create_build.assert_called_once()
-		build.create_build.return_value.run.assert_called_once()
-
-	@mock.patch('forge.main.build')
-	@mock.patch('forge.main._parse_run_args')
-	@mock.patch('forge.main.build_config.load_local')
-	@mock.patch('forge.main._assert_have_target_folder', new=mock.Mock())
-	@mock.patch('forge.main._assert_outside_of_forge_root', new=mock.Mock())
-	def test_uses_sdk_from_local_config(self, load_local, _parse_run_args, build):
-		args = _parse_run_args.return_value
-		args.platform = 'android'
-		args.sdk = None
-
-		load_local.return_value = {'sdk':'dummy android sdk'}
 		generate_dynamic = build.import_generate_dynamic.return_value
-
-		main.run([])
-		args, kwargs = generate_dynamic.customer_goals.run_app.call_args_list[0]
-
-		eq_(kwargs['sdk'], 'dummy android sdk', "run_app should have been called with android_sdk from local_config")
+		generate_dynamic.customer_goals.run_app.assert_called_once()
 
 class Test_AssertNotSubdirectoryOfForgeRoot(object):
 	@mock.patch('forge.main.os.getcwd')
@@ -229,8 +172,6 @@ class TestBuild(object):
 
 		main.development_build([])
 
-		self._check_dev_setup(parser, Manager, Remote, Generate)
-
 		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		eq_(shutil.rmtree.call_args_list, [
 			(
@@ -243,7 +184,7 @@ class TestBuild(object):
 			)
 		])
 		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value, 'development')
-		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
+		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR, extra_args=[])
 
 	@mock.patch('forge.main.build_config')
 	@mock.patch('forge.main.os.path.isdir')
@@ -264,12 +205,15 @@ class TestBuild(object):
 
 		main.development_build([])
 
-		self._check_dev_setup(parser, Manager, Remote, Generate)
 		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
 		Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
 		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value, clean=False)
 
 		eq_(shutil.rmtree.call_args_list, [
+			(
+				('.template',),
+				{'ignore_errors': True}
+			),
 			(
 				('development',),
 				{'ignore_errors': True}
@@ -280,7 +224,7 @@ class TestBuild(object):
 			)
 		])
 		shutil.copytree.assert_called_once_with(Manager.return_value.fetch_templates.return_value, 'development')
-		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR)
+		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR, extra_args=[])
 
 class TestWithErrorHandler(object):
 	@mock.patch('forge.main._assert_outside_of_forge_root')
@@ -301,29 +245,8 @@ class TestMain(object):
 		args.command = 'create'
 		argparse.ArgumentParser.return_value.parse_known_args.return_value = (args, [])
 
-		main._using_deprecated_command('wm-create', 'forge create')
-		mock_logging = mock.Mock()
-		with mock.patch('forge.main.logging', new=mock_logging):
+		log = mock.Mock()
+		with mock.patch('forge.main.LOG', new=log):
+			main._using_deprecated_command('wm-create', 'forge create')
 			main.main()
-		warning = mock_logging.getLogger.return_value.warning
-		warning.assert_called_with("Using wm-create which is now deprecated and will eventually be unsupported, instead, please use: 'forge create'\n\n")
-
-class TestPackage(object):
-	@mock.patch('forge.main.build')
-	@mock.patch('forge.main.build_config.load_local')
-	@mock.patch('forge.main._parse_package_args')
-	def test_should_pass_through_local_config(self, _parse_package_args, load_local, build):
-		args = _parse_package_args.return_value
-		args.sdk = None
-
-		load_local.return_value = {'sdk': 'dummy sdk'}
-
-		generate_dynamic = build.import_generate_dynamic.return_value
-		package_app = generate_dynamic.customer_goals.package_app
-
-		main.package([])
-
-		package_app.assert_called_once()
-		kwargs = package_app.call_args_list[0][1]
-
-		eq_(kwargs['sdk'], 'dummy sdk')
+		log.warning.assert_called_with("Using wm-create which is now deprecated and will eventually be unsupported, instead, please use: 'forge create'\n\n")

@@ -1,11 +1,9 @@
-"""Forge subcommands as well as the main entry point for the forge tools"""
+"""Forge subcommandsas well as the main entry point for the forge tools"""
 import argparse
 import logging
 import os
 from os import path
-import platform
 import shutil
-import subprocess
 import sys
 
 import forge
@@ -304,13 +302,13 @@ def development_build(unhandled_args):
 
 	instructions_dir = defaults.INSTRUCTIONS_DIR
 	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
-	if templates_dir and not forge.settings['full']:
+	if templates_dir and not forge.settings.get('full', False):
 		LOG.info('configuration is unchanged: using existing templates')
 	else:
 		LOG.debug("removing previous templates")
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
-		if forge.settings['full']:
+		if forge.settings.get('full', False):
 			LOG.info('forcing rebuild of templates')
 		else:
 			LOG.info('configuration has changed: creating new templates')
@@ -320,7 +318,10 @@ def development_build(unhandled_args):
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
-		templates_dir = manager.fetch_templates(build_id, clean=forge.settings['full'])
+		templates_dir = manager.fetch_templates(
+				build_id,
+				clean=forge.settings.get('full', False)
+		)
 
 		# have templates - now fetch injection instructions
 		remote.fetch_generate_instructions(build_id, instructions_dir)
