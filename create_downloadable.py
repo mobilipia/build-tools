@@ -36,6 +36,7 @@ if __name__ == "__main__":
 		'go.sh',
 		'go.bat',
 		'common.sh',
+		'jsl.conf',
 
 		'debug.keystore',
 		'README.rst',
