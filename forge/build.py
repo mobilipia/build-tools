@@ -37,8 +37,8 @@ def import_generate_dynamic():
 	try:
 		import generate_dynamic
 	except ImportError:
-		sys.path.insert(0, '.template')
-		sys.path.insert(0, path.join('.template', 'lib'))
+		sys.path.insert(0, path.abspath('.template'))
+		sys.path.insert(0, path.abspath(path.join('.template', 'lib')))
 		try:
 			import generate_dynamic
 		except ImportError as e:
