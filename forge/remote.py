@@ -88,13 +88,16 @@ class Remote(object):
 	def __init__(self, config):
 		'Start new remote Forge builds'
 		self.config = config
-		cookie_path = path.join(defaults.FORGE_ROOT, 'cookies.txt')
+		cookie_path = self._path_to_cookies()
 		self.cookies = LWPCookieJar(cookie_path)
 		if not os.path.exists(cookie_path):
 			self.cookies.save()
 		else:
 			self.cookies.load()
 		self._authenticated = False
+
+	def _path_to_cookies(self):
+		return path.join(defaults.FORGE_ROOT, 'cookies.txt')
 
 	@property
 	def server(self):
@@ -441,4 +444,14 @@ The newest tools can be obtained from https://trigger.io/forge/upgrade/
 		self._authenticated = True
 
 	def logout(self):
-		return self._api_post('auth/logout')
+		result = self._api_post('auth/logout')
+		self.cookies.clear_session_cookies()
+		try:
+			os.remove(self._path_to_cookies())
+		except OSError:
+			LOG.debug('Error deleting cookie file', exc_info=True)
+		except IOError:
+			LOG.debug('Error deleting cookie file', exc_info=True)
+		self._authenticated = False
+		return result
+
