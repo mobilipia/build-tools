@@ -4,9 +4,10 @@
 requests.structures
 ~~~~~~~~~~~~~~~~~~~
 
-Datastructures that power Requests.
+Data structures that power Requests.
 
 """
+
 
 class CaseInsensitiveDict(dict):
     """Case-insensitive Dictionary
