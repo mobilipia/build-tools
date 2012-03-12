@@ -107,7 +107,6 @@ def with_error_handler(function):
 			LOG.info('exiting...')
 			sys.exit(1)
 		except Exception as e:
-			import pdb; pdb.set_trace()
 			if LOG is None:
 				LOG = logging.getLogger(__name__)
 				LOG.addHandler(logging.StreamHandler())
@@ -145,6 +144,9 @@ def _setup_logging_to_stdout(stdout_log_level):
 	stream_handler.setFormatter(logging.Formatter('[%(levelname)7s] %(message)s'))
 	logging.root.addHandler(stream_handler)
 
+def _filter_requests_logging():
+	"""Stops requests from logging to info!"""
+	logging.getLogger('requests').setLevel(logging.ERROR)
 
 def setup_logging(settings):
 	'Adjust logging parameters according to command line switches'
@@ -164,6 +166,7 @@ def setup_logging(settings):
 
 	_setup_logging_to_stdout(stdout_log_level)
 	_setup_error_logging_to_file()
+	_filter_requests_logging()
 
 	LOG = logging.getLogger(__name__)
 

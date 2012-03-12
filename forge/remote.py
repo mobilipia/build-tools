@@ -130,7 +130,7 @@ class Remote(object):
 			data['build_tools_version'] = forge.get_version()
 			data["csrfmiddlewaretoken"] = self._csrf_token()
 			kw["data"] = data
-		kw['cookies'] = self.cookies
+		kw['cookies'] = dict(self.cookies)
 		kw['headers'] = {'REFERER': url}
 
 		if self.config.get('main', {}).get('authentication'):
