@@ -108,7 +108,7 @@ def unzip_with_permissions(filename):
 		zip_to_extract.close()
 	else:
 		LOG.debug("unzip is available, using it")
-		zip_process = subprocess.Popen(["unzip", filename], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		zip_process = subprocess.Popen(["unzip", "-o", filename], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		output = zip_process.communicate()[0]
 		LOG.debug("unzip output")
 		LOG.debug(output)

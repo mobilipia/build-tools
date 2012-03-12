@@ -81,6 +81,9 @@ def _check_response_for_error(url, method, resp):
 	if not resp.ok:
 		raise RequestError("Request to {url} went wrong, error code: {code}".format(url=url, code=resp.status_code))
 
+class UpdateRequired(Exception):
+	pass
+
 class Remote(object):
 	'Wrap remote operations'
 	POLL_DELAY = 10
@@ -238,10 +241,7 @@ class Remote(object):
 				LOG.debug('Update result: %s' % result['message'])
 
 			if result.get('upgrade') == 'required':
-				raise ForgeError("""An update to these command line tools is required
-
-The newest tools can be obtained from https://trigger.io/forge/upgrade/
-""")
+				raise UpdateRequired()
 		else:
 			LOG.info('Upgrade check failed.')
 
@@ -455,3 +455,10 @@ The newest tools can be obtained from https://trigger.io/forge/upgrade/
 		self._authenticated = False
 		return result
 
+	def update(self):
+		write_to_path = path.join(defaults.FORGE_ROOT, 'latest.zip')
+		self._get_file(urljoin(self.server, 'latest_tools'), write_to_path)
+
+		above_forge_root = path.normpath(path.join(defaults.FORGE_ROOT, '..'))
+		with lib.cd(above_forge_root):
+			lib.unzip_with_permissions(write_to_path)
