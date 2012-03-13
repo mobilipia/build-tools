@@ -433,10 +433,13 @@ The newest tools can be obtained from https://trigger.io/forge/upgrade/
 	def server_says_should_rebuild(self):
 		app_config = build_config.load_app()
 		url = 'app/{uuid}/should_rebuild'.format(uuid=app_config['uuid'])
+		import pdb; pdb.set_trace()
 		resp = self._api_get(url,
-				platform_version=app_config['platform_version'],
-				platform_changeset=lib.platform_changeset(),
-				targets=",".join(build._enabled_platforms('development')),
+				data = dict(
+					platform_version=app_config['platform_version'],
+					platform_changeset=lib.platform_changeset(),
+					targets=",".join(build._enabled_platforms('development')),
+				)
 		)
 		return resp["should_rebuild"], resp["reason"]
 

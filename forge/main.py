@@ -301,36 +301,32 @@ def development_build(unhandled_args):
 	manager = Manager(config)
 
 	instructions_dir = defaults.INSTRUCTIONS_DIR
-	templates_dir = manager.templates_for_config()
-	if templates_dir and not \
-			remote.server_says_should_rebuild() and not \
-			forge.settings.get('full', False):
-		LOG.info('configuration is unchanged: using existing templates')
-	else:
-		LOG.debug("removing previous templates")
+	if forge.settings.get('full', False):
+		# do this first, so that bugs in generate_dynamic can always be nuked with a -f
+		LOG.debug("full rebuild requested: removing previous templates")
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
-		if forge.settings.get('full', False):
-			LOG.info('forcing rebuild of templates')
-		else:
-			LOG.info('configuration has changed: creating new templates')
+	if manager.need_new_templates_for_config() or remote.server_says_should_rebuild():
+		LOG.debug("removing previous templates")
+		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 		remote.check_version()
 
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
-		templates_dir = manager.fetch_templates(
+		manager.fetch_templates(
 				build_id,
-				clean=forge.settings.get('full', False)
 		)
 
 		# have templates - now fetch injection instructions
 		remote.fetch_generate_instructions(build_id, instructions_dir)
+	else:
+		LOG.info('configuration is unchanged: using existing templates')
 
 	def move_files_across():
 		shutil.rmtree('development', ignore_errors=True)
-		shutil.copytree(templates_dir, 'development')
+		shutil.copytree(defaults.TEMPLATE_DIR, 'development')
 		shutil.rmtree(path.join('development', 'generate_dynamic'), ignore_errors=True)
 
 	# Windows often gives a permission error without a small wait

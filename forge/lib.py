@@ -143,7 +143,7 @@ def platform_changeset():
 	"""
 	Return the changeset of the platform used to build the current template.
 
-	Assumes the existence of ``changeset.txt`` in the root directory of .template.
+	Assumes the existence of ``changeset.txt`` in the lib directory of .template.
 	"""
-	with open(path.join(defaults.TEMPLATE_DIR, "changeset.txt")) as changeset_f:
+	with open(path.join(defaults.TEMPLATE_DIR, "lib", "changeset.txt")) as changeset_f:
 		return changeset_f.read().strip()
