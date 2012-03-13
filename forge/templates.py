@@ -11,6 +11,7 @@ import subprocess
 import sys
 
 from forge import defaults
+from forge.build import create_build, import_generate_dynamic
 from forge.remote import Remote
 
 LOG = logging.getLogger(__name__)
@@ -45,17 +46,25 @@ class Manager(object):
 		
 		return hsh.hexdigest()
 		
-	def templates_for_config(self, config_filename):
-		'''Determine template files directory for the given configuration.
+	def templates_for_config(self):
+		'''Determine whether we have current templates for the user's configuration.
 		
-		:param config_filename: name of configuration file to consider
-		:return: the relevant templates directory if it exists, or ``None``
+		:rtype: bool
 		'''
-		config_hash = self._hash_file(config_filename)
-		if path.exists(path.join(self._tmpl_dir, config_hash+'.hash')):
-			return self._tmpl_dir
-		else:
-			return None
+		if not path.isdir(self._tmpl_dir):
+			LOG.info("{tmpl} is not a directory: don't have templates yet".format(tmpl=self._tmpl_dir))
+			return False
+		old_config_file = path.join(self._tmpl_dir, "config.json")
+		if not path.isfile(old_config_file):
+			LOG.info("{file} does not exist: we need to fetch new templates".format(file=old_config_file))
+			return False
+		
+		generate_dynamic = import_generate_dynamic()
+		return generate_dynamic.internal_goals.config_changes_invalidate_templates(
+				generate_module=generate_dynamic,
+				old_config_file=old_config_file,
+				new_config_file=defaults.APP_CONFIG_FILE,
+		)
 		
 	def fetch_templates(self, build_id, clean=False):
 		'''Retrieve remote template files for a specified build, and the config to match.
@@ -65,7 +74,7 @@ class Manager(object):
 		'''
 		remote = Remote(self._config)
 
-		template_dir = self.templates_for_config(defaults.APP_CONFIG_FILE)
+		template_dir = self.templates_for_config()
 		if template_dir and not clean:
 			LOG.info('already have templates for current App configuration')
 			return template_dir

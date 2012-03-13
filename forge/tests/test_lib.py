@@ -1,5 +1,8 @@
 import os
-import subprocess
+from os import path
+import shutil
+import tempfile
+
 from mock import patch
 import mock
 from nose.tools import eq_
@@ -69,3 +72,19 @@ class TestPathToConfigFile(object):
 			result,
 			os.path.join('path to dummy home directory', '.forge')
 		)
+
+class TestPlatformChangeset(object):
+	def setup(self):
+		self.tdir = tempfile.mkdtemp()
+		self.orig_dir = os.getcwd()
+		os.chdir(self.tdir)
+
+		os.mkdir('.template')
+		with open(path.join('.template', 'changeset.txt'), 'w') as changeset_f:
+			changeset_f.write("0123456789AB")
+	def teardown(self):
+		os.chdir(self.orig_dir)
+		shutil.rmtree(self.tdir, ignore_errors=True)
+
+	def test_read_changeset(self):
+		eq_(lib.platform_changeset(), '0123456789AB')

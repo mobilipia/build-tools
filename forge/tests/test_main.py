@@ -172,7 +172,7 @@ class TestBuild(object):
 
 		main.development_build([])
 
-		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
+		Manager.return_value.templates_for_config.assert_called_once_with()
 		eq_(shutil.rmtree.call_args_list, [
 			(
 				('development',),
@@ -183,7 +183,7 @@ class TestBuild(object):
 				{'ignore_errors': True}
 			)
 		])
-		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value, 'development')
+		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value)
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR, extra_args=[])
 
 	@mock.patch('forge.main.build_config')
@@ -205,7 +205,7 @@ class TestBuild(object):
 
 		main.development_build([])
 
-		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
+		Manager.return_value.templates_for_config.assert_called_once_with()
 		Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
 		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value, clean=False)
 

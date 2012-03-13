@@ -6,7 +6,7 @@ from nose.tools import raises, eq_, ok_
 import requests
 
 from forge import VERSION
-from forge import remote
+from forge import build, build_config, lib, remote
 from forge.remote import Remote, RequestError
 from forge.tests import dummy_config
 from lib import assert_raises_regexp
@@ -414,4 +414,37 @@ class TestCheckApiResponseForError(TestRemote):
 			'http://dummy.trigger.io/',
 			'GET',
 			resp,
+		)
+
+class TestShouldRebuild(TestRemote):
+	@patch('forge.remote.build_config')
+	@patch('forge.remote.lib.platform_changeset')
+	def test_rebuild_required(self, platform_changeset, build_config):
+		self.remote._api_get = Mock(return_value={'result': 'ok', 'should_rebuild': True, 'reason': 'dummy reason'})
+		app_config = {'platform_version': 'v1.2', 'uuid': 'TEST-UUID'}
+		build_config.load_app.return_value = app_config
+		platform_changeset.return_value = '000000000000'
+
+		eq_(self.remote.server_says_should_rebuild(), (True, 'dummy reason'))
+
+		self.remote._api_get.assert_called_once_with("app/TEST-UUID/should_rebuild",
+			platform_version=app_config.get('platform_version'),
+			platform_changeset=lib.platform_changeset(),
+			targets=",".join(build._enabled_platforms('development')),
+		)
+
+	@patch('forge.remote.build_config')
+	@patch('forge.remote.lib.platform_changeset')
+	def test_rebuild_not_required(self, platform_changeset, build_config):
+		self.remote._api_get = Mock(return_value={'result': 'ok', 'should_rebuild': False, 'reason': 'dummy reason'})
+		app_config = {'platform_version': 'v1.2', 'uuid': 'TEST-UUID'}
+		build_config.load_app.return_value = app_config
+		platform_changeset.return_value = '000000000000'
+
+		eq_(self.remote.server_says_should_rebuild(), (False, 'dummy reason'))
+
+		self.remote._api_get.assert_called_once_with("app/TEST-UUID/should_rebuild",
+			platform_version=app_config.get('platform_version'),
+			platform_changeset=lib.platform_changeset(),
+			targets=",".join(build._enabled_platforms('development')),
 		)

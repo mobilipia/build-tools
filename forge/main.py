@@ -301,8 +301,10 @@ def development_build(unhandled_args):
 	manager = Manager(config)
 
 	instructions_dir = defaults.INSTRUCTIONS_DIR
-	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
-	if templates_dir and not forge.settings.get('full', False):
+	templates_dir = manager.templates_for_config()
+	if templates_dir and not \
+			remote.server_says_should_rebuild() and not \
+			forge.settings.get('full', False):
 		LOG.info('configuration is unchanged: using existing templates')
 	else:
 		LOG.debug("removing previous templates")

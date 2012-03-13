@@ -11,7 +11,7 @@ import urlparse
 from urlparse import urljoin, urlsplit
 
 import forge
-from forge import build_config, defaults, ForgeError, lib
+from forge import build, build_config, defaults, ForgeError, lib
 
 LOG = logging.getLogger(__name__)
 
@@ -429,6 +429,16 @@ The newest tools can be obtained from https://trigger.io/forge/upgrade/
 		LOG.info('This could take a while, but will only happen again if you modify config.json')
 		self._poll_until_build_complete(build_id)
 		return build_id
+
+	def server_says_should_rebuild(self):
+		app_config = build_config.load_app()
+		url = 'app/{uuid}/should_rebuild'.format(uuid=app_config['uuid'])
+		resp = self._api_get(url,
+				platform_version=app_config['platform_version'],
+				platform_changeset=lib.platform_changeset(),
+				targets=",".join(build._enabled_platforms('development')),
+		)
+		return resp["should_rebuild"], resp["reason"]
 
 	def login(self, email, password):
 		LOG.info('authenticating as "%s"' % email)

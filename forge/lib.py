@@ -5,12 +5,12 @@ import logging
 import subprocess
 import zipfile
 import sys
-import forge
 import os
-from os.path import join, isdir, islink
-from os import error, listdir
-import os
+from os import path
 import time
+
+import forge
+from forge import defaults
 
 LOG = logging.getLogger(__file__)
 
@@ -138,3 +138,12 @@ class AccidentHandler(logging.Handler):
 			self.should_flush = True
 
 		self.records.append(record)
+
+def platform_changeset():
+	"""
+	Return the changeset of the platform used to build the current template.
+
+	Assumes the existence of ``changeset.txt`` in the root directory of .template.
+	"""
+	with open(path.join(defaults.TEMPLATE_DIR, "changeset.txt")) as changeset_f:
+		return changeset_f.read().strip()

@@ -1,5 +1,5 @@
 import mock
-from nose.tools import raises, eq_, assert_not_equals, ok_, assert_false
+from nose.tools import eq_, ok_
 from os import path
 
 from forge import defaults
@@ -32,7 +32,7 @@ class TestTemplatesFor(object):
 		self.manager._hash_file = mock.Mock()
 		self.manager._hash_file.return_value = '999'
 		
-		res = self.manager.templates_for_config('config filename')
+		res = self.manager.templates_for_config()
 		
 		self.manager._hash_file.assert_called_once_with('config filename')
 		path.join.assert_called_once_with('.my-templates', '999.hash')
@@ -45,7 +45,7 @@ class TestTemplatesFor(object):
 		self.manager._hash_file = mock.Mock()
 		self.manager._hash_file.return_value = '999'
 		
-		res = self.manager.templates_for_config('config filename')
+		res = self.manager.templates_for_config()
 		
 		path.join.assert_called_once_with('.my-templates', '999.hash')
 		eq_(res, None)
@@ -66,7 +66,7 @@ class TestFetchTemplates(object):
 		with mock.patch('__builtin__.open', new=mock_open):
 			res = self.manager.fetch_templates(-1)
 			
-		self.manager.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
+		self.manager.templates_for_config.assert_called_once_with()
 		shutil.rmtree.assert_called_once_with('templates', ignore_errors=True)
 		remote.fetch_unpackaged.assert_called_once_with(-1, to_dir='templates')
 		mock_open.assert_called_once_with(path.join('templates', 'hashed file.hash'), 'w')

@@ -26,6 +26,12 @@ def _enabled_platforms(build_type_dir):
 	}
 	
 	enabled_platforms = []
+	if not path.isdir(build_type_dir):
+		LOG.debug("no output directory {dir} found: has any build been run yet?".format(
+			dir=build_type_dir
+		))
+		return []
+
 	for directory in os.listdir(build_type_dir):
 		if directory in directory_to_platform:
 			enabled_platforms.append(directory_to_platform[directory])
