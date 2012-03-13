@@ -15,7 +15,6 @@ def _logging_test(settings, level, logging, _setup_error_logging_to_file, _setup
 
 	_setup_error_logging_to_file.assert_called_once_with()
 	_setup_logging_to_stdout.assert_called_once_with(getattr(logging, level))
-	logging.getLogger.assert_called_once_with('forge.main')
 
 def test_verbose():
 	settings = dict(verbose = True)

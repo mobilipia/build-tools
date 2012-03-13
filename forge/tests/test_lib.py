@@ -15,7 +15,7 @@ class TestUnzipWithPermissions(object):
 	def test_when_system_has_unzip_should_call_unzip(self, subprocess):
 		subprocess.Popen.return_value.communicate.return_value = ('stdout', 'stderr')
 		lib.unzip_with_permissions('dummy archive.zip')
-		subprocess.Popen.assert_called_with(["unzip", "dummy archive.zip"],
+		subprocess.Popen.assert_called_with(["unzip", "-o", "dummy archive.zip"],
 				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		eq_(subprocess.Popen.call_count, 2)
 
@@ -79,8 +79,8 @@ class TestPlatformChangeset(object):
 		self.orig_dir = os.getcwd()
 		os.chdir(self.tdir)
 
-		os.mkdir('.template')
-		with open(path.join('.template', 'changeset.txt'), 'w') as changeset_f:
+		os.makedirs(path.join('.template', 'lib'))
+		with open(path.join('.template', 'lib', 'changeset.txt'), 'w') as changeset_f:
 			changeset_f.write("0123456789AB")
 	def teardown(self):
 		os.chdir(self.orig_dir)

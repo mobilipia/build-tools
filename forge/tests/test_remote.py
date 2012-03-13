@@ -2,11 +2,10 @@ import json
 
 import mock
 from mock import MagicMock, Mock, patch
-from nose.tools import raises, eq_, ok_
-import requests
+from nose.tools import raises, eq_, ok_, assert_raises
 
 from forge import VERSION
-from forge import build, build_config, lib, remote
+from forge import build, lib, remote
 from forge.remote import Remote, RequestError
 from forge.tests import dummy_config
 from lib import assert_raises_regexp
@@ -273,7 +272,7 @@ class Test_Post(TestRemote):
 		res = self.remote._post('url', 2, a=3, b=4)
 		self.remote._csrf_token.assert_called_once_with()
 		requests.post.assert_called_once_with('url', 2,
-			cookies=self.remote.cookies, a=3, b=4, headers={'REFERER': 'url'},
+			cookies={}, a=3, b=4, headers={'REFERER': 'url'},
 			data={'csrfmiddlewaretoken': 'csrf token', "build_tools_version": VERSION})
 		ok_(res is requests.post.return_value)
 
@@ -281,7 +280,7 @@ class Test_Get(TestRemote):
 	@patch('forge.remote.requests')
 	def test_get(self, requests):
 		res = self.remote._get('url', 2, a=3, b=4)
-		requests.get.assert_called_once_with('url', 2, a=3, b=4, cookies=self.remote.cookies, headers={'REFERER': 'url'})
+		requests.get.assert_called_once_with('url', 2, a=3, b=4, cookies={}, headers={'REFERER': 'url'})
 		ok_(res is requests.get.return_value)
 		
 	@patch('forge.remote.requests')
@@ -290,14 +289,14 @@ class Test_Get(TestRemote):
 			'username': 'test username',
 			'password': 'test password',
 		}
-		self.remote._get('test url')
-		requests.get.assert_called_once_with('test url', cookies=self.remote.cookies, auth=('test username', 'test password'), headers={'REFERER': 'test url'})
+		self.remote._get('http://test.trigger.io/test_url')
+		requests.get.assert_called_once_with('http://test.trigger.io/test_url', cookies={}, auth=('test username', 'test password'), headers={'REFERER': 'http://test.trigger.io/test_url'})
 
 class Test_CheckVersion(TestRemote):
 	def test_update_required(self):
 		self.remote._api_get = Mock(return_value={"url": "http://example.com/forge/upgrade/", "message": "you must upgrade to a newer version of the command-line tools", "upgrade": "required", "result": "ok"})
 		
-		assert_raises_regexp(Exception, 'An update to these command line tools is required', self.remote.check_version)
+		assert_raises(remote.UpdateRequired, self.remote.check_version)
 
 class TestGenerateInstructions(TestRemote):
 	@raises(RequestError)
@@ -352,12 +351,8 @@ class TestCheckApiResponseForError(TestRemote):
 	:param resp: The response from the API call
 	:raises: RequestException if the response is an error or malformed
 '''
-	def setup(self):
-		super(TestCheckApiResponseForError, self).setup()
-		self.resp = requests.get('will:fail:///now/')
-	
 	def test_500_valid_json(self):
-		resp = mock.Mock(spec=self.resp)
+		resp = mock.Mock()
 		resp.content = json.dumps({'result': 'error', 'text': 'Internal error: testing'})
 		resp.status_code = 500
 		resp.ok = False
@@ -369,7 +364,7 @@ class TestCheckApiResponseForError(TestRemote):
 			resp,
 		)
 	def test_500_invalid_json(self):
-		resp = mock.Mock(spec=self.resp)
+		resp = mock.Mock()
 		resp.content = "wat!["
 		resp.status_code = 500
 		resp.ok = False
@@ -381,7 +376,7 @@ class TestCheckApiResponseForError(TestRemote):
 			resp,
 		)
 	def test_200_error(self):
-		resp = mock.Mock(spec=self.resp)
+		resp = mock.Mock()
 		resp.content = json.dumps({'result': 'error', 'text': 'Internal error: testing'})
 		resp.status_code = 200
 		resp.ok = True
@@ -393,7 +388,7 @@ class TestCheckApiResponseForError(TestRemote):
 			resp,
 		)
 	def test_200_invalid_json(self):
-		resp = mock.Mock(spec=self.resp)
+		resp = mock.Mock()
 		resp.content = "wat!["
 		resp.status_code = 200
 		resp.ok = True
@@ -405,7 +400,7 @@ class TestCheckApiResponseForError(TestRemote):
 			resp,
 		)
 	def test_no_status_code(self):
-		resp = mock.Mock(spec=self.resp)
+		resp = mock.Mock()
 		resp.status_code = None
 		resp.ok = False
 		
@@ -428,9 +423,11 @@ class TestShouldRebuild(TestRemote):
 		eq_(self.remote.server_says_should_rebuild(), (True, 'dummy reason'))
 
 		self.remote._api_get.assert_called_once_with("app/TEST-UUID/should_rebuild",
-			platform_version=app_config.get('platform_version'),
-			platform_changeset=lib.platform_changeset(),
-			targets=",".join(build._enabled_platforms('development')),
+				data=dict(
+					platform_version=app_config.get('platform_version'),
+					platform_changeset=lib.platform_changeset(),
+					targets=",".join(build._enabled_platforms('development')),
+				)
 		)
 
 	@patch('forge.remote.build_config')
@@ -444,7 +441,9 @@ class TestShouldRebuild(TestRemote):
 		eq_(self.remote.server_says_should_rebuild(), (False, 'dummy reason'))
 
 		self.remote._api_get.assert_called_once_with("app/TEST-UUID/should_rebuild",
-			platform_version=app_config.get('platform_version'),
-			platform_changeset=lib.platform_changeset(),
-			targets=",".join(build._enabled_platforms('development')),
+				data = dict(
+					platform_version=app_config.get('platform_version'),
+					platform_changeset=lib.platform_changeset(),
+					targets=",".join(build._enabled_platforms('development')),
+				)
 		)

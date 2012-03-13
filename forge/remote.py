@@ -469,7 +469,6 @@ class Remote(object):
 	def server_says_should_rebuild(self):
 		app_config = build_config.load_app()
 		url = 'app/{uuid}/should_rebuild'.format(uuid=app_config['uuid'])
-		import pdb; pdb.set_trace()
 		resp = self._api_get(url,
 				data = dict(
 					platform_version=app_config['platform_version'],
