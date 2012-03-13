@@ -10,7 +10,7 @@ import forge
 from forge import defaults, build_config, ForgeError
 from forge import build
 from forge.generate import Generate
-from forge.remote import Remote
+from forge.remote import Remote, UpdateRequired
 from forge.templates import Manager
 from forge.lib import try_a_few_times, AccidentHandler
 
@@ -88,13 +88,23 @@ def with_error_handler(function):
 				"You're trying to run commands in the build tools directory.\n"
 				"You need to move to another directory outside of this one first.\n"
 			)
-		except KeyboardInterrupt:
-			sys.stdout.write('\n')
-			LOG.info('exiting...')
+		except UpdateRequired as e:
+			LOG.info("""An update to these command line tools is required, downloading...""")
+
+			# TODO: refactor so that we don't need to instantiate Remote here
+			config = build_config.load()
+			remote = Remote(config)
+			remote.update()
+
+			LOG.info("Update complete, run your command again to continue")
 			sys.exit(1)
 		except ForgeError as e:
 			# thrown by us, expected
 			LOG.error(e)
+			sys.exit(1)
+		except KeyboardInterrupt:
+			sys.stdout.write('\n')
+			LOG.info('exiting...')
 			sys.exit(1)
 		except Exception as e:
 			if LOG is None:
@@ -134,6 +144,9 @@ def _setup_logging_to_stdout(stdout_log_level):
 	stream_handler.setFormatter(logging.Formatter('[%(levelname)7s] %(message)s'))
 	logging.root.addHandler(stream_handler)
 
+def _filter_requests_logging():
+	"""Stops requests from logging to info!"""
+	logging.getLogger('requests').setLevel(logging.ERROR)
 
 def setup_logging(settings):
 	'Adjust logging parameters according to command line switches'
@@ -153,6 +166,7 @@ def setup_logging(settings):
 
 	_setup_logging_to_stdout(stdout_log_level)
 	_setup_error_logging_to_file()
+	_filter_requests_logging()
 
 	LOG = logging.getLogger(__name__)
 
@@ -264,11 +278,7 @@ def create(unhandled_args):
 	_check_working_directory_is_safe()
 	config = build_config.load()
 	remote = Remote(config)
-	try:
-		remote.check_version()
-	except Exception as e:
-		LOG.error(e)
-		return 1
+	remote.check_version()
 
 	if os.path.exists(defaults.SRC_DIR):
 		raise ForgeError('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)

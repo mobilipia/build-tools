@@ -8,6 +8,7 @@ import sys
 import os
 from os import path
 import time
+import urlparse
 
 import forge
 from forge import defaults
@@ -108,7 +109,7 @@ def unzip_with_permissions(filename):
 		zip_to_extract.close()
 	else:
 		LOG.debug("unzip is available, using it")
-		zip_process = subprocess.Popen(["unzip", filename], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		zip_process = subprocess.Popen(["unzip", "-o", filename], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		output = zip_process.communicate()[0]
 		LOG.debug("unzip output")
 		LOG.debug(output)
@@ -147,3 +148,37 @@ def platform_changeset():
 	"""
 	with open(path.join(defaults.TEMPLATE_DIR, "lib", "changeset.txt")) as changeset_f:
 		return changeset_f.read().strip()
+
+class RequestWrapper(object):
+	def __init__(self, request):
+		self._request = request
+		self.unverifiable = False
+
+	def get_full_url(self):
+		return self._request.full_url
+
+	def get_host(self):
+		return urlparse.urlparse(self._request.full_url).hostname
+
+	def get_origin_req_host(self):
+		# TODO: find out and document what this actually means
+		# check RFC 2965
+		return self.get_host()
+
+	def is_unverifiable(self):
+		return self.unverifiable
+
+class ResponseWrapper(object):
+	def __init__(self, response):
+		self._response = response
+
+	def info(self):
+		return self._response.raw._fp.msg
+
+def load_cookies_from_response(response, jar):
+	"""Takes a requests.models.Response object and loads any cookies set in it
+	into the given cookielib.CookieJar
+	"""
+	req = RequestWrapper(response.request)
+	resp = ResponseWrapper(response)
+	jar.extract_cookies(resp, req)
