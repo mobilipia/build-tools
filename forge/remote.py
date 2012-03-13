@@ -1,8 +1,9 @@
 'Operations which require involvement of the remote Forge build servers'
-from cookielib import LWPCookieJar
+from cookielib import LWPCookieJar, CookieJar
 import json
 import logging
 import os
+import sys
 from os import path
 import requests
 import shutil
@@ -81,6 +82,9 @@ def _check_response_for_error(url, method, resp):
 	if not resp.ok:
 		raise RequestError("Request to {url} went wrong, error code: {code}".format(url=url, code=resp.status_code))
 
+def _cookies_for_domain(domain, cookies):
+	return dict((c.name, c.value) for c in cookies if c.domain == domain)
+
 class UpdateRequired(Exception):
 	pass
 
@@ -107,6 +111,11 @@ class Remote(object):
 		'The URL of the build server to use (default https://trigger.io/api/)'
 		return self.config.get('main', {}).get('server', 'https://trigger.io/api/')
 
+	@property
+	def hostname(self):
+		'The hostname of the build server'
+		return urlparse.urlparse(self.server).hostname
+
 	def _csrf_token(self):
 		'''Return the server-negotiated CSRF token, if we have one
 
@@ -130,17 +139,19 @@ class Remote(object):
 			data['build_tools_version'] = forge.get_version()
 			data["csrfmiddlewaretoken"] = self._csrf_token()
 			kw["data"] = data
-		kw['cookies'] = dict(self.cookies)
+		kw['cookies'] = _cookies_for_domain(self.hostname, self.cookies)
 		kw['headers'] = {'REFERER': url}
 
 		if self.config.get('main', {}).get('authentication'):
-			kw['auth'] = (
-				self.config['main']['authentication'].get('username'),
-				self.config['main']['authentication'].get('password')
-			)
+			if urlparse.urlparse(url).hostname == self.hostname:
+				kw['auth'] = (
+					self.config['main']['authentication'].get('username'),
+					self.config['main']['authentication'].get('password')
+				)
 		LOG.debug('{method} {url}'.format(method=method.upper(), url=url))
 		resp = getattr(requests, method.lower())(url, *args, **kw)
 
+		lib.load_cookies_from_response(resp, self.cookies)
 		self.cookies.save()
 		# XXX: response is definitely json at this point?
 		# guaranteed if we're only making calls to the api
@@ -225,7 +236,7 @@ class Remote(object):
 		}
 		LOG.info('Registering new app "{name}" with {hostname}...'.format(
 			name=name,
-			hostname=urlparse.urlparse(self.server).hostname
+			hostname=self.hostname,
 		))
 		return self._api_post('app/', data=data)['uuid']
 
@@ -245,20 +256,45 @@ class Remote(object):
 		else:
 			LOG.info('Upgrade check failed.')
 
-	def _get_file(self, url, write_to_path):
-		response = self._get(url)
-		content_length = response.headers.get('Content-length')
+	def _get_file_with_progress_bar(self, response, write_to_path, content_length):
+		message = 'Fetching ({content_length}) into {out_file}'.format(
+			content_length=content_length,
+			out_file=write_to_path
+		)
+		LOG.debug(message)
 
-		if content_length:
-			message = 'Fetching ({content_length}) into {out_file}'.format(
-				content_length=content_length,
-				out_file=write_to_path
-			)
-			LOG.debug(message)
+		progress_bar_width = 50
+
+		progress = 0
+		last_mark = 0
+		sys.stdout.write("|")
 
 		with open(write_to_path, 'wb') as write_to_file:
 			# TODO: upgrade requests, use Response.iter_content
-			write_to_file.write(response.content)
+			for chunk in response.iter_content(chunk_size=102400):
+				if content_length:
+					progress += len(chunk) / content_length
+					marks = int(progress * progress_bar_width)
+
+					if marks > last_mark:
+						sys.stdout.write("=" * (marks - last_mark))
+						last_mark = marks
+
+				write_to_file.write(chunk)
+		sys.stdout.write("|\n")
+
+	def _get_file(self, url, write_to_path):
+		response = self._get(url)
+		try:
+			content_length = float(response.headers.get('Content-length'))
+		except Exception:
+			content_length = None
+
+		if content_length:
+			self._get_file_with_progress_bar(response, write_to_path, content_length)
+		else:
+			with open(write_to_path, 'wb') as write_to_file:
+				write_to_file.write(response.content)
 
 	def fetch_initial(self, uuid):
 		'''Retrieves the initial project template
