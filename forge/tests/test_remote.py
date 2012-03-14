@@ -423,7 +423,7 @@ class TestShouldRebuild(TestRemote):
 		eq_(self.remote.server_says_should_rebuild(), (True, 'dummy reason'))
 
 		self.remote._api_get.assert_called_once_with("app/TEST-UUID/should_rebuild",
-				data=dict(
+				params=dict(
 					platform_version=app_config.get('platform_version'),
 					platform_changeset=lib.platform_changeset(),
 					targets=",".join(build._enabled_platforms('development')),
@@ -441,7 +441,7 @@ class TestShouldRebuild(TestRemote):
 		eq_(self.remote.server_says_should_rebuild(), (False, 'dummy reason'))
 
 		self.remote._api_get.assert_called_once_with("app/TEST-UUID/should_rebuild",
-				data = dict(
+				params = dict(
 					platform_version=app_config.get('platform_version'),
 					platform_changeset=lib.platform_changeset(),
 					targets=",".join(build._enabled_platforms('development')),

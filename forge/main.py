@@ -317,11 +317,12 @@ def development_build(unhandled_args):
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 	config_changed = manager.need_new_templates_for_config()
-	server_changed = remote.server_says_should_rebuild()
+	server_changed, reason = remote.server_says_should_rebuild()
 	if config_changed or server_changed:
 		if config_changed:
 			LOG.info("Your app configuration has changed: we need to rebuild your app")
 		elif server_changed:
+			LOG.debug("Server requires rebuild: {reason}".format(reason=reason))
 			LOG.info("Your Forge platform has been updated: we need to rebuild your app")
 
 		if path.exists(instructions_dir):

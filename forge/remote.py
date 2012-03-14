@@ -476,11 +476,7 @@ class Remote(object):
 					targets=",".join(build._enabled_platforms('development')),
 				)
 		)
-		if resp["should_rebuild"]:
-			LOG.info("server says a rebuild is required: {reason}".format(reason=resp["reason"]))
-		else:
-			LOG.debug("server says a rebuild is not required")
-		return resp["should_rebuild"]
+		return resp["should_rebuild"], resp["reason"]
 
 	def login(self, email, password):
 		LOG.info('authenticating as "%s"' % email)

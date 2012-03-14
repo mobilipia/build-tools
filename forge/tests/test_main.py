@@ -166,7 +166,7 @@ class TestBuild(object):
 		parser = argparse.ArgumentParser.return_value
 		args = parser.parse_args.return_value
 		Manager.return_value.need_new_templates_for_config.return_value = False
-		Remote.return_value.server_says_should_rebuild.return_value = False
+		Remote.return_value.server_says_should_rebuild.return_value = (False, '')
 		args.full = False
 		build_config.load.return_value = dummy_config()
 
@@ -199,6 +199,7 @@ class TestBuild(object):
 		args = parser.parse_args.return_value
 		args.full = False
 		Manager.return_value.need_new_templates_for_config.return_value = True
+		Remote.return_value.server_says_should_rebuild.return_value = (False, '')
 		Remote.return_value.build.return_value = -1
 		isdir.return_value = True
 		build_config.load.return_value = dummy_config()
@@ -210,10 +211,6 @@ class TestBuild(object):
 		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value)
 
 		eq_(shutil.rmtree.call_args_list, [
-			(
-				('.template',),
-				{'ignore_errors': True}
-			),
 			(
 				('development',),
 				{'ignore_errors': True}
