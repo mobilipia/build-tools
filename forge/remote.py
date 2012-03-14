@@ -135,6 +135,10 @@ class Remote(object):
 				self.config['main']['authentication'].get('username'),
 				self.config['main']['authentication'].get('password')
 			)
+
+		if self.config.get('main', {}).get('proxies'):
+			kw['proxies'] = self.config['main']['proxies']
+
 		LOG.debug('{method} {url}'.format(method=method.upper(), url=url))
 		resp = getattr(requests, method.lower())(url, *args, **kw)
 
