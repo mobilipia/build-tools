@@ -38,7 +38,6 @@ if __name__ == "__main__":
 		'common.sh',
 		'jsl.conf',
 
-		'debug.keystore',
 		'README.rst',
 		'forge_build.json'
 	]
