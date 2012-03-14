@@ -1,5 +1,5 @@
 'Operations which require involvement of the remote Forge build servers'
-from cookielib import LWPCookieJar, CookieJar
+from cookielib import LWPCookieJar
 import json
 import logging
 import os
@@ -470,13 +470,17 @@ class Remote(object):
 		app_config = build_config.load_app()
 		url = 'app/{uuid}/should_rebuild'.format(uuid=app_config['uuid'])
 		resp = self._api_get(url,
-				data = dict(
+				params = dict(
 					platform_version=app_config['platform_version'],
 					platform_changeset=lib.platform_changeset(),
 					targets=",".join(build._enabled_platforms('development')),
 				)
 		)
-		return resp["should_rebuild"], resp["reason"]
+		if resp["should_rebuild"]:
+			LOG.info("server says a rebuild is required: {reason}".format(reason=resp["reason"]))
+		else:
+			LOG.debug("server says a rebuild is not required")
+		return resp["should_rebuild"]
 
 	def login(self, email, password):
 		LOG.info('authenticating as "%s"' % email)

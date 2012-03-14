@@ -316,9 +316,17 @@ def development_build(unhandled_args):
 		LOG.debug("full rebuild requested: removing previous templates")
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
-	if manager.need_new_templates_for_config() or remote.server_says_should_rebuild():
-		LOG.debug("removing previous templates")
-		shutil.rmtree(instructions_dir, ignore_errors=True)
+	config_changed = manager.need_new_templates_for_config()
+	server_changed = remote.server_says_should_rebuild()
+	if config_changed or server_changed:
+		if config_changed:
+			LOG.info("Your app configuration has changed: we need to rebuild your app")
+		elif server_changed:
+			LOG.info("Your Forge platform has been updated: we need to rebuild your app")
+
+		if path.exists(instructions_dir):
+			LOG.debug("removing previous templates")
+			shutil.rmtree(instructions_dir, ignore_errors=True)
 
 		remote.check_version()
 
