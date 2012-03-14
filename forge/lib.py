@@ -146,8 +146,12 @@ def platform_changeset():
 
 	Assumes the existence of ``changeset.txt`` in the lib directory of .template.
 	"""
-	with open(path.join(defaults.TEMPLATE_DIR, "lib", "changeset.txt")) as changeset_f:
-		return changeset_f.read().strip()
+	changeset_file = path.join(defaults.TEMPLATE_DIR, "lib", "changeset.txt")
+	if path.isfile(changeset_file):
+		with open(changeset_file) as changeset_f:
+			return changeset_f.read().strip()
+	else:
+		return ""
 
 class RequestWrapper(object):
 	def __init__(self, request):
