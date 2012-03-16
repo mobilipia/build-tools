@@ -5,6 +5,7 @@ import os
 from os import path
 import shutil
 import sys
+import traceback
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -94,9 +95,15 @@ def with_error_handler(function):
 			# TODO: refactor so that we don't need to instantiate Remote here
 			config = build_config.load()
 			remote = Remote(config)
-			remote.update()
+			try:
+				remote.update()
 
-			LOG.info("Update complete, run your command again to continue")
+				LOG.info("Update complete, run your command again to continue")
+			except Exception as e:
+				LOG.error("Upgrade process failed: %s" % e)
+				LOG.debug("%s" % traceback.format_exc(e))
+				LOG.error("You can get the tools from https://trigger.io/api/latest_tools and extract them yourself")
+				LOG.error("Contact support@trigger.io if you have any further issues")
 			sys.exit(1)
 		except ForgeError as e:
 			# thrown by us, expected
