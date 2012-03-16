@@ -1,5 +1,8 @@
 import os
-import subprocess
+from os import path
+import shutil
+import tempfile
+
 from mock import patch
 import mock
 from nose.tools import eq_
@@ -12,7 +15,7 @@ class TestUnzipWithPermissions(object):
 	def test_when_system_has_unzip_should_call_unzip(self, subprocess):
 		subprocess.Popen.return_value.communicate.return_value = ('stdout', 'stderr')
 		lib.unzip_with_permissions('dummy archive.zip')
-		subprocess.Popen.assert_called_with(["unzip", "dummy archive.zip"],
+		subprocess.Popen.assert_called_with(["unzip", "-o", "dummy archive.zip"],
 				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		eq_(subprocess.Popen.call_count, 2)
 
@@ -69,3 +72,19 @@ class TestPathToConfigFile(object):
 			result,
 			os.path.join('path to dummy home directory', '.forge')
 		)
+
+class TestPlatformChangeset(object):
+	def setup(self):
+		self.tdir = tempfile.mkdtemp()
+		self.orig_dir = os.getcwd()
+		os.chdir(self.tdir)
+
+		os.makedirs(path.join('.template', 'lib'))
+		with open(path.join('.template', 'lib', 'changeset.txt'), 'w') as changeset_f:
+			changeset_f.write("0123456789AB")
+	def teardown(self):
+		os.chdir(self.orig_dir)
+		shutil.rmtree(self.tdir, ignore_errors=True)
+
+	def test_read_changeset(self):
+		eq_(lib.platform_changeset(), '0123456789AB')

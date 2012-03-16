@@ -4,25 +4,32 @@
 requests.models
 ~~~~~~~~~~~~~~~
 
+This module contains the primary objects that power Requests.
 """
 
+import os
 import urllib
-import urllib2
-import socket
-import zlib
 
-from urllib2 import HTTPError
-from urlparse import urlparse, urlunparse, urljoin
+from urlparse import urlparse, urlunparse, urljoin, urlsplit
 from datetime import datetime
 
-from .config import settings
-from .monkeys import Request as _Request, HTTPBasicAuthHandler, HTTPForcedBasicAuthHandler, HTTPDigestAuthHandler, HTTPRedirectHandler
+from .hooks import dispatch_hook
 from .structures import CaseInsensitiveDict
-from .packages.poster.encode import multipart_encode
-from .packages.poster.streaminghttp import register_openers, get_handlers
-from .utils import dict_from_cookiejar
-from .exceptions import RequestException, AuthenticationError, Timeout, URLRequired, InvalidMethod, TooManyRedirects
 from .status_codes import codes
+from .packages import oreos
+from .auth import HTTPBasicAuth, HTTPProxyAuth
+from .packages.urllib3.response import HTTPResponse
+from .packages.urllib3.exceptions import MaxRetryError
+from .packages.urllib3.exceptions import SSLError as _SSLError
+from .packages.urllib3.exceptions import HTTPError as _HTTPError
+from .packages.urllib3 import connectionpool, poolmanager
+from .packages.urllib3.filepost import encode_multipart_formdata
+from .exceptions import (
+    ConnectionError, HTTPError, RequestException, Timeout, TooManyRedirects,
+    URLRequired, SSLError)
+from .utils import (
+    get_encoding_from_headers, stream_decode_response_unicode,
+    stream_decompress, guess_filename, requote_path)
 
 
 REDIRECT_STATI = (codes.moved, codes.found, codes.other, codes.temporary_moved)
@@ -30,40 +37,54 @@ REDIRECT_STATI = (codes.moved, codes.found, codes.other, codes.temporary_moved)
 
 
 class Request(object):
-    """The :class:`Request <models.Request>` object. It carries out all functionality of
+    """The :class:`Request <Request>` object. It carries out all functionality of
     Requests. Recommended interface is with the Requests functions.
     """
 
     def __init__(self,
-        url=None, headers=dict(), files=None, method=None, data=dict(),
-        params=dict(), auth=None, cookiejar=None, timeout=None, redirect=False,
-        allow_redirects=False, proxies=None):
+        url=None,
+        headers=dict(),
+        files=None,
+        method=None,
+        data=dict(),
+        params=dict(),
+        auth=None,
+        cookies=None,
+        timeout=None,
+        redirect=False,
+        allow_redirects=False,
+        proxies=None,
+        hooks=None,
+        config=None,
+        _poolmanager=None,
+        verify=None):
 
-        #: Float describ the timeout of the request.
+        #: Float describes the timeout of the request.
         #  (Use socket.setdefaulttimeout() as fallback)
         self.timeout = timeout
 
         #: Request URL.
         self.url = url
 
-        #: Dictonary of HTTP Headers to attach to the :class:`Request <models.Request>`.
-        self.headers = headers
+        #: Dictionary of HTTP Headers to attach to the :class:`Request <Request>`.
+        self.headers = dict(headers or [])
 
         #: Dictionary of files to multipart upload (``{filename: content}``).
         self.files = files
 
-        #: HTTP Method to use. Available: GET, HEAD, PUT, POST, DELETE.
+        #: HTTP Method to use.
         self.method = method
 
         #: Dictionary or byte of request body data to attach to the
-        #: :class:`Request <models.Request>`.
+        #: :class:`Request <Request>`.
         self.data = None
 
         #: Dictionary or byte of querystring data to attach to the
-        #: :class:`Request <models.Request>`.
+        #: :class:`Request <Request>`.
         self.params = None
+        self.params = dict(params or [])
 
-        #: True if :class:`Request <models.Request>` is part of a redirect chain (disables history
+        #: True if :class:`Request <Request>` is part of a redirect chain (disables history
         #: and HTTPError storage).
         self.redirect = redirect
 
@@ -71,146 +92,119 @@ class Request(object):
         self.allow_redirects = allow_redirects
 
         # Dictionary mapping protocol to the URL of the proxy (e.g. {'http': 'foo.bar:3128'})
-        self.proxies = proxies
+        self.proxies = dict(proxies or [])
 
         self.data, self._enc_data = self._encode_params(data)
         self.params, self._enc_params = self._encode_params(params)
 
-        #: :class:`Response <models.Response>` instance, containing
+        #: :class:`Response <Response>` instance, containing
         #: content and metadata of HTTP Response, once :attr:`sent <send>`.
         self.response = Response()
 
-        if isinstance(auth, (list, tuple)):
-            auth = AuthObject(*auth)
-        if not auth:
-            auth = auth_manager.get_auth(self.url)
-
-        #: :class:`AuthObject` to attach to :class:`Request <models.Request>`.
+        #: Authentication tuple or object to attach to :class:`Request <Request>`.
         self.auth = auth
 
-        #: CookieJar to attach to :class:`Request <models.Request>`.
-        self.cookiejar = cookiejar
+        #: CookieJar to attach to :class:`Request <Request>`.
+        self.cookies = dict(cookies or [])
+
+        #: Dictionary of configurations for this request.
+        self.config = dict(config or [])
 
         #: True if Request has been sent.
         self.sent = False
 
+        #: Event-handling hooks.
+        self.hooks = hooks
 
-        # Header manipulation and defaults.
+        #: Session.
+        self.session = None
 
-        if settings.accept_gzip:
-            settings.base_headers.update({'Accept-Encoding': 'gzip'})
+        #: SSL Verification.
+        self.verify = verify
 
         if headers:
             headers = CaseInsensitiveDict(self.headers)
         else:
             headers = CaseInsensitiveDict()
 
-        for (k, v) in settings.base_headers.items():
+        # Add configured base headers.
+        for (k, v) in self.config.get('base_headers', {}).items():
             if k not in headers:
                 headers[k] = v
 
         self.headers = headers
+        self._poolmanager = _poolmanager
+
+        # Pre-request hook.
+        r = dispatch_hook('pre_request', hooks, self)
+        self.__dict__.update(r.__dict__)
 
 
     def __repr__(self):
         return '<Request [%s]>' % (self.method)
 
 
-    def _checks(self):
-        """Deterministic checks for consistency."""
-
-        if not self.url:
-            raise URLRequired
-
-
-    def _get_opener(self):
-        """Creates appropriate opener object for urllib2."""
-
-        _handlers = []
-
-        if self.cookiejar is not None:
-            _handlers.append(urllib2.HTTPCookieProcessor(self.cookiejar))
-
-        if self.auth:
-            if not isinstance(self.auth.handler, (urllib2.AbstractBasicAuthHandler, urllib2.AbstractDigestAuthHandler)):
-                # TODO: REMOVE THIS COMPLETELY
-                auth_manager.add_password(self.auth.realm, self.url, self.auth.username, self.auth.password)
-                self.auth.handler = self.auth.handler(auth_manager)
-                auth_manager.add_auth(self.url, self.auth)
-
-            _handlers.append(self.auth.handler)
-
-        if self.proxies:
-            _handlers.append(urllib2.ProxyHandler(self.proxies))
-
-        _handlers.append(HTTPRedirectHandler)
-
-        if not _handlers:
-            return urllib2.urlopen
-
-        if self.data or self.files:
-            _handlers.extend(get_handlers())
-
-        opener = urllib2.build_opener(*_handlers)
-
-        if self.headers:
-            # Allow default headers in the opener to be overloaded
-            normal_keys = [k.capitalize() for k in self.headers]
-            for key, val in opener.addheaders[:]:
-                if key not in normal_keys:
-                    continue
-                # Remove it, we have a value to take its place
-                opener.addheaders.remove((key, val))
-
-        return opener.open
-
-
     def _build_response(self, resp, is_error=False):
-        """Build internal :class:`Response <models.Response>` object from given response."""
+        """Build internal :class:`Response <Response>` object
+        from given response.
+        """
 
         def build(resp):
 
             response = Response()
-            response.status_code = getattr(resp, 'code', None)
 
-            try:
-                response.headers = CaseInsensitiveDict(getattr(resp.info(), 'dict', None))
-                response.read = resp.read
-                response._resp = resp
-                response._close = resp.close
+            # Pass settings over.
+            response.config = self.config
 
-                if self.cookiejar:
+            if resp:
 
-                    response.cookies = dict_from_cookiejar(self.cookiejar)
+                # Fallback to None if there's no status_code, for whatever reason.
+                response.status_code = getattr(resp, 'status', None)
 
+                # Make headers case-insensitive.
+                response.headers = CaseInsensitiveDict(getattr(resp, 'headers', None))
 
-            except AttributeError:
-                pass
+                # Set encoding.
+                response.encoding = get_encoding_from_headers(response.headers)
+
+                # Start off with our local cookies.
+                cookies = self.cookies or dict()
+
+                # Add new cookies from the server.
+                if 'set-cookie' in response.headers:
+                    cookie_header = response.headers['set-cookie']
+                    cookies = oreos.dict_from_string(cookie_header)
+
+                # Save cookies in Response.
+                response.cookies = cookies
+
+                # No exceptions were harmed in the making of this request.
+                response.error = getattr(resp, 'error', None)
+
+            # Save original response for later.
+            response.raw = resp
 
             if is_error:
                 response.error = resp
 
-            response.url = getattr(resp, 'url', None)
+            response.url = self.full_url
 
             return response
-
 
         history = []
 
         r = build(resp)
+        cookies = self.cookies
+        self.cookies.update(r.cookies)
 
         if r.status_code in REDIRECT_STATI and not self.redirect:
 
             while (
                 ('location' in r.headers) and
-                ((self.method in ('GET', 'HEAD')) or
-                (r.status_code is codes.see_other) or
-                (self.allow_redirects))
+                ((r.status_code is codes.see_other) or (self.allow_redirects))
             ):
 
-                r.close()
-
-                if not len(history) < settings.max_redirects:
+                if not len(history) < self.config.get('max_redirects'):
                     raise TooManyRedirects()
 
                 history.append(r)
@@ -225,7 +219,7 @@ class Request(object):
                 # Facilitate non-RFC2616-compliant 'location' headers
                 # (e.g. '/path/to/resource' instead of 'http://domain.tld/path/to/resource')
                 if not urlparse(url).netloc:
-                    url = urljoin(r.url, urllib.quote(urllib.unquote(url)))
+                    url = urljoin(r.url, url)
 
                 # http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3.4
                 if r.status_code is codes.see_other:
@@ -233,18 +227,39 @@ class Request(object):
                 else:
                     method = self.method
 
+                # Remove the cookie headers that were sent.
+                headers = self.headers
+                try:
+                    del headers['Cookie']
+                except KeyError:
+                    pass
+
                 request = Request(
-                    url, self.headers, self.files, method,
-                    self.data, self.params, self.auth, self.cookiejar,
-                    redirect=True
+                    url=url,
+                    headers=headers,
+                    files=self.files,
+                    method=method,
+                    params=self.session.params,
+                    auth=self.auth,
+                    cookies=cookies,
+                    redirect=True,
+                    config=self.config,
+                    timeout=self.timeout,
+                    _poolmanager=self._poolmanager,
+                    proxies = self.proxies,
+                    verify = self.verify
                 )
+
                 request.send()
+                cookies.update(request.response.cookies)
                 r = request.response
+                self.cookies.update(r.cookies)
 
             r.history = history
 
         self.response = r
         self.response.request = self
+        self.response.cookies.update(self.cookies)
 
 
     @staticmethod
@@ -257,8 +272,11 @@ class Request(object):
 
         Otherwise, assumes the data is already encoded appropriately, and
         returns it twice.
-
         """
+
+        if hasattr(data, '__iter__'):
+            data = dict(data)
+
         if hasattr(data, 'items'):
             result = []
             for k, vs in data.items():
@@ -269,28 +287,63 @@ class Request(object):
         else:
             return data, data
 
-
-    def _build_url(self):
+    @property
+    def full_url(self):
         """Build the actual URL to use."""
+
+        if not self.url:
+            raise URLRequired()
 
         # Support for unicode domain names and paths.
         scheme, netloc, path, params, query, fragment = urlparse(self.url)
+
+        if not scheme:
+            raise ValueError()
+
         netloc = netloc.encode('idna')
+
         if isinstance(path, unicode):
             path = path.encode('utf-8')
-        path = urllib.quote(urllib.unquote(path))
-        self.url = str(urlunparse([ scheme, netloc, path, params, query, fragment ]))
+
+        path = requote_path(path)
+
+        url = str(urlunparse([ scheme, netloc, path, params, query, fragment ]))
 
         if self._enc_params:
-            if urlparse(self.url).query:
-                return '%s&%s' % (self.url, self._enc_params)
+            if urlparse(url).query:
+                return '%s&%s' % (url, self._enc_params)
             else:
-                return '%s?%s' % (self.url, self._enc_params)
+                return '%s?%s' % (url, self._enc_params)
         else:
-            return self.url
+            return url
+
+    @property
+    def path_url(self):
+        """Build the path URL to use."""
+
+        url = []
+
+        p = urlsplit(self.full_url)
+
+        # Proxies use full URLs.
+        if p.scheme in self.proxies:
+            return self.full_url
+
+        path = p.path
+        if not path:
+            path = '/'
+        url.append(path)
+
+        query = p.query
+        if query:
+            url.append('?')
+            url.append(query)
+
+        return ''.join(url)
 
 
-    def send(self, anyway=False):
+
+    def send(self, anyway=False, prefetch=False):
         """Sends the request. Returns True of successful, false if not.
         If there was an HTTPError during transmission,
         self.response.status_code will contain the HTTPError code.
@@ -301,323 +354,355 @@ class Request(object):
         already been sent.
         """
 
-        self._checks()
-        success = False
+        # Build the URL
+        url = self.full_url
 
         # Logging
-        if settings.verbose:
-            settings.verbose.write('%s   %s   %s\n' % (
-                datetime.now().isoformat(), self.method, self.url
+        if self.config.get('verbose'):
+            self.config.get('verbose').write('%s   %s   %s\n' % (
+                datetime.now().isoformat(), self.method, url
             ))
 
+        # Nottin' on you.
+        body = None
+        content_type = None
 
-        url = self._build_url()
-        if self.method in ('GET', 'HEAD', 'DELETE'):
-            req = _Request(url, method=self.method)
-        else:
+        # Multi-part file uploads.
+        if self.files:
+            if not isinstance(self.data, basestring):
 
-            if self.files:
-                register_openers()
+                try:
+                    fields = self.data.copy()
+                except AttributeError:
+                    fields = dict(self.data)
 
-                if self.data:
-                    self.files.update(self.data)
+                for (k, v) in self.files.items():
+                    # support for explicit filename
+                    if isinstance(v, (tuple, list)):
+                        fn, fp = v
+                    else:
+                        fn = guess_filename(v) or k
+                        fp = v
+                    fields.update({k: (fn, fp.read())})
 
-                datagen, headers = multipart_encode(self.files)
-                req = _Request(url, data=datagen, headers=headers, method=self.method)
-
+                (body, content_type) = encode_multipart_formdata(fields)
             else:
-                req = _Request(url, data=self._enc_data, method=self.method)
+                pass
+                # TODO: Conflict?
+        else:
+            if self.data:
 
-        if self.headers:
-            for k,v in self.headers.iteritems():
-                req.add_header(k, v)
+                body = self._enc_data
+                if isinstance(self.data, basestring):
+                    content_type = None
+                else:
+                    content_type = 'application/x-www-form-urlencoded'
+
+        # Add content-type if it wasn't explicitly provided.
+        if (content_type) and (not 'content-type' in self.headers):
+            self.headers['Content-Type'] = content_type
+
+        if self.auth:
+            if isinstance(self.auth, tuple) and len(self.auth) == 2:
+                # special-case basic HTTP auth
+                self.auth = HTTPBasicAuth(*self.auth)
+
+            # Allow auth to make its changes.
+            r = self.auth(self)
+
+            # Update self to reflect the auth changes.
+            self.__dict__.update(r.__dict__)
+
+        _p = urlparse(url)
+        proxy = self.proxies.get(_p.scheme)
+
+        if proxy:
+            conn = poolmanager.proxy_from_url(proxy)
+            _proxy = urlparse(proxy)
+            if '@' in _proxy.netloc:
+                auth, url = _proxy.netloc.split('@', 1)
+                self.proxy_auth = HTTPProxyAuth(*auth.split(':', 1))
+                r = self.proxy_auth(self)
+                self.__dict__.update(r.__dict__)
+        else:
+            # Check to see if keep_alive is allowed.
+            if self.config.get('keep_alive'):
+                conn = self._poolmanager.connection_from_url(url)
+            else:
+                conn = connectionpool.connection_from_url(url)
+
+        if url.startswith('https') and self.verify:
+
+            cert_loc = None
+
+            # Allow self-specified cert location.
+            if self.verify is not True:
+                cert_loc = self.verify
+
+
+            # Look for configuration.
+            if not cert_loc:
+                cert_loc = os.environ.get('REQUESTS_CA_BUNDLE')
+
+            # Curl compatiblity.
+            if not cert_loc:
+                cert_loc = os.environ.get('CURL_CA_BUNDLE')
+
+            # Use the awesome certifi list.
+            if not cert_loc:
+                cert_loc = __import__('certifi').where()
+
+            conn.cert_reqs = 'CERT_REQUIRED'
+            conn.ca_certs = cert_loc
 
         if not self.sent or anyway:
 
+            if self.cookies:
+
+                # Skip if 'cookie' header is explicitly set.
+                if 'cookie' not in self.headers:
+
+                    # Simple cookie with our dict.
+                    c = oreos.monkeys.SimpleCookie()
+                    for (k, v) in self.cookies.items():
+                        c[k] = v
+
+                    # Turn it into a header.
+                    cookie_header = c.output(header='', sep='; ').strip()
+
+                    # Attach Cookie header to request.
+                    self.headers['Cookie'] = cookie_header
+
             try:
-                opener = self._get_opener()
+                # The inner try .. except re-raises certain exceptions as
+                # internal exception types; the outer suppresses exceptions
+                # when safe mode is set.
                 try:
+                    # Send the request.
+                    r = conn.urlopen(
+                        method=self.method,
+                        url=self.path_url,
+                        body=body,
+                        headers=self.headers,
+                        redirect=False,
+                        assert_same_host=False,
+                        preload_content=False,
+                        decode_content=True,
+                        retries=self.config.get('max_retries', 0),
+                        timeout=self.timeout,
+                    )
+                    self.sent = True
 
-                    resp = opener(req, timeout=self.timeout)
+                except MaxRetryError, e:
+                    raise ConnectionError(e)
 
-                except TypeError, err:
-                    # timeout argument is new since Python v2.6
-                    if not 'timeout' in str(err):
-                        raise
+                except (_SSLError, _HTTPError), e:
+                    if self.verify and isinstance(e, _SSLError):
+                        raise SSLError(e)
 
-                    if settings.timeout_fallback:
-                        # fall-back and use global socket timeout (This is not thread-safe!)
-                        old_timeout = socket.getdefaulttimeout()
-                        socket.setdefaulttimeout(self.timeout)
+                    raise Timeout('Request timed out.')
 
-                    resp = opener(req)
+            except RequestException, e:
+                if self.config.get('safe_mode', False):
+                    # In safe mode, catch the exception and attach it to
+                    # a blank urllib3.HTTPResponse object.
+                    r = HTTPResponse()
+                    r.error = e
+                else:
+                    raise
 
-                    if settings.timeout_fallback:
-                        # restore gobal timeout
-                        socket.setdefaulttimeout(old_timeout)
+            self._build_response(r)
 
-                if self.cookiejar is not None:
-                    self.cookiejar.extract_cookies(resp, req)
+            # Response manipulation hook.
+            self.response = dispatch_hook('response', self.hooks, self.response)
 
-            except (urllib2.HTTPError, urllib2.URLError), why:
-                if hasattr(why, 'reason'):
-                    if isinstance(why.reason, socket.timeout):
-                        why = Timeout(why)
+            # Post-request hook.
+            r = dispatch_hook('post_request', self.hooks, self)
+            self.__dict__.update(r.__dict__)
 
-                self._build_response(why, is_error=True)
+            # If prefetch is True, mark content as consumed.
+            if prefetch:
+                # Save the response.
+                self.response.content
+            
+            if self.config.get('danger_mode'):
+                self.response.raise_for_status()
 
-
-            else:
-                self._build_response(resp)
-                self.response.ok = True
-
-
-        self.sent = self.response.ok
-
-        return self.sent
-
+            return self.sent
 
 
 class Response(object):
-    """The core :class:`Response <models.Response>` object. All
-    :class:`Request <models.Request>` objects contain a
-    :class:`response <models.Response>` attribute, which is an instance
+    """The core :class:`Response <Response>` object. All
+    :class:`Request <Request>` objects contain a
+    :class:`response <Response>` attribute, which is an instance
     of this class.
     """
 
     def __init__(self):
-        #: Raw content of the response, in bytes.
-        #: If ``content-encoding`` of response was set to ``gzip``, the
-        #: response data will be automatically deflated.
+
         self._content = None
+        self._content_consumed = False
+
         #: Integer Code of responded HTTP Status.
         self.status_code = None
+
         #: Case-insensitive Dictionary of Response Headers.
         #: For example, ``headers['content-encoding']`` will return the
         #: value of a ``'Content-Encoding'`` response header.
         self.headers = CaseInsensitiveDict()
+
+        #: File-like object representation of response (for advanced usage).
+        self.raw = None
+
         #: Final URL location of Response.
         self.url = None
-        #: True if no :attr:`error` occured.
-        self.ok = False
-        #: Resulting :class:`HTTPError` of request, if one occured.
+
+        #: Resulting :class:`HTTPError` of request, if one occurred.
         self.error = None
-        #: A list of :class:`Response <models.Response>` objects from
+
+        #: Encoding to decode with when accessing r.content.
+        self.encoding = None
+
+        #: A list of :class:`Response <Response>` objects from
         #: the history of the Request. Any redirect responses will end
         #: up here.
         self.history = []
-        #: The Request that created the Response.
+
+        #: The :class:`Request <Request>` that created the Response.
         self.request = None
+
         #: A dictionary of Cookies the server sent back.
-        self.cookies = None
+        self.cookies = {}
+
+        #: Dictionary of configurations for this request.
+        self.config = {}
 
 
     def __repr__(self):
         return '<Response [%s]>' % (self.status_code)
 
-
     def __nonzero__(self):
         """Returns true if :attr:`status_code` is 'OK'."""
-        return not self.error
+        return self.ok
+
+    @property
+    def ok(self):
+        try:
+            self.raise_for_status()
+        except HTTPError:
+            return False
+        return True
 
 
-    def __getattr__(self, name):
-        """Read and returns the full stream when accessing to :attr: `content`"""
-        if name == 'content':
-            if self._content is not None:
-                return self._content
-            self._content = self.read()
-            if self.headers.get('content-encoding', '') == 'gzip':
-                try:
-                    self._content = zlib.decompress(self._content, 16+zlib.MAX_WBITS)
-                except zlib.error:
-                    pass
-            return self._content
-        else:
-            raise AttributeError
+    def iter_content(self, chunk_size=10 * 1024, decode_unicode=None):
+        """Iterates over the response data.  This avoids reading the content
+        at once into memory for large responses.  The chunk size is the number
+        of bytes it should read into memory.  This is not necessarily the
+        length of each item returned as decoding can take place.
+        """
+        if self._content_consumed:
+            raise RuntimeError(
+                'The content for this response was already consumed'
+            )
 
-    def raise_for_status(self):
-        """Raises stored :class:`HTTPError` or :class:`URLError`, if one occured."""
-        if self.error:
-            raise self.error
+        def generate():
+            while 1:
+                chunk = self.raw.read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
+            self._content_consumed = True
 
+        gen = generate()
 
-    def close(self):
-        if self._resp.fp is not None and hasattr(self._resp.fp, '_sock'):
-            self._resp.fp._sock.recv = None
-        self._close()
+        if 'gzip' in self.headers.get('content-encoding', ''):
+            gen = stream_decompress(gen, mode='gzip')
+        elif 'deflate' in self.headers.get('content-encoding', ''):
+            gen = stream_decompress(gen, mode='deflate')
 
-class AuthManager(object):
-    """Requests Authentication Manager."""
+        if decode_unicode is None:
+            decode_unicode = self.config.get('decode_unicode')
 
-    def __new__(cls):
-        singleton = cls.__dict__.get('__singleton__')
-        if singleton is not None:
-            return singleton
+        if decode_unicode:
+            gen = stream_decode_response_unicode(gen, self)
 
-        cls.__singleton__ = singleton = object.__new__(cls)
-
-        return singleton
+        return gen
 
 
-    def __init__(self):
-        self.passwd = {}
-        self._auth = {}
+    def iter_lines(self, chunk_size=10 * 1024, decode_unicode=None):
+        """Iterates over the response data, one line at a time.  This
+        avoids reading the content at once into memory for large
+        responses.
+        """
+
+        pending = None
+        for chunk in self.iter_content(chunk_size, decode_unicode=decode_unicode):
+            if pending is not None:
+                chunk = pending + chunk
+            lines = chunk.splitlines(True)
+            for line in lines[:-1]:
+                yield line.rstrip()
+            # Save the last part of the chunk for next iteration, to keep full line together
+            pending = lines[-1]
+
+        # Yield the last line
+        if pending is not None:
+            yield pending.rstrip()
 
 
-    def __repr__(self):
-        return '<AuthManager [%s]>' % (self.method)
+    @property
+    def content(self):
+        """Content of the response, in bytes or unicode
+        (if available).
+        """
 
-
-    def add_auth(self, uri, auth):
-        """Registers AuthObject to AuthManager."""
-
-        uri = self.reduce_uri(uri, False)
-
-        # try to make it an AuthObject
-        if not isinstance(auth, AuthObject):
+        if self._content is None:
+            # Read the contents.
             try:
-                auth = AuthObject(*auth)
+                if self._content_consumed:
+                    raise RuntimeError(
+                        'The content for this response was already consumed')
+
+                self._content = self.raw.read()
+            except AttributeError:
+                self._content = None
+
+        content = self._content
+
+        # Decode unicode content.
+        if self.config.get('decode_unicode'):
+
+            # Try charset from content-type
+
+            if self.encoding:
+                try:
+                    content = unicode(content, self.encoding)
+                except UnicodeError:
+                    pass
+
+            # Fall back:
+            try:
+                content = unicode(content, self.encoding, errors='replace')
             except TypeError:
                 pass
 
-        self._auth[uri] = auth
+        self._content_consumed = True
+        return content
 
 
-    def add_password(self, realm, uri, user, passwd):
-        """Adds password to AuthManager."""
-        # uri could be a single URI or a sequence
-        if isinstance(uri, basestring):
-            uri = [uri]
+    def raise_for_status(self):
+        """Raises stored :class:`HTTPError` or :class:`URLError`, if one occurred."""
 
-        reduced_uri = tuple([self.reduce_uri(u, False) for u in uri])
+        if self.error:
+            raise self.error
 
-        if reduced_uri not in self.passwd:
-            self.passwd[reduced_uri] = {}
-        self.passwd[reduced_uri] = (user, passwd)
+        if (self.status_code >= 300) and (self.status_code < 400):
+            raise HTTPError('%s Redirection' % self.status_code)
 
+        elif (self.status_code >= 400) and (self.status_code < 500):
+            raise HTTPError('%s Client Error' % self.status_code)
 
-    def find_user_password(self, realm, authuri):
-        for uris, authinfo in self.passwd.iteritems():
-            reduced_authuri = self.reduce_uri(authuri, False)
-            for uri in uris:
-                if self.is_suburi(uri, reduced_authuri):
-                    return authinfo
-
-        return (None, None)
+        elif (self.status_code >= 500) and (self.status_code < 600):
+            raise HTTPError('%s Server Error' % self.status_code)
 
 
-    def get_auth(self, uri):
-        (in_domain, in_path) = self.reduce_uri(uri, False)
-
-        for domain, path, authority in (
-            (i[0][0], i[0][1], i[1]) for i in self._auth.iteritems()
-        ):
-            if in_domain == domain:
-                if path in in_path:
-                    return authority
-
-
-    def reduce_uri(self, uri, default_port=True):
-        """Accept authority or URI and extract only the authority and path."""
-
-        # note HTTP URLs do not have a userinfo component
-        parts = urllib2.urlparse.urlsplit(uri)
-
-        if parts[1]:
-            # URI
-            scheme = parts[0]
-            authority = parts[1]
-            path = parts[2] or '/'
-        else:
-            # host or host:port
-            scheme = None
-            authority = uri
-            path = '/'
-
-        host, port = urllib2.splitport(authority)
-
-        if default_port and port is None and scheme is not None:
-            dport = {"http": 80,
-                     "https": 443,
-                     }.get(scheme)
-            if dport is not None:
-                authority = "%s:%d" % (host, dport)
-
-        return authority, path
-
-
-    def is_suburi(self, base, test):
-        """Check if test is below base in a URI tree
-
-        Both args must be URIs in reduced form.
-        """
-        if base == test:
-            return True
-        if base[0] != test[0]:
-            return False
-        common = urllib2.posixpath.commonprefix((base[1], test[1]))
-        if len(common) == len(base[1]):
-            return True
-        return False
-
-
-    def empty(self):
-        self.passwd = {}
-
-
-    def remove(self, uri, realm=None):
-        # uri could be a single URI or a sequence
-        if isinstance(uri, basestring):
-            uri = [uri]
-
-        for default_port in True, False:
-            reduced_uri = tuple([self.reduce_uri(u, default_port) for u in uri])
-            del self.passwd[reduced_uri][realm]
-
-
-    def __contains__(self, uri):
-        # uri could be a single URI or a sequence
-        if isinstance(uri, basestring):
-            uri = [uri]
-
-        uri = tuple([self.reduce_uri(u, False) for u in uri])
-
-        if uri in self.passwd:
-            return True
-
-        return False
-
-auth_manager = AuthManager()
-
-
-
-class AuthObject(object):
-    """The :class:`AuthObject` is a simple HTTP Authentication token. When
-    given to a Requests function, it enables Basic HTTP Authentication for that
-    Request. You can also enable Authorization for domain realms with AutoAuth.
-    See AutoAuth for more details.
-
-    :param username: Username to authenticate with.
-    :param password: Password for given username.
-    :param realm: (optional) the realm this auth applies to
-    :param handler: (optional) basic || digest || proxy_basic || proxy_digest
-    """
-
-    _handlers = {
-        'basic': HTTPBasicAuthHandler,
-        'forced_basic': HTTPForcedBasicAuthHandler,
-        'digest': HTTPDigestAuthHandler,
-        'proxy_basic': urllib2.ProxyBasicAuthHandler,
-        'proxy_digest': urllib2.ProxyDigestAuthHandler
-    }
-
-    def __init__(self, username, password, handler='forced_basic', realm=None):
-        self.username = username
-        self.password = password
-        self.realm = realm
-
-        if isinstance(handler, basestring):
-            self.handler = self._handlers.get(handler.lower(), HTTPForcedBasicAuthHandler)
-        else:
-            self.handler = handler

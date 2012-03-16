@@ -10,7 +10,7 @@ from __future__ import with_statement
 import codecs
 import logging
 
-from forge import build, build_config
+from forge import build_config
 from forge.build import create_build, import_generate_dynamic
 
 LOG = logging.getLogger(__name__)

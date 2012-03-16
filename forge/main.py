@@ -10,7 +10,7 @@ import forge
 from forge import defaults, build_config, ForgeError
 from forge import build
 from forge.generate import Generate
-from forge.remote import Remote
+from forge.remote import Remote, UpdateRequired
 from forge.templates import Manager
 from forge.lib import try_a_few_times, AccidentHandler
 
@@ -88,13 +88,23 @@ def with_error_handler(function):
 				"You're trying to run commands in the build tools directory.\n"
 				"You need to move to another directory outside of this one first.\n"
 			)
-		except KeyboardInterrupt:
-			sys.stdout.write('\n')
-			LOG.info('exiting...')
+		except UpdateRequired as e:
+			LOG.info("""An update to these command line tools is required, downloading...""")
+
+			# TODO: refactor so that we don't need to instantiate Remote here
+			config = build_config.load()
+			remote = Remote(config)
+			remote.update()
+
+			LOG.info("Update complete, run your command again to continue")
 			sys.exit(1)
 		except ForgeError as e:
 			# thrown by us, expected
 			LOG.error(e)
+			sys.exit(1)
+		except KeyboardInterrupt:
+			sys.stdout.write('\n')
+			LOG.info('exiting...')
 			sys.exit(1)
 		except Exception as e:
 			if LOG is None:
@@ -134,6 +144,9 @@ def _setup_logging_to_stdout(stdout_log_level):
 	stream_handler.setFormatter(logging.Formatter('[%(levelname)7s] %(message)s'))
 	logging.root.addHandler(stream_handler)
 
+def _filter_requests_logging():
+	"""Stops requests from logging to info!"""
+	logging.getLogger('requests').setLevel(logging.ERROR)
 
 def setup_logging(settings):
 	'Adjust logging parameters according to command line switches'
@@ -153,6 +166,7 @@ def setup_logging(settings):
 
 	_setup_logging_to_stdout(stdout_log_level)
 	_setup_error_logging_to_file()
+	_filter_requests_logging()
 
 	LOG = logging.getLogger(__name__)
 
@@ -264,11 +278,7 @@ def create(unhandled_args):
 	_check_working_directory_is_safe()
 	config = build_config.load()
 	remote = Remote(config)
-	try:
-		remote.check_version()
-	except Exception as e:
-		LOG.error(e)
-		return 1
+	remote.check_version()
 
 	if os.path.exists(defaults.SRC_DIR):
 		raise ForgeError('Source folder "%s" already exists, if you really want to create a new app you will need to remove it!' % defaults.SRC_DIR)
@@ -301,34 +311,41 @@ def development_build(unhandled_args):
 	manager = Manager(config)
 
 	instructions_dir = defaults.INSTRUCTIONS_DIR
-	templates_dir = manager.templates_for_config(defaults.APP_CONFIG_FILE)
-	if templates_dir and not forge.settings.get('full', False):
-		LOG.info('configuration is unchanged: using existing templates')
-	else:
-		LOG.debug("removing previous templates")
+	if forge.settings.get('full', False):
+		# do this first, so that bugs in generate_dynamic can always be nuked with a -f
+		LOG.debug("full rebuild requested: removing previous templates")
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
-		if forge.settings.get('full', False):
-			LOG.info('forcing rebuild of templates')
-		else:
-			LOG.info('configuration has changed: creating new templates')
+	config_changed = manager.need_new_templates_for_config()
+	server_changed, reason = remote.server_says_should_rebuild()
+	if config_changed or server_changed:
+		if config_changed:
+			LOG.info("Your app configuration has changed: we need to rebuild your app")
+		elif server_changed:
+			LOG.debug("Server requires rebuild: {reason}".format(reason=reason))
+			LOG.info("Your Forge platform has been updated: we need to rebuild your app")
+
+		if path.exists(instructions_dir):
+			LOG.debug("removing previous templates")
+			shutil.rmtree(instructions_dir, ignore_errors=True)
 
 		remote.check_version()
 
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
 		# retrieve results of build
-		templates_dir = manager.fetch_templates(
+		manager.fetch_templates(
 				build_id,
-				clean=forge.settings.get('full', False)
 		)
 
 		# have templates - now fetch injection instructions
 		remote.fetch_generate_instructions(build_id, instructions_dir)
+	else:
+		LOG.info('configuration is unchanged: using existing templates')
 
 	def move_files_across():
 		shutil.rmtree('development', ignore_errors=True)
-		shutil.copytree(templates_dir, 'development')
+		shutil.copytree(defaults.TEMPLATE_DIR, 'development')
 		shutil.rmtree(path.join('development', 'generate_dynamic'), ignore_errors=True)
 
 	# Windows often gives a permission error without a small wait

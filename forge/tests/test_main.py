@@ -15,7 +15,6 @@ def _logging_test(settings, level, logging, _setup_error_logging_to_file, _setup
 
 	_setup_error_logging_to_file.assert_called_once_with()
 	_setup_logging_to_stdout.assert_called_once_with(getattr(logging, level))
-	logging.getLogger.assert_called_once_with('forge.main')
 
 def test_verbose():
 	settings = dict(verbose = True)
@@ -166,13 +165,14 @@ class TestBuild(object):
 	def test_dev_no_conf_change(self, argparse, Manager, Remote, Generate, shutil, isdir, build_config):
 		parser = argparse.ArgumentParser.return_value
 		args = parser.parse_args.return_value
+		Manager.return_value.need_new_templates_for_config.return_value = False
+		Remote.return_value.server_says_should_rebuild.return_value = (False, '')
 		args.full = False
-		isdir.return_value = True
 		build_config.load.return_value = dummy_config()
 
 		main.development_build([])
 
-		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
+		Manager.return_value.need_new_templates_for_config.assert_called_once_with()
 		eq_(shutil.rmtree.call_args_list, [
 			(
 				('development',),
@@ -183,7 +183,7 @@ class TestBuild(object):
 				{'ignore_errors': True}
 			)
 		])
-		shutil.copytree.assert_called_once_with(Manager.return_value.templates_for_config.return_value, 'development')
+		shutil.copytree.assert_called_once_with(".template", "development")
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR, extra_args=[])
 
 	@mock.patch('forge.main.build_config')
@@ -198,22 +198,19 @@ class TestBuild(object):
 		parser = argparse.ArgumentParser.return_value
 		args = parser.parse_args.return_value
 		args.full = False
-		Manager.return_value.templates_for_config.return_value = None
+		Manager.return_value.need_new_templates_for_config.return_value = True
+		Remote.return_value.server_says_should_rebuild.return_value = (False, '')
 		Remote.return_value.build.return_value = -1
 		isdir.return_value = True
 		build_config.load.return_value = dummy_config()
 
 		main.development_build([])
 
-		Manager.return_value.templates_for_config.assert_called_once_with(defaults.APP_CONFIG_FILE)
+		Manager.return_value.need_new_templates_for_config.assert_called_once_with()
 		Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
-		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value, clean=False)
+		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value)
 
 		eq_(shutil.rmtree.call_args_list, [
-			(
-				('.template',),
-				{'ignore_errors': True}
-			),
 			(
 				('development',),
 				{'ignore_errors': True}
@@ -223,7 +220,7 @@ class TestBuild(object):
 				{'ignore_errors': True}
 			)
 		])
-		shutil.copytree.assert_called_once_with(Manager.return_value.fetch_templates.return_value, 'development')
+		shutil.copytree.assert_called_once_with(".template", 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR, extra_args=[])
 
 class TestWithErrorHandler(object):
