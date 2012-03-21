@@ -315,6 +315,7 @@ def development_build(unhandled_args):
 
 	config = build_config.load()
 	remote = Remote(config)
+	remote.check_version()
 	manager = Manager(config)
 
 	instructions_dir = defaults.INSTRUCTIONS_DIR
@@ -335,8 +336,6 @@ def development_build(unhandled_args):
 		if path.exists(instructions_dir):
 			LOG.debug("removing previous templates")
 			shutil.rmtree(instructions_dir, ignore_errors=True)
-
-		remote.check_version()
 
 		# configuration has changed: new template build!
 		build_id = int(remote.build(development=True, template_only=True))
