@@ -471,6 +471,7 @@ class Remote(object):
 		return build_id
 
 	def server_says_should_rebuild(self):
+		self._authenticate()
 		app_config = build_config.load_app()
 		url = 'app/{uuid}/should_rebuild'.format(uuid=app_config['uuid'])
 		resp = self._api_get(url,
