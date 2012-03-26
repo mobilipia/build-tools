@@ -515,3 +515,24 @@ class Remote(object):
 		above_forge_root = path.normpath(path.join(defaults.FORGE_ROOT, '..'))
 		with lib.cd(above_forge_root):
 			lib.unzip_with_permissions(write_to_path)
+
+	def signup(self, full_name, email_address, password1, password2):
+		"""Create a new user using the signup API
+		:param full_name: The full name of the new user
+		:type full_name: str
+
+		:param email_address: The email address of the new user
+		:type email_address: str
+
+		:param password1: The requested password for the user
+		:type password1: str
+
+		:param password2: The password again, for verification purposes
+		:type password2: str
+		"""
+		self._api_post('auth/signup', data={
+			'name': full_name,
+			'email': email_address,
+			'password1': password1,
+			'password2': password2
+		})
