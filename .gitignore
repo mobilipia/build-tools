@@ -7,3 +7,4 @@ cover
 nosetests.xml
 cookies.txt
 webmynd-environment
+local_apps.json
