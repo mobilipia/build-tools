@@ -530,9 +530,13 @@ class Remote(object):
 		:param password2: The password again, for verification purposes
 		:type password2: str
 		"""
-		self._api_post('auth/signup', data={
+		hello_response = self._api_get('auth/hello')
+
+		signup_response = self._api_post('auth/signup', data={
 			'name': full_name,
 			'email': email_address,
 			'password1': password1,
 			'password2': password2
 		})
+
+		self._authenticated = True
