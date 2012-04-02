@@ -9,7 +9,7 @@ import traceback
 
 import forge
 from forge import defaults, build_config, ForgeError
-from forge import build
+from forge import build as forge_build
 from forge.generate import Generate
 from forge.remote import Remote, UpdateRequired
 from forge.templates import Manager
@@ -338,14 +338,11 @@ def development_build(unhandled_args):
 			shutil.rmtree(instructions_dir, ignore_errors=True)
 
 		# configuration has changed: new template build!
-		build_id = int(remote.build(development=True, template_only=True))
-		# retrieve results of build
-		manager.fetch_templates(
-				build_id,
-		)
+		build = remote.build(development=True, template_only=True)
+		manager.fetch_templates(build)
 
 		# have templates - now fetch injection instructions
-		remote.fetch_generate_instructions(build_id, instructions_dir)
+		remote.fetch_generate_instructions(build["id"], instructions_dir)
 	else:
 		LOG.info('configuration is unchanged: using existing templates')
 
@@ -370,9 +367,9 @@ def run(unhandled_args):
 	_assert_have_development_folder()
 	_assert_have_target_folder(build_type_dir, forge.settings['platform'])
 
-	generate_dynamic = build.import_generate_dynamic()
+	generate_dynamic = forge_build.import_generate_dynamic()
 
-	build_to_run = build.create_build(
+	build_to_run = forge_build.create_build(
 		build_type_dir,
 		targets=[forge.settings['platform']],
 		extra_args=unhandled_args,
@@ -386,9 +383,9 @@ def run(unhandled_args):
 
 def package(unhandled_args):
 	#TODO: ensure dev build has been done first (probably lower down?)
-	generate_dynamic = build.import_generate_dynamic()
+	generate_dynamic = forge_build.import_generate_dynamic()
 	build_type_dir = 'development'
-	build_to_run = build.create_build(
+	build_to_run = forge_build.create_build(
 		build_type_dir,
 		targets=[forge.settings['platform']],
 		extra_args=unhandled_args,
@@ -414,12 +411,12 @@ def check(unhandled_args):
 		)
 	
 	try:
-		generate_dynamic = build.import_generate_dynamic()
+		generate_dynamic = forge_build.import_generate_dynamic()
 	except ForgeError:
 		# don't have generate_dynamic available yet
 		LOG.info("Unable to check local settings until a build has completed")
 		return
-	build_to_run = build.create_build(
+	build_to_run = forge_build.create_build(
 		"development",
 		targets=[],
 		extra_args=unhandled_args,

@@ -12,7 +12,8 @@ import urlparse
 from urlparse import urljoin, urlsplit
 
 import forge
-from forge import build, build_config, defaults, ForgeError, lib
+from forge import build as forge_build, build_config, defaults
+from forge import ForgeError, lib
 
 LOG = logging.getLogger(__name__)
 
@@ -336,22 +337,14 @@ class Remote(object):
 		os.remove(filename)
 		LOG.debug('removed downloaded file "%s"' % filename)
 
-	def fetch_unpackaged(self, build_id, to_dir='development'):
+	def fetch_unpackaged(self, build, to_dir='development'):
 		'''Retrieves the unpackaged artefacts for a particular build.
 		
-		:param build_id: primary key of the build
+		:param build: the build to fetch
 		:param to_dir: directory that will hold all the unpackged build trees
 		'''
-		LOG.info('fetching unpackaged artefacts for build %s into "%s"' % (build_id, to_dir))
+		LOG.info('fetching unpackaged artefacts for %s into "%s"' % (build, to_dir))
 		self._authenticate()
-		
-		output_key = 'unpackaged'
-		build = self._api_get('build/{id}/detail/'.format(id=build_id))
-		
-		if 'log_output' in build:
-			# too chatty, and already seen this after build completed
-			del build['log_output']
-		LOG.debug('build detail: %s' % build)
 		
 		filenames = []
 		if not path.isdir(to_dir):
@@ -359,7 +352,7 @@ class Remote(object):
 			os.mkdir(to_dir)
 			
 		with lib.cd(to_dir):
-			locations = build[output_key]
+			locations = build['unpackaged']
 			available_platforms = [plat for plat, url in locations.iteritems() if url]
 			
 			for platform in available_platforms:
@@ -432,7 +425,7 @@ class Remote(object):
 		if build['state'] in ('complete',):
 			LOG.info('build completed successfully')
 			LOG.debug(build['log_output'])
-			return
+			return build
 
 		else:
 			raise ForgeError('build failed: %s' % build['log_output'])
@@ -458,17 +451,21 @@ class Remote(object):
 		if not path.isdir(src_dir):
 			raise ForgeError("No {0} directory found: are you currently in the right directory?".format(src_dir))
 
-		resp = self._request_development_build()
+		build = self._request_development_build()
 
-		build_id = resp['build_id']
-		messages = resp.get('build_messages', None)
+		if build.state == 'complete':
+			return build
+
+		build_id = build['id']
+		messages = build.get('messages', None)
+
 		if messages:
 			LOG.warning(messages)
 		LOG.info('Build %s started...' % build_id)
 
 		LOG.info('This could take a while, but will only happen again if you modify config.json')
-		self._poll_until_build_complete(build_id)
-		return build_id
+		build = self._poll_until_build_complete(build_id)
+		return build
 
 	def server_says_should_rebuild(self):
 		self._authenticate()
@@ -478,7 +475,7 @@ class Remote(object):
 				params = dict(
 					platform_version=app_config['platform_version'],
 					platform_changeset=lib.platform_changeset(),
-					targets=",".join(build._enabled_platforms('development')),
+					targets=",".join(forge_build._enabled_platforms('development')),
 				)
 		)
 		return resp["should_rebuild"], resp["reason"]
@@ -530,9 +527,9 @@ class Remote(object):
 		:param password2: The password again, for verification purposes
 		:type password2: str
 		"""
-		hello_response = self._api_get('auth/hello')
+		self._api_get('auth/hello')
 
-		signup_response = self._api_post('auth/signup', data={
+		self._api_post('auth/signup', data={
 			'name': full_name,
 			'email': email_address,
 			'password1': password1,
