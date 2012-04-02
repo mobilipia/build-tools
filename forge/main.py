@@ -256,7 +256,12 @@ def _add_check_options(parser):
 	parser.description='Do some testing on the current local configuration settings'
 def _handle_check_options(handled):
 	pass
-	
+
+def _add_migrate_options(parser):
+	parser.description='Update app to the next major platform version'
+def _handle_migrate_options(handled):
+	pass
+
 def handle_secondary_options(command, args):
 	parser = argparse.ArgumentParser(
 		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command),
@@ -268,6 +273,7 @@ def handle_secondary_options(command, args):
 		"run": (_add_run_options, _handle_run_options),
 		"package": (_add_package_options, _handle_package_options),
 		"check": (_add_check_options, _handle_check_options),
+		"migrate": (_add_migrate_options, _handle_migrate_options),
 	}
 
 	# add command-specific arguments
@@ -429,6 +435,35 @@ def check(unhandled_args):
 		build_to_run,
 	)
 
+@with_error_handler
+def migrate(unhandled_args):
+	'''
+	Migrate the app to the next major platform (if possible)
+	'''
+	if not os.path.isdir(defaults.SRC_DIR):
+		raise ForgeError(
+			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
+				src=defaults.SRC_DIR,
+				prog=ENTRY_POINT_NAME,
+			)
+		)
+	
+	try:
+		generate_dynamic = build.import_generate_dynamic()
+	except ForgeError:
+		# don't have generate_dynamic available yet
+		LOG.info("Unable to migrate until a build has completed")
+		return
+	build_to_run = build.create_build(
+		"development",
+		targets=[],
+		extra_args=unhandled_args,
+	)
+	generate_dynamic.customer_goals.migrate_app(
+		generate_dynamic,
+		build_to_run,
+	)
+
 def _dispatch_command(command, other_args):
 	other_other_args = handle_secondary_options(command, other_args)
 
@@ -453,7 +488,8 @@ COMMANDS = {
 	'build'   : development_build,
 	'run'     : run,
 	'package' : package,
-	'check'   : check
+	'check'   : check,
+	'migrate' : migrate
 }
 
 if __name__ == "__main__":
