@@ -138,21 +138,23 @@ class TestFetchUnpackaged(TestRemote):
 		self.remote._authenticate = Mock()
 		self.remote._get_file = mock.Mock()
 
+		build_dict = {
+			'unpackaged': {
+				'chrome': '/path/chrome url',
+				'firefox': '/path/firefox url'
+			},
+			'log_output': '1\n2'
+		}
 		self.remote._api_get = Mock(
-			return_value={
-				'unpackaged': {
-					'chrome': '/path/chrome url',
-					'firefox': '/path/firefox url'
-				},
-				'log_output': '1\n2'
-			}
+			return_value=build_dict,
 		)
 
 		output_dir = 'output dir'
 
 		with patch('forge.remote.lib.cd', new=cd):
 			# what does -1 signify here?
-			resp = self.remote.fetch_unpackaged(-1, output_dir)
+			resp = self.remote.fetch_unpackaged(
+					build_dict, output_dir)
 
 		self.remote._authenticate.assert_called_once_with()
 		mkdir.assert_called_once_with(output_dir)
@@ -177,8 +179,15 @@ class TestBuild(TestRemote):
 		super(TestBuild, self).setup()
 		self.remote._authenticate = Mock()
 		self.remote.POLL_DELAY = 0.001
-		self.remote._api_post = Mock(return_value={'build_id': -1})
-		self.remote._api_get = Mock(return_value={'build_id': -1, 'state': 'complete', 'log_output': 'test logging'})
+		self.remote._api_post = Mock(return_value={
+			'id': -1, "state": "pending"
+		})
+		self._complete_build_dict = {
+			'id': -1, 'state': 'complete',
+			'log_output': 'test logging'
+		}
+		self.remote._api_get = Mock(
+				return_value=self._complete_build_dict)
 	def teardown(self):
 		self.remote._authenticate.assert_called_once_with()
 		
@@ -186,8 +195,9 @@ class TestBuild(TestRemote):
 	@patch('forge.remote.path')
 	@patch('forge.remote.build_config')
 	def test_pending(self, build_config, path, listdir):
-		'''a new build should not be started if a pending one exists,
-		and we should poll until that build completes / aborts
+		'''a new build should not be started if a pending one
+		exists, and we should poll until that build completes /
+		aborts
 		'''
 		app_config = {"uuid": "TEST-UUID"}
 		build_config.load_app.return_value = app_config
@@ -198,13 +208,15 @@ class TestBuild(TestRemote):
 		listdir.return_value = []
 
 		def states_effect(*args, **kw):
-			return {'build_id': -1, 'state': states.pop(0), 'log_output': 'test logging'}
+			return {'id': -1, 'state': states.pop(0), 'log_output': 'test logging'}
 		self.remote._api_get.side_effect = states_effect
 		
 		with patch('forge.remote.lib.cd', new=cd):
 			resp = self.remote.build(template_only=True)
 		
-		eq_(resp, -1)
+		# check that it only returns once we get to complete state
+		eq_(resp, {'id': -1, 'state': 'complete',
+			'log_output': 'test logging'})
 		self.remote._api_post.assert_called_once_with(
 			'app/TEST-UUID/template',
 			data={"config": '{"uuid": "TEST-UUID"}'}
@@ -223,8 +235,10 @@ class TestBuild(TestRemote):
 		
 		resp = self.remote.build(template_only=True)
 
-		# what does -1 signify here?
-		eq_(resp, -1)
+		# Q: what does -1 signify here?
+		# A: it's the build id set up in our mock API return
+		# value in TestBuild.setup
+		eq_(resp, self._complete_build_dict)
 		self.remote._api_post.assert_called_once_with(
 			'app/TEST-UUID/template',
 			data={'config': json.dumps(app_config)}
@@ -247,7 +261,7 @@ class TestBuild(TestRemote):
 		with patch('forge.remote.lib.cd', new=cd):
 			resp = self.remote.build()
 				
-		eq_(resp, -1)
+		eq_(resp, self._complete_build_dict)
 		self.remote._api_post.assert_called_once_with('app/TEST-UUID/template',
 			data={"config": '{"uuid": "TEST-UUID"}'}
 		)
@@ -415,8 +429,12 @@ class TestShouldRebuild(TestRemote):
 	@patch('forge.remote.build_config')
 	@patch('forge.remote.lib.platform_changeset')
 	def test_rebuild_required(self, platform_changeset, build_config):
-		self.remote._api_get = Mock(return_value={'result': 'ok', 'should_rebuild': True, 'reason': 'dummy reason'})
-		app_config = {'platform_version': 'v1.2', 'uuid': 'TEST-UUID'}
+		self.remote._api_get = Mock(return_value={
+			'result': 'ok', 'should_rebuild': True,
+			'reason': 'dummy reason'})
+		self.remote._authenticate = Mock()
+		app_config = {'platform_version': 'v1.2',
+				'uuid': 'TEST-UUID'}
 		build_config.load_app.return_value = app_config
 		platform_changeset.return_value = '000000000000'
 
@@ -434,6 +452,7 @@ class TestShouldRebuild(TestRemote):
 	@patch('forge.remote.lib.platform_changeset')
 	def test_rebuild_not_required(self, platform_changeset, build_config):
 		self.remote._api_get = Mock(return_value={'result': 'ok', 'should_rebuild': False, 'reason': 'dummy reason'})
+		self.remote._authenticate = Mock()
 		app_config = {'platform_version': 'v1.2', 'uuid': 'TEST-UUID'}
 		build_config.load_app.return_value = app_config
 		platform_changeset.return_value = '000000000000'

@@ -453,7 +453,7 @@ class Remote(object):
 
 		build = self._request_development_build()
 
-		if build.state == 'complete':
+		if build["state"] == 'complete':
 			return build
 
 		build_id = build['id']

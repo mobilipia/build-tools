@@ -296,6 +296,8 @@ def create(unhandled_args):
 			name = raw_input('Enter app name: ')
 		uuid = remote.create(name)
 		remote.fetch_initial(uuid)
+		LOG.info("Building app for the first time...")
+		development_build([])
 		LOG.info('App structure created. To proceed:')
 		LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
 		LOG.info('2) Run %s build to make a build' % ENTRY_POINT_NAME)

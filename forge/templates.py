@@ -49,7 +49,8 @@ class Manager(object):
 		)
 		
 	def fetch_templates(self, build):
-		'''Retrieve remote template files for a specified build, and the config to match.
+		'''
+		Retrieve remote template files for a specified build, and the config to match.
 		
 		:param build: the build to fetch templates for
 		'''
@@ -65,8 +66,8 @@ class Manager(object):
 		if sys.platform == 'win32':
 			try:
 				subprocess.call(['attrib', '+h', self._tmpl_dir])
-			except:
-				# don't care if we fail to set the templates dir as hidden
+			except Exception:
+				# don't care if we fail to hide the templates dir
 				pass
 
 		# copy config.json across to be compared to next time
