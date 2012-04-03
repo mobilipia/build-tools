@@ -23,6 +23,7 @@ def _enabled_platforms(build_type_dir):
 		"android": "android",
 		"ios": "ios",
 		"web": "web",
+		"wp": "wp"
 	}
 	
 	enabled_platforms = []

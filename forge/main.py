@@ -17,8 +17,8 @@ from forge.lib import try_a_few_times, AccidentHandler
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
-TARGETS_WE_CAN_RUN_FOR = ('firefox', 'ios', 'android', 'web')
-TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android', 'web')
+TARGETS_WE_CAN_RUN_FOR = ('firefox', 'ios', 'android', 'web', 'wp')
+TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android', 'web', 'wp')
 
 USING_DEPRECATED_COMMAND = None
 USE_INSTEAD = None
