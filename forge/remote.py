@@ -481,7 +481,7 @@ class Remote(object):
 					targets=",".join(build._enabled_platforms('development')),
 				)
 		)
-		return resp["should_rebuild"], resp["reason"]
+		return resp["should_rebuild"], resp["reason"], resp["stable_platform"], resp["platform_state"]
 
 	def login(self, email, password):
 		LOG.info('authenticating as "%s"' % email)

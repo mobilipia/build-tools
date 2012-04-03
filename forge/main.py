@@ -331,7 +331,7 @@ def development_build(unhandled_args):
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 	config_changed = manager.need_new_templates_for_config()
-	server_changed, reason = remote.server_says_should_rebuild()
+	server_changed, reason, stable_platform, platform_state = remote.server_says_should_rebuild()
 	if config_changed or server_changed:
 		if config_changed:
 			LOG.info("Your app configuration has changed: we need to rebuild your app")
@@ -354,6 +354,24 @@ def development_build(unhandled_args):
 		remote.fetch_generate_instructions(build_id, instructions_dir)
 	else:
 		LOG.info('configuration is unchanged: using existing templates')
+	
+	app_config = build_config.load_app()
+	cur_version = app_config['platform_version'].split('.')
+	stable_version = stable_platform.split('.')
+	
+	# Non-standard platform
+	if cur_version[0][:1] != 'v':
+		LOG.warning("Platform version: "+app_config['platform_version']+" is a non-standard platform version, it may not be receiving updates and it is recommended you update to the stable platform version: "+stable_platform)
+	# Minor version
+	elif len(cur_version) > 2:
+		LOG.warning("Platform version: "+app_config['platform_version']+" is a minor platform version, it may not be receiving updates, it is recommended you update to a major platform version")
+	# Old version
+	elif int(cur_version[0][1:]) < int(stable_version[0][1:]) or (int(cur_version[0][1:]) == int(stable_version[0][1:]) and int(cur_version[1]) < int(stable_version[1])):
+		LOG.warning("Platform version: "+app_config['platform_version']+" is no longer the current platform version, it is recommended you migrate to a newer version using the 'forge migrate' command. See http://current-docs.trigger.io/release-notes.html for more details")
+	
+	# Deprecated version
+	if platform_state == "deprecated":
+		LOG.warning("Platform version: "+app_config['platform_version']+" is deprecated, it is highly recommended you migrate to a newer version as soon as possible.")
 
 	def move_files_across():
 		shutil.rmtree('development', ignore_errors=True)
