@@ -256,7 +256,12 @@ def _add_check_options(parser):
 	parser.description='Do some testing on the current local configuration settings'
 def _handle_check_options(handled):
 	pass
-	
+
+def _add_migrate_options(parser):
+	parser.description='Update app to the next major platform version'
+def _handle_migrate_options(handled):
+	pass
+
 def handle_secondary_options(command, args):
 	parser = argparse.ArgumentParser(
 		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command),
@@ -268,6 +273,7 @@ def handle_secondary_options(command, args):
 		"run": (_add_run_options, _handle_run_options),
 		"package": (_add_package_options, _handle_package_options),
 		"check": (_add_check_options, _handle_check_options),
+		"migrate": (_add_migrate_options, _handle_migrate_options),
 	}
 
 	# add command-specific arguments
@@ -327,7 +333,7 @@ def development_build(unhandled_args):
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 	config_changed = manager.need_new_templates_for_config()
-	server_changed, reason = remote.server_says_should_rebuild()
+	server_changed, reason, stable_platform, platform_state = remote.server_says_should_rebuild()
 	if config_changed or server_changed:
 		if config_changed:
 			LOG.info("Your app configuration has changed: we need to rebuild your app")
@@ -347,6 +353,24 @@ def development_build(unhandled_args):
 		remote.fetch_generate_instructions(instructions_dir)
 	else:
 		LOG.info('configuration is unchanged: using existing templates')
+	
+	app_config = build_config.load_app()
+	cur_version = app_config['platform_version'].split('.')
+	stable_version = stable_platform.split('.')
+	
+	# Non-standard platform
+	if cur_version[0][:1] != 'v':
+		LOG.warning("Platform version: "+app_config['platform_version']+" is a non-standard platform version, it may not be receiving updates and it is recommended you update to the stable platform version: "+stable_platform)
+	# Minor version
+	elif len(cur_version) > 2:
+		LOG.warning("Platform version: "+app_config['platform_version']+" is a minor platform version, it may not be receiving updates, it is recommended you update to a major platform version")
+	# Old version
+	elif int(cur_version[0][1:]) < int(stable_version[0][1:]) or (int(cur_version[0][1:]) == int(stable_version[0][1:]) and int(cur_version[1]) < int(stable_version[1])):
+		LOG.warning("Platform version: "+app_config['platform_version']+" is no longer the current platform version, it is recommended you migrate to a newer version using the 'forge migrate' command. See http://current-docs.trigger.io/release-notes.html for more details")
+	
+	# Deprecated version
+	if platform_state == "deprecated":
+		LOG.warning("Platform version: "+app_config['platform_version']+" is deprecated, it is highly recommended you migrate to a newer version as soon as possible.")
 
 	def move_files_across():
 		shutil.rmtree('development', ignore_errors=True)
@@ -399,7 +423,6 @@ def package(unhandled_args):
 		server=False,
 	)
 
-@with_error_handler
 def check(unhandled_args):
 	'''
 	Run basic linting on project JS to save the user some trouble.
@@ -428,6 +451,33 @@ def check(unhandled_args):
 		build_to_run,
 	)
 
+def migrate(unhandled_args):
+	'''
+	Migrate the app to the next major platform (if possible)
+	'''
+	if not os.path.isdir(defaults.SRC_DIR):
+		raise ForgeError(
+			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
+				src=defaults.SRC_DIR,
+				prog=ENTRY_POINT_NAME,
+			)
+		)
+	
+	try:
+		generate_dynamic = build.import_generate_dynamic()
+	except ForgeError:
+		# don't have generate_dynamic available yet
+		raise ForgeError("Unable to migrate until a build has completed")
+	build_to_run = build.create_build(
+		"development",
+		targets=[],
+		extra_args=unhandled_args,
+	)
+	generate_dynamic.customer_goals.migrate_app(
+		generate_dynamic,
+		build_to_run,
+	)
+
 def _dispatch_command(command, other_args):
 	other_other_args = handle_secondary_options(command, other_args)
 
@@ -452,7 +502,8 @@ COMMANDS = {
 	'build'   : development_build,
 	'run'     : run,
 	'package' : package,
-	'check'   : check
+	'check'   : check,
+	'migrate' : migrate
 }
 
 if __name__ == "__main__":
