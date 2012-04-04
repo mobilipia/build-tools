@@ -371,22 +371,23 @@ class Remote(object):
 		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
 		return filenames
 
-	def fetch_generate_instructions(self, build_id, to_dir):
-		'''Retreive the generation instructions for a particular build.
+	def fetch_generate_instructions(self, to_dir):
+		'''Retreive the generation instructions for our current environment.
 
 		Rather than hard-coding these instructions - how to inject customer
 		code into the apps - they are loaded dynamically from the server to
 		allow for different platforms versions to work with a larger number
 		of build-tools versions.
 
-		:param build_id: primary key of the build to get instructions for
 		:param to_dir: where the instructions will be put
 		'''
-		LOG.info("fetching generation instructions for build {build_id} into {to_dir}".format(**locals()))
-
 		self._authenticate()
 
+		platform_version = build_config.load_app()['platform_version']
 		temp_instructions_file = 'instructions.zip'
+
+		LOG.info("fetching generation instructions for {platform_version} "
+				"into {to_dir}".format(**locals()))
 
 		try:
 			# ensure generate_dynamic dir is there before extracting instructions into it
@@ -395,7 +396,10 @@ class Remote(object):
 
 			with lib.cd(to_dir):
 				self._get_file(
-					urljoin(self.server, 'build/{build_id}/generate_instructions/'.format(build_id=build_id)),
+					urljoin(
+						self.server,
+						'platform/{platform_version}/generate_instructions/'
+						.format(platform_version=platform_version)),
 					temp_instructions_file
 				)
 				lib.unzip_with_permissions(temp_instructions_file)

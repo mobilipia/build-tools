@@ -344,7 +344,7 @@ def development_build(unhandled_args):
 		manager.fetch_templates(build)
 
 		# have templates - now fetch injection instructions
-		remote.fetch_generate_instructions(build["id"], instructions_dir)
+		remote.fetch_generate_instructions(instructions_dir)
 	else:
 		LOG.info('configuration is unchanged: using existing templates')
 

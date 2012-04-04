@@ -315,33 +315,36 @@ class Test_CheckVersion(TestRemote):
 class TestGenerateInstructions(TestRemote):
 	@raises(RequestError)
 	@patch('forge.remote.os')
+	@patch('forge.remote.build_config')
 	@patch('forge.remote.shutil')
 	@patch('forge.remote.requests')
-	def test_not_found_build(self, requests, shutil, os):
+	def test_not_found_build(self, requests, shutil, build_config, os):
+		build_config.load_app.return_value = {"platform_version": "v1.2"}
 		cd = mock.MagicMock()
 		self.remote._authenticate = Mock()
 		requests.get.return_value.ok = False
 		requests.get.return_value.status_code = 404
 
 		with mock.patch('forge.lib.cd', new=cd):
-			self.remote.fetch_generate_instructions(1, 'my/path')
+			self.remote.fetch_generate_instructions('my/path')
 
 	@patch('forge.remote.os')
+	@patch('forge.remote.build_config')
 	@patch('forge.remote.shutil')
 	@patch('forge.remote.lib.unzip_with_permissions')
-	def test_normal(self, unzip_with_permissions, shutil, os):
+	def test_normal(self, unzip_with_permissions, shutil, build_config, os):
+		build_config.load_app.return_value = {"platform_version": "v1.2"}
 		cd = mock.MagicMock()
 		self.remote._authenticate = Mock()
 		self.remote._get_file = mock.Mock()
 
 		with mock.patch('forge.lib.cd', new=cd):
 			self.remote.fetch_generate_instructions(
-				build_id=1,
 				to_dir='my/path'
 			)
 		
 		self.remote._get_file.assert_called_once_with(
-			'https://test.trigger.io/api/build/1/generate_instructions/',
+			'https://test.trigger.io/api/platform/v1.2/generate_instructions/',
 			'instructions.zip'
 		)
 
