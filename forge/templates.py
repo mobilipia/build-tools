@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 from forge import defaults
-from forge.build import create_build, import_generate_dynamic
+from forge.build import import_generate_dynamic
 from forge.remote import Remote
 
 LOG = logging.getLogger(__name__)
@@ -48,10 +48,11 @@ class Manager(object):
 				new_config_filename=defaults.APP_CONFIG_FILE,
 		)
 		
-	def fetch_templates(self, build_id):
-		'''Retrieve remote template files for a specified build, and the config to match.
+	def fetch_templates(self, build):
+		'''
+		Retrieve remote template files for a specified build, and the config to match.
 		
-		:param build_id: the primary key of the build
+		:param build: the build to fetch templates for
 		'''
 		remote = Remote(self._config)
 		
@@ -61,15 +62,17 @@ class Manager(object):
 		
 		# grab templated platform
 		LOG.info('fetching new Forge templates')
-		remote.fetch_unpackaged(build_id, to_dir=self._tmpl_dir)
+		remote.fetch_unpackaged(build, to_dir=self._tmpl_dir)
 		if sys.platform == 'win32':
 			try:
 				subprocess.call(['attrib', '+h', self._tmpl_dir])
-			except:
-				# don't care if we fail to set the templates dir as hidden
+			except Exception:
+				# don't care if we fail to hide the templates dir
 				pass
 
 		# copy config.json across to be compared to next time
-		shutil.copy(defaults.APP_CONFIG_FILE, path.join(self._tmpl_dir, "config.json"))
+		shutil.copy(
+				defaults.APP_CONFIG_FILE,
+				path.join(self._tmpl_dir, "config.json"))
 		
 		return self._tmpl_dir
