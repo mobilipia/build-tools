@@ -424,7 +424,6 @@ def package(unhandled_args):
 		server=False,
 	)
 
-@with_error_handler
 def check(unhandled_args):
 	'''
 	Run basic linting on project JS to save the user some trouble.
@@ -453,7 +452,6 @@ def check(unhandled_args):
 		build_to_run,
 	)
 
-@with_error_handler
 def migrate(unhandled_args):
 	'''
 	Migrate the app to the next major platform (if possible)
@@ -470,8 +468,7 @@ def migrate(unhandled_args):
 		generate_dynamic = build.import_generate_dynamic()
 	except ForgeError:
 		# don't have generate_dynamic available yet
-		LOG.info("Unable to migrate until a build has completed")
-		return
+		raise ForgeError("Unable to migrate until a build has completed")
 	build_to_run = build.create_build(
 		"development",
 		targets=[],
