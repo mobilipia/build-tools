@@ -510,6 +510,9 @@ class Remote(object):
 		return result
 
 	def update(self):
+		if path.exists(path.join(defaults.FORGE_ROOT, 'no_update')):
+			raise ForgeError("Tools tried to update themselves during development")
+
 		write_to_path = path.join(defaults.FORGE_ROOT, 'latest.zip')
 		self._get_file(urljoin(self.server, 'latest_tools'), write_to_path)
 
