@@ -343,7 +343,7 @@ class Remote(object):
 		:param build: the build to fetch
 		:param to_dir: directory that will hold all the unpackged build trees
 		'''
-		LOG.info('fetching unpackaged artefacts for %s into "%s"' % (build, to_dir))
+		LOG.info('fetching unpackaged artefacts for %s into "%s"' % (build["id"], to_dir))
 		self._authenticate()
 		
 		filenames = []

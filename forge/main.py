@@ -464,11 +464,11 @@ def migrate(unhandled_args):
 		)
 	
 	try:
-		generate_dynamic = build.import_generate_dynamic()
+		generate_dynamic = forge_build.import_generate_dynamic()
 	except ForgeError:
 		# don't have generate_dynamic available yet
 		raise ForgeError("Unable to migrate until a build has completed")
-	build_to_run = build.create_build(
+	build_to_run = forge_build.create_build(
 		"development",
 		targets=[],
 		extra_args=unhandled_args,
