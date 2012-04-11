@@ -17,8 +17,8 @@ from forge.lib import try_a_few_times, AccidentHandler
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
-TARGETS_WE_CAN_RUN_FOR = ('firefox', 'ios', 'android', 'web', 'wp')
-TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android', 'web', 'wp')
+TARGETS_WE_CAN_RUN_FOR = ('firefox', 'ios', 'android', 'web', 'wp', 'chrome')
+TARGETS_WE_CAN_PACKAGE_FOR = ('ios', 'android', 'web', 'wp', 'chrome')
 
 USING_DEPRECATED_COMMAND = None
 USE_INSTEAD = None
@@ -215,47 +215,46 @@ def handle_primary_options(args):
 
 	return other_args
 
+
 def _add_create_options(parser):
 	parser.description = 'create a new application'
 	parser.add_argument('--name', help='name of the application to create')
+
 def _handle_create_options(handled):
 	if handled.name:
 		forge.settings['name'] = handled.name
 
+
 def _add_build_options(parser):
 	parser.description = 'Creates new local, unzipped development add-ons with your source and configuration'
 	parser.add_argument('-f', '--full', action='store_true', help='force a complete rebuild of your app')
+
 def _handle_build_options(handled):
 	forge.settings['full'] = bool(handled.full)
 
+
 def _add_run_options(parser):
 	parser.description = 'Run a built app on a particular platform'
-	def not_chrome(text):
-		if text == "chrome":
-			msg = """
+	parser.add_argument('platform', choices=TARGETS_WE_CAN_RUN_FOR)
 
-Currently it is not possible to launch a Chrome extension via this interface. The required steps are:
-
-	1) Go to chrome:extensions in the Chrome browser
-	2) Make sure "developer mode" is on (top right corner)')
-	3) Use "Load unpacked extension" and browse to {cwd}/development/chrome
-""".format(cwd=path.abspath(os.getcwd()))
-			return parser.error(msg)
-		return text
-	parser.add_argument('platform', type=not_chrome, choices=TARGETS_WE_CAN_RUN_FOR)
 def _handle_run_options(handled):
 	forge.settings['platform'] = handled.platform
+
 
 def _add_package_options(parser):
 	parser.description='Package up a build for distribution'
 	parser.add_argument('platform', choices=TARGETS_WE_CAN_PACKAGE_FOR)
+
 def _handle_package_options(handled):
 	forge.settings['platform'] = handled.platform
-	
+
+
 def _add_check_options(parser):
 	parser.description='Do some testing on the current local configuration settings'
+
 def _handle_check_options(handled):
 	pass
+
 
 def _add_migrate_options(parser):
 	parser.description='Update app to the next major platform version'

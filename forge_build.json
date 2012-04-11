@@ -1,5 +1,1 @@
-{
-	"main": {
-		"server": "https://trigger.io/api/"
-	}
-}
+{"main": {"server": "http://192.168.1.177:8000/api/"}}
