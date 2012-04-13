@@ -32,9 +32,11 @@ def request(method, url, **kwargs):
     :param session: (optional) A :class:`Session` object to be used for the request.
     :param config: (optional) A configuration dictionary.
     :param verify: (optional) if ``True``, the SSL cert will be verified. A CA_BUNDLE path can also be provided.
+    :param prefetch: (optional) if ``True``, the response content will be immediately downloaded.
+    :param cert: (optional) if String, path to ssl client cert file (.pem). If Tuple, ('cert', 'key') pair.
     """
 
-    s = kwargs.get('session') or sessions.session()
+    s = kwargs.pop('session') if 'session' in kwargs else sessions.session()
     return s.request(method=method, url=url, **kwargs)
 
 
@@ -43,7 +45,7 @@ def get(url, **kwargs):
     """Sends a GET request. Returns :class:`Response` object.
 
     :param url: URL for the new :class:`Request` object.
-    :param **kwargs: Optional arguments that ``request`` takes.
+    :param \*\*kwargs: Optional arguments that ``request`` takes.
     """
 
     kwargs.setdefault('allow_redirects', True)
@@ -54,7 +56,7 @@ def options(url, **kwargs):
     """Sends a OPTIONS request. Returns :class:`Response` object.
 
     :param url: URL for the new :class:`Request` object.
-    :param **kwargs: Optional arguments that ``request`` takes.
+    :param \*\*kwargs: Optional arguments that ``request`` takes.
     """
 
     kwargs.setdefault('allow_redirects', True)
@@ -65,10 +67,10 @@ def head(url, **kwargs):
     """Sends a HEAD request. Returns :class:`Response` object.
 
     :param url: URL for the new :class:`Request` object.
-    :param **kwargs: Optional arguments that ``request`` takes.
+    :param \*\*kwargs: Optional arguments that ``request`` takes.
     """
 
-    kwargs.setdefault('allow_redirects', True)
+    kwargs.setdefault('allow_redirects', False)
     return request('head', url, **kwargs)
 
 
@@ -77,7 +79,7 @@ def post(url, data=None, **kwargs):
 
     :param url: URL for the new :class:`Request` object.
     :param data: (optional) Dictionary or bytes to send in the body of the :class:`Request`.
-    :param **kwargs: Optional arguments that ``request`` takes.
+    :param \*\*kwargs: Optional arguments that ``request`` takes.
     """
 
     return request('post', url, data=data, **kwargs)
@@ -88,7 +90,7 @@ def put(url, data=None, **kwargs):
 
     :param url: URL for the new :class:`Request` object.
     :param data: (optional) Dictionary or bytes to send in the body of the :class:`Request`.
-    :param **kwargs: Optional arguments that ``request`` takes.
+    :param \*\*kwargs: Optional arguments that ``request`` takes.
     """
 
     return request('put', url, data=data, **kwargs)
@@ -99,7 +101,7 @@ def patch(url, data=None, **kwargs):
 
     :param url: URL for the new :class:`Request` object.
     :param data: (optional) Dictionary or bytes to send in the body of the :class:`Request`.
-    :param **kwargs: Optional arguments that ``request`` takes.
+    :param \*\*kwargs: Optional arguments that ``request`` takes.
     """
 
     return request('patch', url,  data=data, **kwargs)
@@ -109,7 +111,7 @@ def delete(url, **kwargs):
     """Sends a DELETE request. Returns :class:`Response` object.
 
     :param url: URL for the new :class:`Request` object.
-    :param **kwargs: Optional arguments that ``request`` takes.
+    :param \*\*kwargs: Optional arguments that ``request`` takes.
     """
 
     return request('delete', url, **kwargs)

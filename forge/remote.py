@@ -17,6 +17,8 @@ from forge import ForgeError, lib
 
 LOG = logging.getLogger(__name__)
 
+session = requests.session()
+
 class RequestError(ForgeError):
 	pass
 
@@ -134,6 +136,8 @@ class Remote(object):
 		method = kw['__method']
 		del kw['__method']
 
+		kw['verify'] = True
+
 		if method == "POST":
 			# must have CSRF token
 			data = kw.get("data", {})
@@ -154,7 +158,7 @@ class Remote(object):
 			kw['proxies'] = self.config['main']['proxies']
 
 		LOG.debug('{method} {url}'.format(method=method.upper(), url=url))
-		resp = getattr(requests, method.lower())(url, *args, **kw)
+		resp = getattr(session, method.lower())(url, *args, **kw)
 
 		lib.load_cookies_from_response(resp, self.cookies)
 		self.cookies.save()

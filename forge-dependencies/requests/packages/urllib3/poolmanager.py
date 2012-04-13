@@ -1,21 +1,19 @@
 # urllib3/poolmanager.py
-# Copyright 2008-2011 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
+# Copyright 2008-2012 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
 #
 # This module is part of urllib3 and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import logging
+
 from ._collections import RecentlyUsedContainer
-from .connectionpool import (
-    HTTPConnectionPool, HTTPSConnectionPool,
-    get_host, connection_from_url,
-)
+from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from .connectionpool import get_host, connection_from_url, port_by_scheme
+from .exceptions import HostChangedError
+from .request import RequestMethods
 
 
 __all__ = ['PoolManager', 'ProxyManager', 'proxy_from_url']
-
-
-from .request import RequestMethods
-from .connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 
 
 pool_classes_by_scheme = {
@@ -23,10 +21,7 @@ pool_classes_by_scheme = {
     'https': HTTPSConnectionPool,
 }
 
-port_by_scheme = {
-    'http': 80,
-    'https': 443,
-}
+log = logging.getLogger(__name__)
 
 
 class PoolManager(RequestMethods):
@@ -44,11 +39,11 @@ class PoolManager(RequestMethods):
 
     Example: ::
 
-        >>> manager = PoolManager()
+        >>> manager = PoolManager(num_pools=2)
         >>> r = manager.urlopen("http://google.com/")
         >>> r = manager.urlopen("http://google.com/mail")
         >>> r = manager.urlopen("http://yahoo.com/")
-        >>> len(r.pools)
+        >>> len(manager.pools)
         2
 
     """
@@ -105,7 +100,12 @@ class PoolManager(RequestMethods):
         :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
         """
         conn = self.connection_from_url(url)
-        return conn.urlopen(method, url, assert_same_host=False, **kw)
+        try:
+            return conn.urlopen(method, url, **kw)
+
+        except HostChangedError as e:
+            kw['retries'] = e.retries # Persist retries countdown
+            return self.urlopen(method, e.url, **kw)
 
 
 class ProxyManager(RequestMethods):
@@ -117,9 +117,19 @@ class ProxyManager(RequestMethods):
     def __init__(self, proxy_pool):
         self.proxy_pool = proxy_pool
 
+    def _set_proxy_headers(self, headers=None):
+        headers = headers or {}
+
+        # Same headers are curl passes for --proxy1.0
+        headers['Accept'] = '*/*'
+        headers['Proxy-Connection'] = 'Keep-Alive'
+
+        return headers
+
     def urlopen(self, method, url, **kw):
         "Same as HTTP(S)ConnectionPool.urlopen, ``url`` must be absolute."
         kw['assert_same_host'] = False
+        kw['headers'] = self._set_proxy_headers(kw.get('headers'))
         return self.proxy_pool.urlopen(method, url, **kw)
 
 
