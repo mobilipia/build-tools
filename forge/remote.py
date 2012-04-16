@@ -475,7 +475,7 @@ class Remote(object):
 		build = self._poll_until_build_complete(build_id)
 		return build
 
-	def server_says_should_rebuild(self, path_to_app):
+	def server_says_should_rebuild(self, path_to_app="."):
 		self._authenticate()
 		app_config = build_config.load_app(path_to_app)
 		url = 'app/{uuid}/should_rebuild'.format(uuid=app_config['uuid'])
