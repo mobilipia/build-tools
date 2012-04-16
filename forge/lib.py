@@ -76,16 +76,16 @@ def human_readable_file_size(file):
 	size = os.fstat(file.fileno()).st_size
 	return format_size_in_bytes(size)
 
-def extract_zipfile(zip):
+def extract_zipfile(zip, out_path="."):
 	'''Extracts all the contents of a zipfile.
 
 	Use this instead of zipfile.extractall which is broken for very early python 2.6
 	'''
 	for f in sorted(zip.namelist()):
 		if f.endswith('/'):
-			os.makedirs(f)
+			os.makedirs(os.path.join(out_path,f))
 		else:
-			zip.extract(f)
+			zip.extract(f, path=out_path)
 
 def format_size_in_bytes(size_in_bytes):
 	for x in ['bytes','KB','MB','GB','TB']:
@@ -93,7 +93,7 @@ def format_size_in_bytes(size_in_bytes):
 			return "%3.1f%s" % (size_in_bytes, x)
 		size_in_bytes /= 1024.0
 
-def unzip_with_permissions(filename):
+def unzip_with_permissions(filename, out_path="."):
 	'''Helper function which attempts to use the 'unzip' program if it's installed on the system.
 
 	This is because a ZipFile doesn't understand unix permissions (which aren't really in the zip spec),
@@ -105,11 +105,11 @@ def unzip_with_permissions(filename):
 	except OSError:
 		LOG.debug("'unzip' not available, falling back on python ZipFile, this will strip certain permissions from files")
 		zip_to_extract = zipfile.ZipFile(filename)
-		extract_zipfile(zip_to_extract)
+		extract_zipfile(zip_to_extract, out_path)
 		zip_to_extract.close()
 	else:
 		LOG.debug("unzip is available, using it")
-		zip_process = subprocess.Popen(["unzip", "-o", filename], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		zip_process = subprocess.Popen(["unzip", "-o", filename, "-d", out_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		output = zip_process.communicate()[0]
 		LOG.debug("unzip output")
 		LOG.debug(output)

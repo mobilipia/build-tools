@@ -44,12 +44,12 @@ class RunningInForgeRoot(Exception):
 class ArgumentError(Exception):
 	pass
 
-def _assert_outside_of_forge_root():
-	if os.getcwd() == defaults.FORGE_ROOT:
+def _assert_outside_of_forge_root(app_path):
+	if app_path == defaults.FORGE_ROOT:
 		raise RunningInForgeRoot
 
-def _assert_not_in_subdirectory_of_forge_root():
-	cwd = str(os.getcwd())
+def _assert_not_in_subdirectory_of_forge_root(app_path):
+	cwd = str(app_path)
 	if cwd.startswith(defaults.FORGE_ROOT + os.sep):
 		raise RunningInForgeRoot
 
@@ -67,10 +67,13 @@ def _assert_have_development_folder():
 		)
 		raise ForgeError(message)
 
-def _check_working_directory_is_safe():
-	_assert_outside_of_forge_root()
+def _check_working_directory_is_safe(app_path=None):
+	if app_path is None:
+		app_path = os.getcwd()
+
+	_assert_outside_of_forge_root(app_path)
 	try:
-		_assert_not_in_subdirectory_of_forge_root()
+		_assert_not_in_subdirectory_of_forge_root(app_path)
 	except RunningInForgeRoot:
 		LOG.warning(
 			"Working directory is a subdirectory of the forge build tools.\n"

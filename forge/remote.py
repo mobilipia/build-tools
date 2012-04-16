@@ -305,7 +305,7 @@ class Remote(object):
 			with open(write_to_path, 'wb') as write_to_file:
 				write_to_file.write(response.content)
 
-	def fetch_initial(self, uuid):
+	def fetch_initial(self, uuid, app_path="."):
 		'''Retrieves the initial project template
 
 		:param uuid: project uuid
@@ -313,13 +313,13 @@ class Remote(object):
 		LOG.info('Fetching initial project template')
 		self._authenticate()
 
-		initial_zip_filename = 'initial.zip'
+		initial_zip_filename = path.join(app_path, 'initial.zip')
 
 		self._get_file(
 			urljoin(self.server, 'app/{uuid}/initial_files/'.format(uuid=uuid)),
 			write_to_path=initial_zip_filename
 		)
-		lib.unzip_with_permissions(initial_zip_filename)
+		lib.unzip_with_permissions(initial_zip_filename, app_path)
 		LOG.debug('Extracted initial project template')
 
 		os.remove(initial_zip_filename)
@@ -475,9 +475,9 @@ class Remote(object):
 		build = self._poll_until_build_complete(build_id)
 		return build
 
-	def server_says_should_rebuild(self):
+	def server_says_should_rebuild(self, path_to_app):
 		self._authenticate()
-		app_config = build_config.load_app()
+		app_config = build_config.load_app(path_to_app)
 		url = 'app/{uuid}/should_rebuild'.format(uuid=app_config['uuid'])
 		resp = self._api_get(url,
 				params = dict(

@@ -24,13 +24,13 @@ def load(filename=None):
 
 	return config
 
-def load_app():
+def load_app(app_path="."):
 	'''Read in and JSON parse the per-app configuration file (src/config.json)
 	and identify JSON file (src/identity.json)
 	'''
 	app_config_file = defaults.APP_CONFIG_FILE
 
-	with open_file(app_config_file) as app_config:
+	with open_file(path.join(app_path, app_config_file)) as app_config:
 		try:
 			config = json.load(app_config)
 		except ValueError as e:
@@ -38,18 +38,18 @@ def load_app():
 	
 	identity_file = defaults.IDENTITY_FILE
 	
-	if not path.isfile(identity_file):
+	if not path.isfile(path.join(app_path, identity_file)):
 		if 'uuid' in config:
 			# old-style config, where uuid was in config.json, rather than identity.json
 			identity_contents = {"uuid": config["uuid"]}
 			LOG.warning("we need to update your configuration to include an 'identity.json' file")
-			with open_file(identity_file, 'w') as identity:
+			with open_file(path.join(app_path, identity_file), 'w') as identity:
 				json.dump(identity_contents, identity)
 			LOG.info("configuration updated: 'identity.json' created")
 		else:
 			raise IOError("'identity.json' file is missing")
 			
-	with open_file(identity_file) as identity:
+	with open_file(path.join(app_path, identity_file)) as identity:
 		try:
 			identity_config = json.load(identity)
 		except ValueError as e:
@@ -58,11 +58,11 @@ def load_app():
 	config.update(identity_config)
 	return config
 
-def load_local():
+def load_local(app_path="."):
 	"""Read in and parse local configuration containing things like location of 
 	provisioning profiles, certificates, deployment details
 	"""
-	local_config_path = defaults.LOCAL_CONFIG_FILE
+	local_config_path = path.join(app_path, defaults.LOCAL_CONFIG_FILE)
 	local_config_dict = {}
 	if path.isfile(local_config_path):
 		try:
@@ -76,11 +76,11 @@ def load_local():
 
 	return local_config_dict
 
-def save_local(settings):
+def save_local(settings, app_path="."):
 	"""Dump a dict as JSON into local_config.json, overwriting anything currently in there"""
 	local_config_path = defaults.LOCAL_CONFIG_FILE
 
-	with open_file(local_config_path, 'w') as local_config_file:
+	with open_file(path.join(app_path, local_config_path), 'w') as local_config_file:
 		try:
 			json.dump(settings, local_config_file, indent=4)
 		except IOError as e:
