@@ -17,8 +17,6 @@ from forge import ForgeError, lib
 
 LOG = logging.getLogger(__name__)
 
-session = requests.session()
-
 class RequestError(ForgeError):
 	pass
 
@@ -97,6 +95,7 @@ class Remote(object):
 
 	def __init__(self, config):
 		'Start new remote Forge builds'
+		self.session = requests.session()
 		self.config = config
 		cookie_path = self._path_to_cookies()
 		self.cookies = LWPCookieJar(cookie_path)
@@ -158,7 +157,7 @@ class Remote(object):
 			kw['proxies'] = self.config['main']['proxies']
 
 		LOG.debug('{method} {url}'.format(method=method.upper(), url=url))
-		resp = getattr(session, method.lower())(url, *args, **kw)
+		resp = getattr(self.session, method.lower())(url, *args, **kw)
 
 		lib.load_cookies_from_response(resp, self.cookies)
 		self.cookies.save()
