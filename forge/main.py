@@ -335,7 +335,11 @@ def development_build(unhandled_args):
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 	config_changed = manager.need_new_templates_for_config()
-	server_changed, reason, stable_platform, platform_state = remote.server_says_should_rebuild()
+	should_rebuild = remote.server_says_should_rebuild()
+	server_changed = should_rebuild['should_rebuild']
+	reason = should_rebuild['reason']
+	stable_platform = should_rebuild['stable_platform']
+	platform_state = should_rebuild['platform_state']
 	if config_changed or server_changed:
 		if config_changed:
 			LOG.info("Your app configuration has changed: we need to rebuild your app")
