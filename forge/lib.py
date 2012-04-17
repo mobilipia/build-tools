@@ -140,13 +140,13 @@ class AccidentHandler(logging.Handler):
 
 		self.records.append(record)
 
-def platform_changeset():
+def platform_changeset(app_path="."):
 	"""
 	Return the changeset of the platform used to build the current template.
 
 	Assumes the existence of ``changeset.txt`` in the lib directory of .template.
 	"""
-	changeset_file = path.join(defaults.TEMPLATE_DIR, "lib", "changeset.txt")
+	changeset_file = path.join(app_path, defaults.TEMPLATE_DIR, "lib", "changeset.txt")
 	if path.isfile(changeset_file):
 		with open(changeset_file) as changeset_f:
 			return changeset_f.read().strip()

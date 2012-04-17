@@ -481,8 +481,8 @@ class Remote(object):
 		resp = self._api_get(url,
 				params = dict(
 					platform_version=app_config['platform_version'],
-					platform_changeset=lib.platform_changeset(),
-					targets=",".join(forge_build._enabled_platforms('development')),
+					platform_changeset=lib.platform_changeset(path_to_app),
+					targets=",".join(forge_build._enabled_platforms(path.join(path_to_app, 'development'))),
 				)
 		)
 		return resp
