@@ -15,32 +15,6 @@ from forge import defaults
 
 LOG = logging.getLogger(__file__)
 
-def path_to_data_file(*relative_path):
-	'''This is a helper function that will return the path to a data file bundled inside the application.
-
-	It is aware of whether the application is frozen (e.g. being run from forge.exe) or not.
-
-	http://www.pyinstaller.org/export/latest/trunk/doc/Manual.html#adapting-to-being-frozen
-	'''
-	return os.path.join(forge.DATA_PATH, *relative_path)
-
-def path_to_config_file(*relative_path):
-	if sys.platform.startswith("win"):
-		return os.path.join(
-			os.environ['LOCALAPPDATA'],
-			'forge',
-			*relative_path
-		)
-	elif sys.platform.startswith("darwin"):
-		return os.path.join(
-			os.path.expanduser('~'),
-			'.forge'
-		)
-	elif sys.platform.startswith("linux"):
-		return os.path.join(
-			os.path.expanduser('~'),
-			'.forge'
-		)
 
 def try_a_few_times(f):
 	try_again = 0

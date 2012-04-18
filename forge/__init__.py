@@ -40,13 +40,6 @@ def get_version():
 
 	return version
 
-if 'frozen' in set(dir(sys)):
-	FROZEN = True
-	DATA_PATH = os.environ['_MEIPASS2']
-else:
-	FROZEN = False
-	DATA_PATH = path.abspath(path.join(__file__, "..", ".."))
-
 settings = {}
 
 def request_username():

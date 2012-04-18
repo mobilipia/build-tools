@@ -34,45 +34,6 @@ class TestUnzipWithPermissions(object):
 		extract_zipfile.assert_called_once_with(zip_object)
 		zip_object.close.assert_called_once_with()
 
-class TestPathToConfigFile(object):
-
-	@patch('forge.lib.sys')
-	def test_on_windows_should_use_localappdata_from_environment(self, mock_sys):
-		mock_env = {'LOCALAPPDATA': 'path to dummy appdata'}
-		mock_sys.platform = 'win32'
-
-		with patch('forge.os.environ', new=mock_env):
-			result = lib.path_to_config_file()
-
-		eq_(
-			result,
-			os.path.join(mock_env['LOCALAPPDATA'], 'forge')
-		)
-
-	@patch('forge.lib.os.path.expanduser')
-	@patch('forge.lib.sys')
-	def test_on_darwin_should_use_home_directory(self, mock_sys, expanduser):
-		mock_sys.platform = 'darwin'
-		expanduser.return_value = 'path to dummy home directory'
-
-		result = lib.path_to_config_file()
-		eq_(
-			result,
-			os.path.join('path to dummy home directory', '.forge')
-		)
-
-	@patch('forge.lib.os.path')
-	@patch('forge.lib.sys')
-	def test_on_linux_should_use_home_directory(self, mock_sys, path):
-		mock_sys.platform = 'linux'
-		path.expanduser.return_value = 'path to dummy home directory'
-
-		result = lib.path_to_config_file()
-		eq_(
-			result,
-			os.path.join('path to dummy home directory', '.forge')
-		)
-
 class TestPlatformChangeset(object):
 	def setup(self):
 		self.tdir = tempfile.mkdtemp()
