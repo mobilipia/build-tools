@@ -10,12 +10,15 @@ import shutil
 import time
 import urlparse
 from urlparse import urljoin, urlsplit
+from threading import Lock
 
 import forge
 from forge import build as forge_build, build_config, defaults
 from forge import ForgeError, lib
 
 LOG = logging.getLogger(__name__)
+
+cookie_lock = Lock()
 
 class RequestError(ForgeError):
 	pass
@@ -99,10 +102,12 @@ class Remote(object):
 		self.config = config
 		cookie_path = self._path_to_cookies()
 		self.cookies = LWPCookieJar(cookie_path)
+		cookie_lock.acquire()
 		if not os.path.exists(cookie_path):
 			self.cookies.save()
 		else:
 			self.cookies.load()
+		cookie_lock.release()
 		self._authenticated = False
 
 	def _path_to_cookies(self):
@@ -160,7 +165,9 @@ class Remote(object):
 		resp = getattr(self.session, method.lower())(url, *args, **kw)
 
 		lib.load_cookies_from_response(resp, self.cookies)
+		cookie_lock.acquire()
 		self.cookies.save()
+		cookie_lock.release()
 		# XXX: response is definitely json at this point?
 		# guaranteed if we're only making calls to the api
 		return resp
