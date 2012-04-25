@@ -3,7 +3,7 @@ import mock
 from nose.tools import ok_, eq_, raises
 
 import forge
-from forge.tests import dummy_config
+from forge import tests
 from forge import main, defaults
 from os import path
 
@@ -53,7 +53,7 @@ class TestCreate(object):
 		mock_raw_input = mock.MagicMock()
 		mock_raw_input.return_value = 'user input'
 		remote = Remote.return_value
-		build_config.load.return_value = dummy_config()
+		build_config.load.return_value = tests.dummy_config()
 
 		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
 			main.create([])
@@ -91,36 +91,26 @@ class TestRun(object):
 		generate_dynamic.customer_goals.run_app.assert_called_once()
 
 class Test_AssertNotSubdirectoryOfForgeRoot(object):
-	@mock.patch('forge.main.os.getcwd')
 	@raises(main.RunningInForgeRoot)
-	def test_raises_in_subdirectory(self, getcwd):
-		getcwd.return_value = path.join(defaults.FORGE_ROOT, 'dummy')
-		main._assert_not_in_subdirectory_of_forge_root()
+	def test_raises_in_subdirectory(self):
+		getcwd = path.join(defaults.FORGE_ROOT, 'dummy')
+		main._assert_not_in_subdirectory_of_forge_root(getcwd)
 
-	@mock.patch('forge.main.os.getcwd')
-	def test_not_confused_by_similar_directory(self, getcwd):
-		getcwd.return_value = path.join(defaults.FORGE_ROOT + '-app', 'dummy')
-		main._assert_not_in_subdirectory_of_forge_root()
+	def test_not_confused_by_similar_directory(self):
+		getcwd = path.join(defaults.FORGE_ROOT + '-app', 'dummy')
+		main._assert_not_in_subdirectory_of_forge_root(getcwd)
 
-	@mock.patch('forge.main.os.getcwd')
-	def test_ok_when_not_in_subdirectory(self, getcwd):
-		getcwd.return_value = path.join('not','forge','tools', 'dummy')
-		main._assert_not_in_subdirectory_of_forge_root()
+	def test_ok_when_not_in_subdirectory(self):
+		getcwd = path.join('not','forge','tools', 'dummy')
+		main._assert_not_in_subdirectory_of_forge_root(getcwd)
 
 class Test_AssertOutsideOfForgeRoot(object):
-
-	@mock.patch('forge.main.os')
 	@raises(main.RunningInForgeRoot)
-	def test_raises_exception_inside_forge_root(self, os):
-		os.getcwd = mock.Mock()
-		os.getcwd.return_value = defaults.FORGE_ROOT
-		main._assert_outside_of_forge_root()
+	def test_raises_exception_inside_forge_root(self):
+		main._assert_outside_of_forge_root(defaults.FORGE_ROOT)
 
-	@mock.patch('forge.main.os')
-	def test_nothing_happens_outside_of_forge_root(self, os):
-		os.getcwd = mock.Mock()
-		os.getcwd.return_value = path.join('some', 'other', 'dir')
-		main._assert_outside_of_forge_root()
+	def test_nothing_happens_outside_of_forge_root(self):
+		main._assert_outside_of_forge_root(path.join('some', 'other', 'dir'))
 
 class TestBuild(object):
 	def _check_common_setup(self, parser, Remote):
@@ -129,7 +119,7 @@ class TestBuild(object):
 		args.quiet = False
 		main.setup_logging(args)
 
-		Remote.assert_called_once_with(dummy_config())
+		Remote.assert_called_once_with(tests.dummy_config())
 
 	def _check_dev_setup(self, parser, Manager, Remote, Generate):
 		eq_(parser.add_argument.call_args_list,
@@ -138,7 +128,7 @@ class TestBuild(object):
 			]
 		)
 
-		Manager.assert_called_once_with(dummy_config())
+		Manager.assert_called_once_with(tests.dummy_config())
 		Generate.assert_called_once_with()
 		self._check_common_setup(parser, Remote)
 
@@ -149,7 +139,7 @@ class TestBuild(object):
 	@raises(forge.ForgeError)
 	def test_user_dir_not_there(self, argparse, isdir, build_config):
 		isdir.return_value = False
-		build_config.load.return_value = dummy_config()
+		build_config.load.return_value = tests.dummy_config()
 
 		main.development_build([])
 
@@ -169,9 +159,15 @@ class TestBuild(object):
 		parser = argparse.ArgumentParser.return_value
 		args = parser.parse_args.return_value
 		Manager.return_value.need_new_templates_for_config.return_value = False
-		Remote.return_value.server_says_should_rebuild.return_value = (False, '')
+		Remote.return_value.server_says_should_rebuild.return_value = dict(
+			should_rebuild = False,
+			reason = 'testing',
+			stable_platform = 'v1.2',
+			platform_state = 'active',
+		)
 		args.full = False
-		build_config.load.return_value = dummy_config()
+		build_config.load.return_value = tests.dummy_config()
+		build_config.load_app.return_value = tests.dummy_app_config()
 
 		main.development_build([])
 
@@ -202,10 +198,16 @@ class TestBuild(object):
 		args = parser.parse_args.return_value
 		args.full = False
 		Manager.return_value.need_new_templates_for_config.return_value = True
-		Remote.return_value.server_says_should_rebuild.return_value = (False, '')
+		Remote.return_value.server_says_should_rebuild.return_value = dict(
+			should_rebuild = False,
+			reason = 'testing',
+			stable_platform = 'v1.2',
+			platform_state = 'active',
+		)
 		Remote.return_value.build.return_value = {"id": -1}
 		isdir.return_value = True
-		build_config.load.return_value = dummy_config()
+		build_config.load.return_value = tests.dummy_config()
+		build_config.load_app.return_value = tests.dummy_app_config()
 
 		main.development_build([])
 

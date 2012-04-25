@@ -15,7 +15,8 @@ class TestUnzipWithPermissions(object):
 	def test_when_system_has_unzip_should_call_unzip(self, subprocess):
 		subprocess.Popen.return_value.communicate.return_value = ('stdout', 'stderr')
 		lib.unzip_with_permissions('dummy archive.zip')
-		subprocess.Popen.assert_called_with(["unzip", "-o", "dummy archive.zip"],
+		subprocess.Popen.assert_called_with(
+				["unzip", "-o", "dummy archive.zip", "-d", "."],
 				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		eq_(subprocess.Popen.call_count, 2)
 
@@ -31,7 +32,7 @@ class TestUnzipWithPermissions(object):
 
 		eq_(subprocess.Popen.call_count, 1)
 		ZipFile.assert_called_once_with('dummy archive.zip')
-		extract_zipfile.assert_called_once_with(zip_object)
+		extract_zipfile.assert_called_once_with(zip_object, '.')
 		zip_object.close.assert_called_once_with()
 
 class TestPlatformChangeset(object):

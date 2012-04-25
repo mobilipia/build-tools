@@ -119,11 +119,11 @@ class TestFetchInitial(TestRemote):
 
 		self.remote._get_file.assert_called_once_with(
 			'https://test.trigger.io/api/app/TEST-UUID/initial_files/',
-			write_to_path='initial.zip'
+			write_to_path='./initial.zip'
 		)
 		
-		unzip_with_permissions.assert_called_once_with('initial.zip')
-		os.remove.assert_called_once_with('initial.zip')
+		unzip_with_permissions.assert_called_once_with('./initial.zip', '.')
+		os.remove.assert_called_once_with('./initial.zip')
 
 class TestFetchUnpackaged(TestRemote):
 
@@ -139,6 +139,7 @@ class TestFetchUnpackaged(TestRemote):
 		self.remote._get_file = mock.Mock()
 
 		build_dict = {
+			'id': -1,
 			'unpackaged': {
 				'chrome': '/path/chrome url',
 				'firefox': '/path/firefox url'
@@ -277,35 +278,6 @@ class TestBuild(TestRemote):
 		
 		assert_raises_regexp(Exception, 'build failed', self.remote.build, template_only=True)
 		
-class Test_Post(TestRemote):
-	@patch('forge.remote.requests')
-	def test_post(self, requests):
-		requests.post.return_value.ok = True
-		self.remote._csrf_token = Mock(return_value='csrf token')
-		
-		res = self.remote._post('url', 2, a=3, b=4)
-		self.remote._csrf_token.assert_called_once_with()
-		requests.post.assert_called_once_with('url', 2,
-			cookies={}, a=3, b=4, headers={'REFERER': 'url'},
-			data={'csrfmiddlewaretoken': 'csrf token', "build_tools_version": VERSION})
-		ok_(res is requests.post.return_value)
-
-class Test_Get(TestRemote):
-	@patch('forge.remote.requests')
-	def test_get(self, requests):
-		res = self.remote._get('url', 2, a=3, b=4)
-		requests.get.assert_called_once_with('url', 2, a=3, b=4, cookies={}, headers={'REFERER': 'url'})
-		ok_(res is requests.get.return_value)
-		
-	@patch('forge.remote.requests')
-	def test_basic_auth(self, requests):
-		self.remote.config['main']['authentication'] = {
-			'username': 'test username',
-			'password': 'test password',
-		}
-		self.remote._get('http://test.trigger.io/test_url')
-		requests.get.assert_called_once_with('http://test.trigger.io/test_url', cookies={}, auth=('test username', 'test password'), headers={'REFERER': 'http://test.trigger.io/test_url'})
-
 class Test_CheckVersion(TestRemote):
 	def test_update_required(self):
 		self.remote._api_get = Mock(return_value={"url": "http://example.com/forge/upgrade/", "message": "you must upgrade to a newer version of the command-line tools", "upgrade": "required", "result": "ok"})
@@ -313,21 +285,6 @@ class Test_CheckVersion(TestRemote):
 		assert_raises(remote.UpdateRequired, self.remote.check_version)
 
 class TestGenerateInstructions(TestRemote):
-	@raises(RequestError)
-	@patch('forge.remote.os')
-	@patch('forge.remote.build_config')
-	@patch('forge.remote.shutil')
-	@patch('forge.remote.requests')
-	def test_not_found_build(self, requests, shutil, build_config, os):
-		build_config.load_app.return_value = {"platform_version": "v1.2"}
-		cd = mock.MagicMock()
-		self.remote._authenticate = Mock()
-		requests.get.return_value.ok = False
-		requests.get.return_value.status_code = 404
-
-		with mock.patch('forge.lib.cd', new=cd):
-			self.remote.fetch_generate_instructions('my/path')
-
 	@patch('forge.remote.os')
 	@patch('forge.remote.build_config')
 	@patch('forge.remote.shutil')
@@ -441,7 +398,8 @@ class TestShouldRebuild(TestRemote):
 		build_config.load_app.return_value = app_config
 		platform_changeset.return_value = '000000000000'
 
-		eq_(self.remote.server_says_should_rebuild(), (True, 'dummy reason'))
+		eq_(self.remote.server_says_should_rebuild(),
+				self.remote._api_get.return_value)
 
 		self.remote._api_get.assert_called_once_with("app/TEST-UUID/should_rebuild",
 				params=dict(
@@ -460,7 +418,8 @@ class TestShouldRebuild(TestRemote):
 		build_config.load_app.return_value = app_config
 		platform_changeset.return_value = '000000000000'
 
-		eq_(self.remote.server_says_should_rebuild(), (False, 'dummy reason'))
+		eq_(self.remote.server_says_should_rebuild(), 
+				self.remote._api_get.return_value)
 
 		self.remote._api_get.assert_called_once_with("app/TEST-UUID/should_rebuild",
 				params = dict(

@@ -31,7 +31,7 @@ class TestLoadApp(object):
 	def test_no_identity(self):
 		@contextmanager
 		def open_file_mock(filename, *args, **kw):
-			if filename == defaults.APP_CONFIG_FILE:
+			if filename.endswith(defaults.APP_CONFIG_FILE):
 				result = mock.Mock()
 				result.read.return_value = "{}"
 				yield result
@@ -46,10 +46,10 @@ class TestLoadApp(object):
 		self.identity_file_contents = ''
 		@contextmanager
 		def open_file_mock(filename, *args, **kw):
-			if filename == defaults.APP_CONFIG_FILE:
+			if filename.endswith(defaults.APP_CONFIG_FILE):
 				self.opened_file.read.return_value = '{"uuid": "DUMMY_UUID"}'
 				yield self.opened_file
-			elif filename == defaults.IDENTITY_FILE:
+			elif filename.endswith(defaults.IDENTITY_FILE):
 				def mock_write(contents):
 					self.identity_file_contents += contents
 				self.opened_file.write = mock_write
@@ -64,9 +64,9 @@ class TestLoadApp(object):
 		
 		eq_(resp['uuid'], 'DUMMY_UUID')
 		eq_(self.open_file.call_args_list, [
-			((defaults.APP_CONFIG_FILE,), {}),
-			((defaults.IDENTITY_FILE, 'w'), {}),
-			((defaults.IDENTITY_FILE,), {}),
+			(("./"+defaults.APP_CONFIG_FILE,), {}),
+			(("./"+defaults.IDENTITY_FILE, 'w'), {}),
+			(("./"+defaults.IDENTITY_FILE,), {}),
 		])
 		
 
