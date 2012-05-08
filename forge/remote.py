@@ -554,3 +554,13 @@ class Remote(object):
 		})
 
 		self._authenticated = True
+
+	def available_platforms(self):
+		result = self._api_get(
+			'available_platforms'
+		)
+
+		if result['result'] == 'ok':
+			return result['platforms']
+		else:
+			return {}
