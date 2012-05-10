@@ -73,9 +73,8 @@ def unzip_with_permissions(filename, out_path="."):
 	This is because a ZipFile doesn't understand unix permissions (which aren't really in the zip spec),
 	and strips them when it has its contents extracted.
 	'''
-
 	try:
-		subprocess.Popen(["unzip"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		PopenWithoutNewConsole(["unzip"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	except OSError:
 		LOG.debug("'unzip' not available, falling back on python ZipFile, this will strip certain permissions from files")
 		zip_to_extract = zipfile.ZipFile(filename)
@@ -83,7 +82,7 @@ def unzip_with_permissions(filename, out_path="."):
 		zip_to_extract.close()
 	else:
 		LOG.debug("unzip is available, using it")
-		zip_process = subprocess.Popen(["unzip", "-o", filename, "-d", out_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		zip_process = PopenWithoutNewConsole(["unzip", "-o", filename, "-d", out_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		output = zip_process.communicate()[0]
 		LOG.debug("unzip output")
 		LOG.debug(output)
@@ -160,3 +159,20 @@ def load_cookies_from_response(response, jar):
 	req = RequestWrapper(response.request)
 	resp = ResponseWrapper(response)
 	jar.extract_cookies(resp, req)
+
+# TODO: this is duplicated in generate module, we should figure out a way to share
+# the code between generate_dynamic and build tools sensibly
+class PopenWithoutNewConsole(subprocess.Popen):
+	"""Wrapper around Popen that adds the appropriate options to prevent launching
+	a new console window everytime we want to launch a subprocess.
+	"""
+	_old_popen = subprocess.Popen
+
+	def __init__(self, *args, **kwargs):
+		if sys.platform.startswith("win") and 'startupinfo' not in kwargs:
+			startupinfo = subprocess.STARTUPINFO()
+			startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+			startupinfo.wShowWindow = subprocess.SW_HIDE
+			kwargs['startupinfo'] = startupinfo
+
+		self._old_popen.__init__(self, *args, **kwargs)

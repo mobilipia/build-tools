@@ -8,6 +8,7 @@ import subprocess
 import sys
 
 from forge import defaults
+from forge import lib
 from forge.build import import_generate_dynamic
 from forge.remote import Remote
 
@@ -65,7 +66,7 @@ class Manager(object):
 		remote.fetch_unpackaged(build, to_dir=self._tmpl_dir)
 		if sys.platform == 'win32':
 			try:
-				subprocess.call(['attrib', '+h', self._tmpl_dir])
+				lib.PopenWithoutNewConsole(['attrib', '+h', self._tmpl_dir]).wait()
 			except Exception:
 				# don't care if we fail to hide the templates dir
 				pass
