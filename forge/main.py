@@ -6,6 +6,8 @@ from os import path
 import shutil
 import sys
 import traceback
+import threading
+import Queue
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -14,6 +16,9 @@ from forge.generate import Generate
 from forge.remote import Remote, UpdateRequired
 from forge.templates import Manager
 from forge.lib import try_a_few_times, AccidentHandler
+from forge.async import Call
+from forge import cli
+
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
@@ -80,56 +85,6 @@ def _check_working_directory_is_safe(app_path=None):
 			"This is probably a bad idea! Please do your app development in a folder outside\n"
 			"of the build tools installation directory.\n"
 		)
-
-def with_error_handler(function):
-
-	def decorated_with_handler(*args, **kwargs):
-		global LOG
-		try:
-			function(*args, **kwargs)
-		except RunningInForgeRoot:
-			LOG.error(
-				"You're trying to run commands in the build tools directory.\n"
-				"You need to move to another directory outside of this one first.\n"
-			)
-		except UpdateRequired as e:
-			LOG.info("""An update to these command line tools is required, downloading...""")
-
-			# TODO: refactor so that we don't need to instantiate Remote here
-			config = build_config.load()
-			remote = Remote(config)
-			try:
-				remote.update()
-
-				LOG.info("Update complete, run your command again to continue")
-			except Exception as e:
-				LOG.error("Upgrade process failed: %s" % e)
-				LOG.debug("%s" % traceback.format_exc(e))
-				LOG.error("You can get the tools from https://trigger.io/api/latest_tools and extract them yourself")
-				LOG.error("Contact support@trigger.io if you have any further issues")
-			sys.exit(1)
-		except ForgeError as e:
-			# thrown by us, expected
-			LOG.error(e)
-			sys.exit(1)
-		except KeyboardInterrupt:
-			sys.stdout.write('\n')
-			LOG.info('exiting...')
-			sys.exit(1)
-		except Exception as e:
-			if LOG is None:
-				LOG = logging.getLogger(__name__)
-				LOG.addHandler(logging.StreamHandler())
-				LOG.setLevel(logging.DEBUG)
-			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
-			LOG.error("Something went wrong that we didn't expect:")
-			LOG.error(e)
-			LOG.error("See %s for more details" % ERROR_LOG_FILE)
-			LOG.error("Please contact support@trigger.io")
-			sys.exit(1)
-
-	return decorated_with_handler
-
 
 def _setup_error_logging_to_file():
 	"""Creates a handler which logs to a file in the case of an error, and
@@ -485,10 +440,89 @@ def migrate(unhandled_args):
 	)
 
 def _dispatch_command(command, other_args):
-	other_other_args = handle_secondary_options(command, other_args)
+	try:
+		other_other_args = handle_secondary_options(command, other_args)
 
-	subcommand = COMMANDS[command]
-	with_error_handler(subcommand)(other_other_args)
+		subcommand = COMMANDS[command]
+
+		# setup enough stuff so the target function can communicate back using events
+		call = Call(
+			call_id=0,
+			target=subcommand,
+			args=(other_other_args, ),
+			input=Queue.Queue(),
+			output=Queue.Queue(),
+			isolation_level='thread',
+		)
+
+		task_thread = threading.Thread(target=call.run)
+		task_thread.daemon = True
+		task_thread.start()
+
+		while True:
+			next_event = call._output.get(block=True)
+			event_type = next_event['type']
+
+			if event_type == 'question':
+				answer = cli.ask_question(next_event)
+
+				call.input({
+					'eventId': next_event['eventId'],
+					'data': answer,
+				})
+
+			# TODO: progress bar logic here
+			if event_type == 'progress':
+				pass
+
+			elif event_type == 'success':
+				return 0
+
+			elif event_type == 'error':
+				# raise exception from other thread/process here
+
+				try:
+					raise call.original_exc
+
+				except RunningInForgeRoot:
+					LOG.error(
+						"You're trying to run commands in the build tools directory.\n"
+						"You need to move to another directory outside of this one first.\n"
+					)
+
+				except UpdateRequired:
+					LOG.info("An update to these command line tools is required, downloading...")
+
+					# TODO: refactor so that we don't need to instantiate Remote here
+					config = build_config.load()
+					remote = Remote(config)
+					try:
+						remote.update()
+						LOG.info("Update complete, run your command again to continue")
+
+					except Exception as e:
+						LOG.error("Upgrade process failed: %s" % e)
+						LOG.debug("%s" % traceback.format_exc(e))
+						LOG.error("You can get the tools from https://trigger.io/api/latest_tools and extract them yourself")
+						LOG.error("Contact support@trigger.io if you have any further issues")
+
+				except ForgeError:
+					# thrown by us, expected
+					LOG.error(e)
+
+				except Exception:
+					LOG.error("Something went wrong that we didn't expect:")
+					LOG.error(next_event.get('message'))
+					LOG.debug(str(next_event.get('traceback')))
+
+					LOG.error("See %s for more details" % ERROR_LOG_FILE)
+					LOG.error("Please contact support@trigger.io")
+
+				return 1
+	except KeyboardInterrupt:
+		sys.stdout.write('\n')
+		LOG.info('exiting...')
+		return 1
 
 def main():
 	# The main entry point for the program.
@@ -501,7 +535,7 @@ def main():
 	if USING_DEPRECATED_COMMAND:
 		_warn_about_deprecated_command()
 
-	_dispatch_command(forge.settings['command'], other_args)
+	return _dispatch_command(forge.settings['command'], other_args)
 
 COMMANDS = {
 	'create'  : create,
