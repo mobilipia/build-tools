@@ -9,8 +9,8 @@ import os
 from os import path
 import time
 import urlparse
+import threading
 
-import forge
 from forge import defaults
 
 LOG = logging.getLogger(__file__)

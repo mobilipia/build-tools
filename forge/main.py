@@ -459,7 +459,6 @@ def _dispatch_command(command, other_args):
 			args=(other_other_args, ),
 			input=Queue.Queue(),
 			output=Queue.Queue(),
-			isolation_level='thread',
 		)
 
 		task_thread = threading.Thread(target=call.run)

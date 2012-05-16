@@ -3,6 +3,7 @@ import logging
 import traceback
 import uuid
 import Queue
+import sys
 
 
 LOG = logging.getLogger(__name__)
@@ -29,15 +30,23 @@ def _run_call(call):
 	call.run()
 
 
-# TODO: remove isolation level from this class, it should be reusable no matter what context
-# it is run in, just requires appropriate queues for input/output to be handed to it
 class Call(object):
-	"""Allows remote calls to emit events back to whoever invoked it, as well as listen for
-	responses to those events.
+	"""Wraps a function so that it can easily emit a stream of events while running, and
+	listen for responses to those events.
 
 	e.g. log messages, progress bar, notifications, and success or error.
 	"""
-	def __init__(self, call_id, target, output, input, isolation_level, args=None, kwargs=None):
+	def __init__(self, call_id, target, output, input, args=None, kwargs=None):
+		"""Construct a call, passing it anything that has the Queue interface for events.
+
+		:param target: Target function to run and capture events for.
+		
+		:param output: Queue that the target function will put events into.
+		:param input: Queue that the target function will read responses from.
+
+		:param args: Positional arguments to invoke the target with.
+		:param kwargs: Keyword arguments to invoke the target with.
+		"""
 		self._call_id = call_id
 		self._output = output
 		self._input = input
@@ -46,14 +55,16 @@ class Call(object):
 		self._target = target
 		self._args = args or ()
 		self._kwargs = kwargs or {}
-		self._isolation_level = isolation_level
 
 	def run(self):
-		"""Run this in a dedicated thread"""
-		if self._isolation_level == 'process':
-			for h in logging.root.handlers[:]:
-				logging.root.removeHandler(h)
+		"""Run the wrapped function until completion, converting the following into events:
 
+		* Calls to the logging API cause 'log' events.
+		* Raising an uncaught exception causes an 'error' event.
+		* Returning normally causes a 'success' event.
+
+		This should be used as the target for a threading.Thread or multiprocessing.Process.
+		"""
 		# store our Call object in a thread local so we can easily grab it and emit events
 		_async_storage.current_call = self
 
@@ -72,7 +83,6 @@ class Call(object):
 		# turn any return value or exception into a success or error event
 		except Exception as e:
 			# TODO: consider using e.__class__.__module__ for providing qualified exception types?
-			import sys
 			self.exception = sys.exc_info()[0]
 			self.emit('error', check_for_interrupt=False, message=str(e), error_type=str(e.__class__.__name__), traceback=traceback.format_exc(e))
 		else:
