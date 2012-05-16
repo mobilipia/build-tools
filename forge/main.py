@@ -8,6 +8,7 @@ import sys
 import traceback
 import threading
 import Queue
+import math
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -100,14 +101,31 @@ def _setup_error_logging_to_file():
 	logging.root.addHandler(accident_handler)
 
 
+class CurrentThreadHandler(logging.Handler):
+	"""Captures logging activity on a specific thread and emits events for the
+	call corresponding to that thread.
+	"""
+	def __init__(self, target_handler, *args, **kwargs):
+		logging.Handler.__init__(self, *args, **kwargs)
+		self._target_handler = target_handler
+		self._thread_ident = threading.current_thread().ident
+
+	def emit(self, record):
+		if record.thread == self._thread_ident:
+			self._target_handler.emit(record)
+
+
 def _setup_logging_to_stdout(stdout_log_level):
 	"""Creates a stream handler at the given log level and attaches it to
 	the root logger.
 	"""
-	stream_handler = logging.StreamHandler()
-	stream_handler.setLevel(stdout_log_level)
-	stream_handler.setFormatter(logging.Formatter('[%(levelname)7s] %(message)s'))
-	logging.root.addHandler(stream_handler)
+	# stream_handler = logging.StreamHandler()
+	# stream_handler.setLevel(stdout_log_level)
+	# stream_handler.setFormatter(logging.Formatter('[%(levelname)7s] %(message)s'))
+	# handler = CurrentThreadHandler(stream_handler)
+	# handler.setLevel(stdout_log_level)
+	# logging.root.addHandler(handler)
+	pass
 
 def _filter_requests_logging():
 	"""Stops requests from logging to info!"""
@@ -471,52 +489,62 @@ def _dispatch_command(command, other_args):
 					'data': answer,
 				})
 
-			# TODO: progress bar logic here
+			if event_type == 'progressStart':
+				cli.start_progress(next_event)
+
+			if event_type == 'progressEnd':
+				cli.end_progress(next_event)
+
 			if event_type == 'progress':
-				pass
+				cli.progress_bar(next_event)
+
+			# TODO: handle logging here so it happens in order with progress bar output
+			if event_type == 'log':
+				if next_event.get('level') == 'INFO':
+					cli.log(next_event.get('level'), next_event.get('message'))
 
 			elif event_type == 'success':
 				return 0
 
 			elif event_type == 'error':
 				# raise exception from other thread/process here
-
 				try:
-					raise call.original_exc
+					raise call.exception
 
 				except RunningInForgeRoot:
-					LOG.error(
+					cli.error(
 						"You're trying to run commands in the build tools directory.\n"
 						"You need to move to another directory outside of this one first.\n"
 					)
 
 				except UpdateRequired:
-					LOG.info("An update to these command line tools is required, downloading...")
+					cli.info("An update to these command line tools is required, downloading...")
 
 					# TODO: refactor so that we don't need to instantiate Remote here
 					config = build_config.load()
 					remote = Remote(config)
 					try:
 						remote.update()
-						LOG.info("Update complete, run your command again to continue")
+						cli.info("Update complete, run your command again to continue")
 
 					except Exception as e:
-						LOG.error("Upgrade process failed: %s" % e)
-						LOG.debug("%s" % traceback.format_exc(e))
-						LOG.error("You can get the tools from https://trigger.io/api/latest_tools and extract them yourself")
-						LOG.error("Contact support@trigger.io if you have any further issues")
+						cli.error("Upgrade process failed: %s" % e)
+						cli.debug("%s" % traceback.format_exc(e))
+						cli.error("You can get the tools from https://trigger.io/api/latest_tools and extract them yourself")
+						cli.error("Contact support@trigger.io if you have any further issues")
 
-				except ForgeError:
+				except ForgeError as e:
 					# thrown by us, expected
-					LOG.error(e)
+					cli.error(next_event.get('message'))
+					cli.debug(str(next_event.get('traceback')))
 
 				except Exception:
-					LOG.error("Something went wrong that we didn't expect:")
-					LOG.error(next_event.get('message'))
-					LOG.debug(str(next_event.get('traceback')))
+					cli.error("Something went wrong that we didn't expect:")
+					cli.error(next_event.get('message'))
+					cli.debug(str(next_event.get('traceback')))
 
-					LOG.error("See %s for more details" % ERROR_LOG_FILE)
-					LOG.error("Please contact support@trigger.io")
+					cli.error("See %s for more details" % ERROR_LOG_FILE)
+					cli.error("Please contact support@trigger.io")
 
 				return 1
 	except KeyboardInterrupt:
