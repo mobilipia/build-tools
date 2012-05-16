@@ -38,18 +38,6 @@ def _print_progress(width, message, fraction):
 def start_progress(progress_event, width=50):
 	_print_progress(width, progress_event['message'], 0)
 
-def log(level, message):
-	print "[%7s] %s" % (level, message)
-
-def info(message):
-	log('INFO', message)
-
-def error(message):
-	log('ERROR', message)
-
-def debug(message):
-	log('DEBUG', message)
-
 def end_progress(progress_event, width=50):
 	sys.stdout.write('\n')
 

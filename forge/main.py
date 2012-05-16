@@ -8,7 +8,6 @@ import sys
 import traceback
 import threading
 import Queue
-import math
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -16,7 +15,7 @@ from forge import build as forge_build
 from forge.generate import Generate
 from forge.remote import Remote, UpdateRequired
 from forge.templates import Manager
-from forge.lib import try_a_few_times, AccidentHandler
+from forge.lib import try_a_few_times, AccidentHandler, CurrentThreadHandler
 from forge.async import Call
 from forge import cli
 
@@ -98,34 +97,23 @@ def _setup_error_logging_to_file():
 	accident_handler = AccidentHandler(target=file_handler, capacity=9999, flush_level='ERROR')
 	accident_handler.setLevel(logging.DEBUG)
 
-	logging.root.addHandler(accident_handler)
+	thread_handler = CurrentThreadHandler(target_handler=accident_handler)
+	thread_handler.setLevel(logging.DEBUG)
 
-
-class CurrentThreadHandler(logging.Handler):
-	"""Captures logging activity on a specific thread and emits events for the
-	call corresponding to that thread.
-	"""
-	def __init__(self, target_handler, *args, **kwargs):
-		logging.Handler.__init__(self, *args, **kwargs)
-		self._target_handler = target_handler
-		self._thread_ident = threading.current_thread().ident
-
-	def emit(self, record):
-		if record.thread == self._thread_ident:
-			self._target_handler.emit(record)
+	logging.root.addHandler(thread_handler)
 
 
 def _setup_logging_to_stdout(stdout_log_level):
 	"""Creates a stream handler at the given log level and attaches it to
 	the root logger.
 	"""
-	# stream_handler = logging.StreamHandler()
-	# stream_handler.setLevel(stdout_log_level)
-	# stream_handler.setFormatter(logging.Formatter('[%(levelname)7s] %(message)s'))
-	# handler = CurrentThreadHandler(stream_handler)
-	# handler.setLevel(stdout_log_level)
-	# logging.root.addHandler(handler)
-	pass
+	stream_handler = logging.StreamHandler()
+	stream_handler.setLevel(stdout_log_level)
+	stream_handler.setFormatter(logging.Formatter('[%(levelname)7s] %(message)s'))
+	
+	handler = CurrentThreadHandler(target_handler=stream_handler)
+	handler.setLevel(stdout_log_level)
+	logging.root.addHandler(handler)
 
 def _filter_requests_logging():
 	"""Stops requests from logging to info!"""
@@ -458,6 +446,7 @@ def migrate(unhandled_args):
 	)
 
 def _dispatch_command(command, other_args):
+	"""Runs our subcommand in a separate thread, and handles events emitted by it"""
 	try:
 		other_other_args = handle_secondary_options(command, other_args)
 
@@ -498,53 +487,56 @@ def _dispatch_command(command, other_args):
 			if event_type == 'progress':
 				cli.progress_bar(next_event)
 
-			# TODO: handle logging here so it happens in order with progress bar output
+			# TODO: handle situation of logging while progress bar is running
+			# e.g. extra newline before using LOG.log
 			if event_type == 'log':
-				if next_event.get('level') == 'INFO':
-					cli.log(next_event.get('level'), next_event.get('message'))
+				# all logging in our task thread comes out as events, which we then
+				# plug back into the logging system, which then directs it to file/console output
+				logging_level = getattr(logging, next_event.get('level', 'DEBUG'))
+				LOG.log(logging_level, next_event.get('message', ''))
 
 			elif event_type == 'success':
 				return 0
 
 			elif event_type == 'error':
-				# raise exception from other thread/process here
+				# re-raise exception originally from other thread/process
 				try:
 					raise call.exception
 
 				except RunningInForgeRoot:
-					cli.error(
+					LOG.error(
 						"You're trying to run commands in the build tools directory.\n"
 						"You need to move to another directory outside of this one first.\n"
 					)
 
 				except UpdateRequired:
-					cli.info("An update to these command line tools is required, downloading...")
+					LOG.info("An update to these command line tools is required, downloading...")
 
 					# TODO: refactor so that we don't need to instantiate Remote here
 					config = build_config.load()
 					remote = Remote(config)
 					try:
 						remote.update()
-						cli.info("Update complete, run your command again to continue")
+						LOG.info("Update complete, run your command again to continue")
 
 					except Exception as e:
-						cli.error("Upgrade process failed: %s" % e)
-						cli.debug("%s" % traceback.format_exc(e))
-						cli.error("You can get the tools from https://trigger.io/api/latest_tools and extract them yourself")
-						cli.error("Contact support@trigger.io if you have any further issues")
+						LOG.error("Upgrade process failed: %s" % e)
+						LOG.debug("%s" % traceback.format_exc(e))
+						LOG.error("You can get the tools from https://trigger.io/api/latest_tools and extract them yourself")
+						LOG.error("Contact support@trigger.io if you have any further issues")
 
 				except ForgeError as e:
 					# thrown by us, expected
-					cli.error(next_event.get('message'))
-					cli.debug(str(next_event.get('traceback')))
+					LOG.error(next_event.get('message'))
+					LOG.debug(str(next_event.get('traceback')))
 
 				except Exception:
-					cli.error("Something went wrong that we didn't expect:")
-					cli.error(next_event.get('message'))
-					cli.debug(str(next_event.get('traceback')))
+					LOG.error("Something went wrong that we didn't expect:")
+					LOG.error(next_event.get('message'))
+					LOG.debug(str(next_event.get('traceback')))
 
-					cli.error("See %s for more details" % ERROR_LOG_FILE)
-					cli.error("Please contact support@trigger.io")
+					LOG.error("See %s for more details" % ERROR_LOG_FILE)
+					LOG.error("Please contact support@trigger.io")
 
 				return 1
 	except KeyboardInterrupt:
