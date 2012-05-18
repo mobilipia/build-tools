@@ -1,33 +1,53 @@
 """Helpers for cli interaction"""
 import sys
 import math
+from getpass import getpass
 
 
 def ask_question(question):
-	message = question.get('message', '')
-	choices = question.get('choices', [])
-	lines = [" (%d) %s" % (i + 1, c) for i, c in enumerate(choices)]
+	properties = question.get('schema').get('properties')
 
-	print "\n" + message + "\n" + "\n".join(lines)
+	response = {}
+	for item_name, item_schema in properties.items():
+		if item_schema.get('type') == 'string':
+			description = item_schema.get('description', '')
+			
+			if 'enum' in item_schema:
+				choices = item_schema['enum']
+				lines = [" (%d) %s" % (i + 1, c) for i, c in enumerate(choices)]
 
-	prompt = "Enter a choice between 1-%d: " % len(choices)
-	choice = None
-	while choice is None:
-		try:
-			inp = raw_input("\n" + prompt)
-			n = int(inp.strip())
+				print "\n" + description + "\n" + "\n".join(lines)
 
-			if not (1 <= n <= len(choices)):
-				raise ValueError
+				prompt = "Enter a choice between 1-%d: " % len(choices)
+				
+				choice = None
+				while choice is None:
+					try:
+						inp = raw_input("\n" + prompt)
+						n = int(inp.strip())
 
-			choice = n
-		except ValueError:
-			print "Invalid choice"
+						if not (1 <= n <= len(choices)):
+							raise ValueError
 
-	return choice
+						choice = n
+					except ValueError:
+						print "Invalid choice"
+
+				answer = choices[choice - 1]
+
+			elif '_password' in item_schema:
+				answer = getpass('%s: ' % description)
+
+			else:
+				answer = raw_input('%s: ' % description)
+
+			response[item_name] = answer
+
+	return response
 
 def _print_progress(width, message, fraction):
-	filled = int(math.floor(width * fraction))
+	capped_fraction = min(max(0, fraction), 1)
+	filled = int(math.floor(width * capped_fraction))
 	unfilled = width - filled
 	
 	sys.stdout.write('%30s [%s%s]' % (
