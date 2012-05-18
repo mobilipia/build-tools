@@ -262,7 +262,18 @@ def create(unhandled_args):
 		if "name" in forge.settings and forge.settings["name"]:
 			name = forge.settings["name"]
 		else:
-			name = raw_input('Enter app name: ')
+			from forge import async
+			event_id = async.current_call().emit('question', schema={
+				'description': 'Enter details for app',
+				'properties': {
+					'name': {
+						'type': 'string',
+						'description': 'Name for your app'
+					}
+				}
+			})
+
+			name = async.current_call().wait_for_response(event_id)['data']['name']
 		uuid = remote.create(name)
 		remote.fetch_initial(uuid)
 		LOG.info("Building app for the first time...")
@@ -292,7 +303,7 @@ def development_build(unhandled_args):
 	instructions_dir = defaults.INSTRUCTIONS_DIR
 	if forge.settings.get('full', False):
 		# do this first, so that bugs in generate_dynamic can always be nuked with a -f
-		LOG.debug("full rebuild requested: removing previous templates")
+		LOG.debug("Full rebuild requested: removing previous templates")
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 	config_changed = manager.need_new_templates_for_config()
@@ -309,7 +320,7 @@ def development_build(unhandled_args):
 			LOG.info("Your Forge platform has been updated: we need to rebuild your app")
 
 		if path.exists(instructions_dir):
-			LOG.debug("removing previous templates")
+			LOG.debug("Removing previous templates")
 			shutil.rmtree(instructions_dir, ignore_errors=True)
 
 		# configuration has changed: new template build!
@@ -319,7 +330,7 @@ def development_build(unhandled_args):
 		# have templates - now fetch injection instructions
 		remote.fetch_generate_instructions(instructions_dir)
 	else:
-		LOG.info('configuration is unchanged: using existing templates')
+		LOG.info('Configuration is unchanged: using existing templates')
 	
 	app_config = build_config.load_app()
 	cur_version = app_config['platform_version'].split('.')

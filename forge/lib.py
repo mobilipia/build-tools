@@ -194,3 +194,36 @@ class CurrentThreadHandler(logging.Handler):
 		# let it through to the target
 		if record.thread == self._thread_ident:
 			self._target_handler.emit(record)
+
+
+class ProgressBar(object):
+	"""Helper context manager to emit progress events. e.g.
+
+	with ProgressBar('Downloading Android SDK'):
+		time.sleep('2')
+		bar.progress(0.25) # 25% complete
+		time.sleep('2')
+		bar.progress(0.5) # 50% complete
+
+	# 100% complete if finishes without exception
+
+	*N.B* any logging occuring during the progress bar will mess up
+	how it looks in the commandline, might be able to resolve this later
+	by erasing the progress bar, printing the log output then printing the progress bar.
+	"""
+	def __init__(self, message):
+		self._message = message
+		from forge import async
+		self._call = async.current_call()
+
+	def __enter__(self):
+		self._call.emit('progressStart', message=self._message)
+		return self
+
+	def progress(self, fraction):
+		self._call.emit('progress', fraction=fraction, message=self._message)
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		if exc_type is not None:
+			self.progress(1)
+		self._call.emit('progressEnd', message=self._message)
