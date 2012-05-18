@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from os.path import join
 
 import mock
 from nose.tools import raises, eq_
@@ -64,9 +65,9 @@ class TestLoadApp(object):
 		
 		eq_(resp['uuid'], 'DUMMY_UUID')
 		eq_(self.open_file.call_args_list, [
-			(("./"+defaults.APP_CONFIG_FILE,), {}),
-			(("./"+defaults.IDENTITY_FILE, 'w'), {}),
-			(("./"+defaults.IDENTITY_FILE,), {}),
+			((join(".", defaults.APP_CONFIG_FILE), ), {}),
+			((join(".", defaults.IDENTITY_FILE), 'w'), {}),
+			((join(".", defaults.IDENTITY_FILE), ), {}),
 		])
 		
 

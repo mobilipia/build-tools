@@ -228,17 +228,6 @@ class TestBuild(object):
 		shutil.copytree.assert_called_once_with(".template", 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR, extra_args=[])
 
-class TestWithErrorHandler(object):
-	@mock.patch('forge.main._assert_outside_of_forge_root')
-	@mock.patch('forge.main._assert_not_in_subdirectory_of_forge_root')
-	@mock.patch('forge.main.sys')
-	def test_keyboard_interrupt(self, sys, warn_if_subdir, assert_outside):
-		def interrupt():
-			raise KeyboardInterrupt()
-
-		main.with_error_handler(interrupt)()
-		sys.exit.assert_called_once_with(1)
-
 class TestMain(object):
 	@mock.patch('forge.main._dispatch_command')
 	@mock.patch('forge.main.argparse')
