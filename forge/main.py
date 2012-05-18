@@ -60,7 +60,10 @@ def _assert_not_in_subdirectory_of_forge_root(app_path):
 
 def _assert_have_target_folder(directory, target):
 	if not os.path.isdir(path.join(directory, target)):
-		raise ForgeError("Can't run build for '%s', because you haven't built it!" % target)
+		raise ForgeError(
+			"Can't run build for '{target}', because you haven't built it!\n"
+			"If you're interested in targetting {target}, please contact support@trigger.io to sign up for one of our paid plans.".format(target=target)
+		)
 
 def _assert_have_development_folder():
 	if not os.path.exists('development'):
