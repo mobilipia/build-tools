@@ -410,7 +410,6 @@ def run(unhandled_args):
 	generate_dynamic.customer_goals.run_app(
 		generate_module=generate_dynamic,
 		build_to_run=build_to_run,
-		server=False,
 	)
 
 def package(unhandled_args):
@@ -426,7 +425,6 @@ def package(unhandled_args):
 	generate_dynamic.customer_goals.package_app(
 		generate_module=generate_dynamic,
 		build_to_run=build_to_run,
-		server=False,
 	)
 
 def check(unhandled_args):
