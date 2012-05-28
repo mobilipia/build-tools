@@ -271,6 +271,8 @@ class Remote(object):
 		else:
 			LOG.info('Upgrade check failed.')
 
+	# TODO: currently this method seems to corrupt zip files downloaded,
+	# not sure why.
 	def _get_file_with_progress_bar(self, response, write_to_path, progress_bar_title):
 		if progress_bar_title is None:
 			progress_bar_title = 'Download'
@@ -303,7 +305,8 @@ class Remote(object):
 		except Exception:
 			content_length = None
 
-		if content_length:
+		# TODO: fix usage of iter_content for fetching files with progress bar.
+		if False and content_length:
 			self._get_file_with_progress_bar(response, write_to_path, progress_bar_title)
 		else:
 			with open(write_to_path, 'wb') as write_to_file:

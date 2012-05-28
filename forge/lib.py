@@ -73,6 +73,7 @@ def unzip_with_permissions(filename, out_path="."):
 	This is because a ZipFile doesn't understand unix permissions (which aren't really in the zip spec),
 	and strips them when it has its contents extracted.
 	'''
+	LOG.debug('Unzipping {zip} to {dest}'.format(zip=filename, dest=out_path))
 	try:
 		PopenWithoutNewConsole(["unzip"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	except OSError:
