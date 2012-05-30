@@ -8,6 +8,7 @@ import sys
 import traceback
 import threading
 import Queue
+import time
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -462,6 +463,7 @@ def migrate(unhandled_args):
 
 def _dispatch_command(command, other_args):
 	"""Runs our subcommand in a separate thread, and handles events emitted by it"""
+	call = None
 	try:
 		other_other_args = handle_secondary_options(command, other_args)
 
@@ -477,7 +479,6 @@ def _dispatch_command(command, other_args):
 		)
 
 		task_thread = threading.Thread(target=call.run)
-		task_thread.daemon = True
 		task_thread.start()
 
 		while True:
@@ -555,7 +556,9 @@ def _dispatch_command(command, other_args):
 				return 1
 	except KeyboardInterrupt:
 		sys.stdout.write('\n')
-		LOG.info('exiting...')
+		LOG.info('Exiting...')
+		if call:
+			call.interrupt()
 		return 1
 
 def main():

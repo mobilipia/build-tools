@@ -83,14 +83,26 @@ class Call(object):
 		# turn any return value or exception into a success or error event
 		except Exception as e:
 			# TODO: consider using e.__class__.__module__ for providing qualified exception types?
+			event_type = 'error'
+			event = dict(
+				message=str(e),
+				error_type=str(e.__class__.__name__),
+				traceback=traceback.format_exc(e)
+			)
+
 			self.exception = sys.exc_info()[0]
-			self.emit('error', check_for_interrupt=False, message=str(e), error_type=str(e.__class__.__name__), traceback=traceback.format_exc(e))
+
 		else:
-			self.emit('success', check_for_interrupt=False, data=result)
+			event_type = 'success'
+			event = dict(
+				data=result
+			)
 
 		finally:
 			logging.root.removeHandler(handler)
 			self._shutdown_input_handling_thread()
+
+			self.emit(event_type, check_for_interrupt=False, **event)
 
 	def setup_response_processing(self):
 		"""Sets up a thread distributing responses to events, as well as a thread listening
