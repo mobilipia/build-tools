@@ -10,13 +10,16 @@ def ask_question(question):
 	response = {}
 	for item_name, item_schema in properties.items():
 		if item_schema.get('type') == 'string':
+			title = item_schema.get('title')
 			description = item_schema.get('description', '')
 			
+			print "\n" + description
+
 			if 'enum' in item_schema:
 				choices = item_schema['enum']
 				lines = [" (%d) %s" % (i + 1, c) for i, c in enumerate(choices)]
 
-				print "\n" + description + "\n" + "\n".join(lines)
+				print "\n".join(lines)
 
 				prompt = "Enter a choice between 1-%d: " % len(choices)
 				
@@ -36,10 +39,10 @@ def ask_question(question):
 				answer = choices[choice - 1]
 
 			elif '_password' in item_schema:
-				answer = getpass('%s: ' % description)
+				answer = getpass('%s: ' % title)
 
 			else:
-				answer = raw_input('%s: ' % description)
+				answer = raw_input('%s: ' % title)
 
 			response[item_name] = answer
 

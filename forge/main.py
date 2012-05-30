@@ -271,7 +271,8 @@ def create(unhandled_args):
 				'properties': {
 					'name': {
 						'type': 'string',
-						'description': 'Name for your app'
+						'title': 'App Name',
+						'description': 'This name is what your application will be called on devices. You can change it later through config.json.'
 					}
 				}
 			})
