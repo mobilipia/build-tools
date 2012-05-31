@@ -506,9 +506,14 @@ def cojones(unhandled_args):
 		generate_dynamic = forge_build.import_generate_dynamic()
 	except ForgeError:
 		# don't have generate_dynamic available yet
-		raise ForgeError("Unable to migrate until a build has completed")
+		raise ForgeError("Unable to use cojones until a build has completed")
 
+	build_to_run = forge_build.create_build(
+		"development",
+		targets=[],
+	)
 	generate_dynamic.cojones.run_command(
+		build_to_run,
 		unhandled_args,
 	)
 
