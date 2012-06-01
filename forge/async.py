@@ -36,7 +36,7 @@ class Call(object):
 
 	e.g. log messages, progress bar, notifications, and success or error.
 	"""
-	def __init__(self, call_id, target, output, input, args=None, kwargs=None):
+	def __init__(self, call_id, target, output, input, stamp=None, args=None, kwargs=None):
 		"""Construct a call, passing it anything that has the Queue interface for events.
 
 		:param target: Target function to run and capture events for.
@@ -44,10 +44,12 @@ class Call(object):
 		:param output: Queue that the target function will put events into.
 		:param input: Queue that the target function will read responses from.
 
+		:param stamp: Optional dict of attributes to include in every emitted event.
 		:param args: Positional arguments to invoke the target with.
 		:param kwargs: Keyword arguments to invoke the target with.
 		"""
 		self._call_id = call_id
+		self._stamp = stamp
 		self._output = output
 		self._input = input
 		self._responses = {}
@@ -177,6 +179,8 @@ class Call(object):
 			'eventId': event_id,
 		}
 		event = dict(event, **kwargs)
+		if self._stamp is not None:
+			event.update(self._stamp)
 		self._output.put(event)
 		return event_id
 
