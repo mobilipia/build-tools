@@ -3,7 +3,7 @@ from forge import async
 import sys
 
 
-VERSION = '3.3.0'
+VERSION = '3.3.1'
 
 def _check_version():
 	'''Throw error if we're on Python < 2.6'''
