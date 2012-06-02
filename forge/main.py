@@ -491,6 +491,7 @@ def cojones(unhandled_args):
 def _dispatch_command(command, other_args):
 	"""Runs our subcommand in a separate thread, and handles events emitted by it"""
 	call = None
+	task_thread = None
 	try:
 		other_other_args = handle_secondary_options(command, other_args)
 
@@ -506,6 +507,7 @@ def _dispatch_command(command, other_args):
 		)
 
 		task_thread = threading.Thread(target=call.run)
+		task_thread.daemon = True
 		task_thread.start()
 
 		while True:
@@ -586,6 +588,7 @@ def _dispatch_command(command, other_args):
 		LOG.info('Exiting...')
 		if call:
 			call.interrupt()
+			task_thread.join(timeout=5)
 		return 1
 
 def main():

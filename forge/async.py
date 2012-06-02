@@ -217,7 +217,13 @@ class Call(object):
 		:param timeout: If None, wait forever for a response, otherwise wait for the number of seconds given.
 		"""
 		self._atomic_create_response_queue_if_necessary(event_id)
-		return self._responses[event_id].get(block=True, timeout=timeout)
+		while True:
+			try:
+				self.assert_not_interrupted()
+				response = self._responses[event_id].get(block=True, timeout=1)
+				return response
+			except Queue.Empty:
+				continue
 
 
 class CallHandler(logging.Handler):
