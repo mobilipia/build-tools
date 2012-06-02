@@ -17,6 +17,8 @@ from forge.generate import Generate
 from forge.remote import Remote, UpdateRequired
 from forge.templates import Manager
 from forge.lib import try_a_few_times, AccidentHandler, CurrentThreadHandler
+
+from forge import async
 from forge.async import Call
 from forge import cli
 
@@ -272,7 +274,6 @@ def create(unhandled_args):
 		if "name" in forge.settings and forge.settings["name"]:
 			name = forge.settings["name"]
 		else:
-			from forge import async
 			event_id = async.current_call().emit('question', schema={
 				'description': 'Enter details for app',
 				'properties': {

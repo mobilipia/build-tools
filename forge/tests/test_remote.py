@@ -120,6 +120,7 @@ class TestFetchInitial(TestRemote):
 		destination = path.join('.', 'initial.zip')
 		self.remote._get_file.assert_called_once_with(
 			'https://test.trigger.io/api/app/TEST-UUID/initial_files/',
+			progress_bar_title='Fetching initial files',
 			write_to_path=destination
 		)
 		
