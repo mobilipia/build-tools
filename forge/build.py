@@ -40,9 +40,24 @@ def _enabled_platforms(build_type_dir):
 			LOG.debug("ignoring non-target directory {0}".format(directory))
 	return enabled_platforms
 
-def import_generate_dynamic():
+def import_generate_dynamic(do_reload=False):
+	"""Load the dynamically-fetched generate libs.
+
+	:param do_reload: refresh a potentially changed module?
+	"""
 	try:
 		import generate_dynamic
+		if do_reload:
+			# need to do build and lib first so we can use @task
+			reload(sys.modules['generate_dynamic.build'])
+			reload(sys.modules['generate_dynamic.lib'])
+			# ... and not reload them twice
+			for name, module in sys.modules.iteritems():
+				if module and \
+						name.startswith('generate_dynamic') and \
+						name != 'generate_dynamic.build' and \
+						name != 'generate_dynamic.lib':
+					reload(module)
 	except ImportError:
 		sys.path.insert(0, path.abspath('.template'))
 		sys.path.insert(0, path.abspath(path.join('.template', 'lib')))

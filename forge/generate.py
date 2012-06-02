@@ -44,5 +44,4 @@ class Generate(object):
 		generate_dynamic.customer_goals.generate_app_from_template(
 			generate_module=generate_dynamic,
 			build_to_run=build_to_run,
-			server=False,
 		)
