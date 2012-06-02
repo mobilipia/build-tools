@@ -3,9 +3,8 @@ from os import path
 
 import mock
 from mock import MagicMock, Mock, patch
-from nose.tools import raises, eq_, ok_, assert_raises
+from nose.tools import eq_, ok_, assert_raises
 
-from forge import VERSION
 from forge import build, lib, remote
 from forge.remote import Remote, RequestError
 from forge.tests import dummy_config
@@ -287,12 +286,14 @@ class Test_CheckVersion(TestRemote):
 		assert_raises(remote.UpdateRequired, self.remote.check_version)
 
 class TestGenerateInstructions(TestRemote):
+	@patch('forge.remote.forge_build')
 	@patch('forge.remote.os')
 	@patch('forge.remote.build_config')
 	@patch('forge.remote.shutil')
 	@patch('forge.remote.lib.unzip_with_permissions')
-	def test_normal(self, unzip_with_permissions, shutil, build_config, os):
-		build_config.load_app.return_value = {"platform_version": "v1.2"}
+	def test_normal(self, unzip_with_permissions, shutil, build_config, os,
+			forge_build):
+		build_config.load_app.return_value = {"platform_version": "v1.3"}
 		cd = mock.MagicMock()
 		self.remote._authenticate = Mock()
 		self.remote._get_file = mock.Mock()
@@ -303,12 +304,14 @@ class TestGenerateInstructions(TestRemote):
 			)
 		
 		self.remote._get_file.assert_called_once_with(
-			'https://test.trigger.io/api/platform/v1.2/generate_instructions/',
+			'https://test.trigger.io/api/platform/v1.3/generate_instructions/',
 			'instructions.zip'
 		)
 
 		cd.assert_called_once_with('my/path')
 		unzip_with_permissions.assert_called_once_with('instructions.zip')
+		forge_build.import_generate_dynamic.assert_called_once_with(
+				do_reload=True)
 
 class TestCheckApiResponseForError(TestRemote):
 	
