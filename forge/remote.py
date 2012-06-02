@@ -42,7 +42,7 @@ def _check_api_response_for_error(url, method, resp, error_message=None):
 	if error_message is None:
 		error_message = method +' to %(url)s failed: status code %(status_code)s\n%(content)s'
 
-	LOG.debug("checking API response for success or error")
+	LOG.debug("Checking API response for success or error")
 
 	error_template = "Forge API call to {url} went wrong: {reason}"
 
@@ -271,42 +271,43 @@ class Remote(object):
 		else:
 			LOG.info('Upgrade check failed.')
 
-	def _get_file_with_progress_bar(self, response, write_to_path, content_length):
+	# TODO: currently this method seems to corrupt zip files downloaded,
+	# not sure why.
+	def _get_file_with_progress_bar(self, response, write_to_path, progress_bar_title):
+		if progress_bar_title is None:
+			progress_bar_title = 'Download'
+		content_length = response.headers.get('content-length')
 		message = 'Fetching ({content_length}) into {out_file}'.format(
 			content_length=content_length,
 			out_file=write_to_path
 		)
 		LOG.debug(message)
 
-		progress_bar_width = 50
+		with lib.ProgressBar(progress_bar_title) as bar:
 
-		progress = 0
-		last_mark = 0
-		sys.stdout.write("|")
+			bytes_written = 0
+			with open(write_to_path, 'wb') as write_to_file:
+				# TODO: upgrade requests, use Response.iter_content
+				for chunk in response.iter_content(chunk_size=102400):
+					if content_length:
+						content_length = int(content_length)
+						write_to_file.write(chunk)
+						bytes_written += len(chunk)
+						fraction_complete = float(bytes_written) / content_length
+						bar.progress(fraction_complete)
 
-		with open(write_to_path, 'wb') as write_to_file:
-			# TODO: upgrade requests, use Response.iter_content
-			for chunk in response.iter_content(chunk_size=102400):
-				if content_length:
-					progress += len(chunk) / content_length
-					marks = int(progress * progress_bar_width)
+					write_to_file.write(chunk)
 
-					if marks > last_mark:
-						sys.stdout.write("=" * (marks - last_mark))
-						last_mark = marks
-
-				write_to_file.write(chunk)
-		sys.stdout.write("|\n")
-
-	def _get_file(self, url, write_to_path):
+	def _get_file(self, url, write_to_path, progress_bar_title=None):
 		response = self._get(url)
 		try:
 			content_length = float(response.headers.get('Content-length'))
 		except Exception:
 			content_length = None
 
-		if content_length:
-			self._get_file_with_progress_bar(response, write_to_path, content_length)
+		# TODO: fix usage of iter_content for fetching files with progress bar.
+		if False and content_length:
+			self._get_file_with_progress_bar(response, write_to_path, progress_bar_title)
 		else:
 			with open(write_to_path, 'wb') as write_to_file:
 				write_to_file.write(response.content)
@@ -323,7 +324,8 @@ class Remote(object):
 
 		self._get_file(
 			urljoin(self.server, 'app/{uuid}/initial_files/'.format(uuid=uuid)),
-			write_to_path=initial_zip_filename
+			write_to_path=initial_zip_filename,
+			progress_bar_title='Fetching initial files'
 		)
 		lib.unzip_with_permissions(initial_zip_filename, app_path)
 		LOG.debug('Extracted initial project template')
@@ -353,12 +355,12 @@ class Remote(object):
 		:param build: the build to fetch
 		:param to_dir: directory that will hold all the unpackged build trees
 		'''
-		LOG.info('fetching unpackaged artefacts for %s into "%s"' % (build["id"], to_dir))
+		LOG.info('Fetching Forge templates for %s into "%s"' % (build["id"], to_dir))
 		self._authenticate()
 		
 		filenames = []
 		if not path.isdir(to_dir):
-			LOG.info('creating output directory "%s"' % to_dir)
+			LOG.debug('Creating output directory "%s"' % to_dir)
 			os.mkdir(to_dir)
 			
 		with lib.cd(to_dir):
@@ -371,14 +373,15 @@ class Remote(object):
 				LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
 				self._get_file(
 					locations[platform],
-					write_to_path=filename
+					write_to_path=filename,
+					progress_bar_title=platform,
 				)
 				
 				self._handle_unpackaged(platform, filename)
 				
 				filenames.append(path.abspath(platform))
 		
-		LOG.info('fetched build into "%s"' % '", "'.join(filenames))
+		LOG.debug('Fetched build into "%s"' % '", "'.join(filenames))
 		return filenames
 
 	def fetch_generate_instructions(self, to_dir):
@@ -396,8 +399,8 @@ class Remote(object):
 		platform_version = build_config.load_app()['platform_version']
 		temp_instructions_file = 'instructions.zip'
 
-		LOG.info("fetching generation instructions for {platform_version} "
-				"into {to_dir}".format(**locals()))
+		LOG.info("Fetching generation instructions for {platform_version} "
+				"into \"{to_dir}\"".format(**locals()))
 
 		try:
 			# ensure generate_dynamic dir is there before extracting instructions into it

@@ -1,4 +1,5 @@
 import json
+from os import path
 
 import mock
 from mock import MagicMock, Mock, patch
@@ -117,13 +118,14 @@ class TestFetchInitial(TestRemote):
 
 		self.remote.fetch_initial('TEST-UUID')
 
+		destination = path.join('.', 'initial.zip')
 		self.remote._get_file.assert_called_once_with(
 			'https://test.trigger.io/api/app/TEST-UUID/initial_files/',
-			write_to_path='./initial.zip'
+			write_to_path=destination
 		)
 		
-		unzip_with_permissions.assert_called_once_with('./initial.zip', '.')
-		os.remove.assert_called_once_with('./initial.zip')
+		unzip_with_permissions.assert_called_once_with(destination, '.')
+		os.remove.assert_called_once_with(destination)
 
 class TestFetchUnpackaged(TestRemote):
 
