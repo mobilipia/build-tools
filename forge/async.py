@@ -57,6 +57,7 @@ class Call(object):
 		self._target = target
 		self._args = args or ()
 		self._kwargs = kwargs or {}
+		self._seen_interrupt = False
 
 	def run(self):
 		"""Run the wrapped function until completion, converting the following into events:
@@ -153,6 +154,7 @@ class Call(object):
 		from the caller.
 		"""
 		if self._interrupted:
+			self._seen_interrupt = True
 			raise CallInterrupted
 
 	# TODO: consistent protocol for messaging
@@ -170,7 +172,7 @@ class Call(object):
 			eventId: a unique identifier for this event, for responses
 		}
 		"""
-		if check_for_interrupt:
+		if not self._seen_interrupt and check_for_interrupt:
 			self.assert_not_interrupted()
 		event_id = str(uuid.uuid4())
 		event = {
