@@ -179,6 +179,19 @@ class PopenWithoutNewConsole(subprocess.Popen):
 		self._old_popen.__init__(self, *args, **kwargs)
 
 
+class FilterHandler(logging.Handler):
+	def __init__(self, target_handler, filter, *args, **kwargs):
+		logging.Handler.__init__(self, *args, **kwargs)
+		self._filter = filter
+		self._target_handler = target_handler
+
+	def emit(self, record):
+		# if the record originated in the desired thread,
+		# let it through to the target
+		if self._filter(record):
+			self._target_handler.emit(record)
+
+
 class CurrentThreadHandler(logging.Handler):
 	"""Wraps another logging.Handler and forwards on records to it if they originated from
 	a particular thread.

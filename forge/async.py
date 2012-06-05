@@ -7,14 +7,26 @@ import sys
 
 
 LOG = logging.getLogger(__name__)
-_async_storage = threading.local()
+_thread_local_call = None
+_process_call = None
 
+
+def set_current_call(call, thread_local):
+	global _process_call, _thread_local_call
+	if thread_local:
+		_thread_local_call = call
+	else:
+		_process_call = call
 
 def current_call():
-	"""Returns the Call object assigned to this thread, making it easy to emit events happening
-	in the current Call without passing it around.
+	"""Returns the Call object assigned to this Process (only makes sense to call this from a build
+	task isolated to a process)
 	"""
-	return _async_storage.current_call
+	if _process_call:
+		return _process_call
+
+	if _thread_local_call:
+		return _thread_local_call
 
 
 class CallInterrupted(Exception):
@@ -59,26 +71,17 @@ class Call(object):
 		self._kwargs = kwargs or {}
 		self._seen_interrupt = False
 
+	def __str__(self):
+		return "<Call(%s, %s)>" % (self._call_id, self._target)
+
 	def run(self):
 		"""Run the wrapped function until completion, converting the following into events:
 
-		* Calls to the logging API cause 'log' events.
 		* Raising an uncaught exception causes an 'error' event.
 		* Returning normally causes a 'success' event.
-
-		This should be used as the target for a threading.Thread or multiprocessing.Process.
 		"""
-		# store our Call object in a thread local so we can easily grab it and emit events
-		_async_storage.current_call = self
-
 		# create workers to distribute responses and wait for an interrupt
 		self.setup_response_processing()
-
-		# setup a logging.Handler which captures logging activity from the current thread and emits corresponding events
-		handler = CallHandler(self, threading.current_thread().ident)
-		handler.setLevel(logging.DEBUG)
-		logging.root.addHandler(handler)
-		logging.root.setLevel(logging.DEBUG)
 
 		try:
 			result = self._target(*self._args, **self._kwargs)
@@ -102,7 +105,6 @@ class Call(object):
 			)
 
 		finally:
-			logging.root.removeHandler(handler)
 			self._shutdown_input_handling_thread()
 
 			self.emit(event_type, check_for_interrupt=False, **event)
@@ -232,11 +234,9 @@ class CallHandler(logging.Handler):
 	"""Captures logging activity on a specific thread and emits events for the
 	call corresponding to that thread.
 	"""
-	def __init__(self, call, thread_ident, *args, **kwargs):
+	def __init__(self, call, *args, **kwargs):
 		logging.Handler.__init__(self, *args, **kwargs)
 		self._call = call
-		self._thread_ident = thread_ident
 
 	def emit(self, record):
-		if record.thread == self._thread_ident:
-			self._call.emit('log', level=record.levelname, message=record.getMessage())
+		self._call.emit('log', level=record.levelname, message=record.getMessage())

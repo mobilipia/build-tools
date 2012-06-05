@@ -15,10 +15,9 @@ from forge import build as forge_build
 from forge.generate import Generate
 from forge.remote import Remote, UpdateRequired
 from forge.templates import Manager
-from forge.lib import try_a_few_times, AccidentHandler, CurrentThreadHandler
+from forge.lib import try_a_few_times, AccidentHandler, FilterHandler, CurrentThreadHandler
 
 from forge import async
-from forge.async import Call
 from forge import cli
 
 
@@ -497,13 +496,25 @@ def _dispatch_command(command, other_args):
 		subcommand = COMMANDS[command]
 
 		# setup enough stuff so the target function can communicate back using events
-		call = Call(
+		call = async.Call(
 			call_id=0,
 			target=subcommand,
 			args=(other_other_args, ),
 			input=Queue.Queue(),
 			output=Queue.Queue(),
 		)
+		async.set_current_call(call, thread_local=True)
+
+		# capture logging on any thread but this one and turn it into events
+		handler = async.CallHandler(call)
+		handler.setLevel(logging.DEBUG)
+
+		current_thread = threading.current_thread().ident
+		filtered_handler = FilterHandler(handler, lambda r: r.thread != current_thread)
+		filtered_handler.setLevel(logging.DEBUG)
+
+		logging.root.addHandler(filtered_handler)
+		logging.root.setLevel(logging.DEBUG)
 
 		task_thread = threading.Thread(target=call.run)
 		task_thread.daemon = True
