@@ -29,7 +29,7 @@ class Generate(object):
 	def __init__(self, **kw):
 		self.app_config = build_config.load_app()
 
-	def all(self, target_dir, user_dir, extra_args):
+	def all(self, target_dir, user_dir, extra_args, config=None):
 		'''Re-create all local files in built targets
 
 		:param target_dir: the parent directory of the per-platform builds
@@ -38,6 +38,7 @@ class Generate(object):
 		generate_dynamic = import_generate_dynamic()
 		build_to_run = create_build(
 			target_dir,
+			config=config,
 			extra_args=extra_args,
 		)
 		

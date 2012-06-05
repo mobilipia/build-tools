@@ -66,7 +66,7 @@ def _get_ignore_patterns_for_src(src_dir):
 
 	return list(set(ignores))
 
-def create_build(build_type_dir, targets=None, extra_args=None):
+def create_build(build_type_dir, config=None, targets=None, extra_args=None):
 	'''Helper to instantiate a Build object from the dynamic generate code
 	
 	Assumes the working directory is alongside src and development
@@ -79,7 +79,11 @@ def create_build(build_type_dir, targets=None, extra_args=None):
 	:type extra_args: sequence
 	'''
 	generate_dynamic = import_generate_dynamic()
-	app_config = build_config.load_app()
+	if config == None:
+		app_config = build_config.load_app()
+	else:
+		app_config = config
+
 	local_config = build_config.load_local()
 	extra_args = [] if extra_args is None else extra_args
 	ignore_patterns = _get_ignore_patterns_for_src(defaults.SRC_DIR)

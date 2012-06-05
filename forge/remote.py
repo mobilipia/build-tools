@@ -420,9 +420,13 @@ class Remote(object):
 
 		return to_dir
 
-	def _request_development_build(self):
+	def _request_development_build(self, config=None):
 		data = {}
-		app_config = build_config.load_app()
+		if config == None:
+			app_config = build_config.load_app()
+		else:
+			app_config = config
+
 		data['config'] = json.dumps(app_config)
 		
 		url = 'app/{uuid}/template'.format(uuid=app_config['uuid'])
@@ -444,14 +448,14 @@ class Remote(object):
 		else:
 			raise ForgeError('build failed: %s' % build['log_output'])
 
-	def build(self, development=True, template_only=False):
+	def build(self, development=True, template_only=False, config=None):
 		'''Start a build on the remote server.
 
 		**NB:** this method blocks until the remote build has completed!
 
 		:param development: if ``True``, we will not do any packaging of the
 			build; it will be left in an expanded directory layout
-		:param template_only: internal use only: if ``True`` we will not use
+		:param template_only: if ``True`` we will not use
 			the "user" code - we will just recreate the app templates using the
 			current app configuration
 		:return: the primary key of the build
@@ -465,7 +469,7 @@ class Remote(object):
 		if not path.isdir(src_dir):
 			raise ForgeError("No {0} directory found: are you currently in the right directory?".format(src_dir))
 
-		build = self._request_development_build()
+		build = self._request_development_build(config)
 
 		if build["state"] == 'complete':
 			return build

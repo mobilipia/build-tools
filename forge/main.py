@@ -6,6 +6,8 @@ from os import path
 import shutil
 import sys
 import traceback
+from StringIO import StringIO
+import json
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -340,6 +342,12 @@ def development_build(unhandled_args):
 		LOG.debug("full rebuild requested: removing previous templates")
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
+	app_config = build_config.load_app()
+	cojones_result = remote._api_post('cojones/buildevents/%s' % app_config['uuid'], files={'config': StringIO(json.dumps(app_config))})
+	
+	cojones_config = cojones_result['config']
+	cojones_config_hash = cojones_result['config_hash']
+	
 	config_changed = manager.need_new_templates_for_config()
 	should_rebuild = remote.server_says_should_rebuild()
 	server_changed = should_rebuild['should_rebuild']
@@ -358,7 +366,7 @@ def development_build(unhandled_args):
 			shutil.rmtree(instructions_dir, ignore_errors=True)
 
 		# configuration has changed: new template build!
-		build = remote.build(development=True, template_only=True)
+		build = remote.build(development=True, template_only=True, config=cojones_config)
 		manager.fetch_templates(build)
 
 		# have templates - now fetch injection instructions
@@ -394,7 +402,9 @@ def development_build(unhandled_args):
 
 	# have templates and instructions - inject code
 	generator = Generate()
-	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args)
+	# Put config hash in config object for local generation
+	cojones_config['config_hash'] = cojones_config_hash
+	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args, config=cojones_config)
 	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
 	))
