@@ -52,7 +52,7 @@ def import_generate_dynamic(do_reload=False):
 			reload(sys.modules['generate_dynamic.build'])
 			reload(sys.modules['generate_dynamic.lib'])
 			# ... and not reload them twice
-			for name, module in sys.modules.iteritems():
+			for name, module in sys.modules.items():
 				if module and \
 						name.startswith('generate_dynamic') and \
 						name != 'generate_dynamic.build' and \

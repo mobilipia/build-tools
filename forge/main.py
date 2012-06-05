@@ -8,7 +8,6 @@ import sys
 import traceback
 import threading
 import Queue
-import time
 
 import forge
 from forge import defaults, build_config, ForgeError
