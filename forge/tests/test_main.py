@@ -43,23 +43,26 @@ class TestCreate(object):
 	@mock.patch('forge.main.os')
 	@mock.patch('forge.main.Remote')
 	@mock.patch('forge.main.argparse')
-	def test_normal(self, argparse, Remote, mock_os,
+	@mock.patch('forge.main.async.current_call')
+	def test_normal(self, current_call, argparse, Remote, mock_os,
 			build_config, development_build):
 		mock_os.sep = real_os.sep
 		parser = argparse.ArgumentParser.return_value
 		parser.parse_args.return_value.name = None
 
 		mock_os.path.exists.return_value = False
-		mock_raw_input = mock.MagicMock()
-		mock_raw_input.return_value = 'user input'
+
+		call = current_call.return_value
+		input = 'user input'
+		call.wait_for_response.return_value = {'data': {'name': input}}
+
 		remote = Remote.return_value
 		build_config.load.return_value = tests.dummy_config()
 
-		with mock.patch('__builtin__.raw_input', new=mock_raw_input):
-			main.create([])
+		main.create([])
 
 		mock_os.path.exists.assert_called_once_with(defaults.SRC_DIR)
-		remote.create.assert_called_once_with(mock_raw_input.return_value)
+		remote.create.assert_called_once_with(input)
 		remote.fetch_initial.assert_called_once_with(remote.create.return_value)
 		development_build.assert_called_once_with([])
 
@@ -227,17 +230,6 @@ class TestBuild(object):
 		])
 		shutil.copytree.assert_called_once_with(".template", 'development')
 		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR, extra_args=[])
-
-class TestWithErrorHandler(object):
-	@mock.patch('forge.main._assert_outside_of_forge_root')
-	@mock.patch('forge.main._assert_not_in_subdirectory_of_forge_root')
-	@mock.patch('forge.main.sys')
-	def test_keyboard_interrupt(self, sys, warn_if_subdir, assert_outside):
-		def interrupt():
-			raise KeyboardInterrupt()
-
-		main.with_error_handler(interrupt)()
-		sys.exit.assert_called_once_with(1)
 
 class TestMain(object):
 	@mock.patch('forge.main._dispatch_command')

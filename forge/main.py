@@ -8,6 +8,8 @@ import sys
 import traceback
 from StringIO import StringIO
 import json
+import threading
+import Queue
 
 import forge
 from forge import defaults, build_config, ForgeError
@@ -15,7 +17,11 @@ from forge import build as forge_build
 from forge.generate import Generate
 from forge.remote import Remote, UpdateRequired
 from forge.templates import Manager
-from forge.lib import try_a_few_times, AccidentHandler
+from forge.lib import try_a_few_times, AccidentHandler, FilterHandler, CurrentThreadHandler
+
+from forge import async
+from forge import cli
+
 
 LOG = logging.getLogger(__name__)
 ENTRY_POINT_NAME = 'forge'
@@ -57,7 +63,10 @@ def _assert_not_in_subdirectory_of_forge_root(app_path):
 
 def _assert_have_target_folder(directory, target):
 	if not os.path.isdir(path.join(directory, target)):
-		raise ForgeError("Can't run build for '%s', because you haven't built it!" % target)
+		raise ForgeError(
+			"Can't run build for '{target}', because you haven't built it!\n"
+			"If you're interested in targetting {target}, please contact support@trigger.io to sign up for one of our paid plans.".format(target=target)
+		)
 
 def _assert_have_development_folder():
 	if not os.path.exists('development'):
@@ -83,56 +92,6 @@ def _check_working_directory_is_safe(app_path=None):
 			"of the build tools installation directory.\n"
 		)
 
-def with_error_handler(function):
-
-	def decorated_with_handler(*args, **kwargs):
-		global LOG
-		try:
-			function(*args, **kwargs)
-		except RunningInForgeRoot:
-			LOG.error(
-				"You're trying to run commands in the build tools directory.\n"
-				"You need to move to another directory outside of this one first.\n"
-			)
-		except UpdateRequired as e:
-			LOG.info("""An update to these command line tools is required, downloading...""")
-
-			# TODO: refactor so that we don't need to instantiate Remote here
-			config = build_config.load()
-			remote = Remote(config)
-			try:
-				remote.update()
-
-				LOG.info("Update complete, run your command again to continue")
-			except Exception as e:
-				LOG.error("Upgrade process failed: %s" % e)
-				LOG.debug("%s" % traceback.format_exc(e))
-				LOG.error("You can get the tools from https://trigger.io/api/latest_tools and extract them yourself")
-				LOG.error("Contact support@trigger.io if you have any further issues")
-			sys.exit(1)
-		except ForgeError as e:
-			# thrown by us, expected
-			LOG.error(e)
-			sys.exit(1)
-		except KeyboardInterrupt:
-			sys.stdout.write('\n')
-			LOG.info('exiting...')
-			sys.exit(1)
-		except Exception as e:
-			if LOG is None:
-				LOG = logging.getLogger(__name__)
-				LOG.addHandler(logging.StreamHandler())
-				LOG.setLevel(logging.DEBUG)
-			LOG.debug("UNCAUGHT EXCEPTION: ", exc_info=True)
-			LOG.error("Something went wrong that we didn't expect:")
-			LOG.error(e)
-			LOG.error("See %s for more details" % ERROR_LOG_FILE)
-			LOG.error("Please contact support@trigger.io")
-			sys.exit(1)
-
-	return decorated_with_handler
-
-
 def _setup_error_logging_to_file():
 	"""Creates a handler which logs to a file in the case of an error, and
 	attaches it to the root logger.
@@ -144,7 +103,10 @@ def _setup_error_logging_to_file():
 	accident_handler = AccidentHandler(target=file_handler, capacity=9999, flush_level='ERROR')
 	accident_handler.setLevel(logging.DEBUG)
 
-	logging.root.addHandler(accident_handler)
+	thread_handler = CurrentThreadHandler(target_handler=accident_handler)
+	thread_handler.setLevel(logging.DEBUG)
+
+	logging.root.addHandler(thread_handler)
 
 
 def _setup_logging_to_stdout(stdout_log_level):
@@ -154,7 +116,10 @@ def _setup_logging_to_stdout(stdout_log_level):
 	stream_handler = logging.StreamHandler()
 	stream_handler.setLevel(stdout_log_level)
 	stream_handler.setFormatter(logging.Formatter('[%(levelname)7s] %(message)s'))
-	logging.root.addHandler(stream_handler)
+	
+	handler = CurrentThreadHandler(target_handler=stream_handler)
+	handler.setLevel(stdout_log_level)
+	logging.root.addHandler(handler)
 
 def _filter_requests_logging():
 	"""Stops requests from logging to info!"""
@@ -309,7 +274,18 @@ def create(unhandled_args):
 		if "name" in forge.settings and forge.settings["name"]:
 			name = forge.settings["name"]
 		else:
-			name = raw_input('Enter app name: ')
+			event_id = async.current_call().emit('question', schema={
+				'description': 'Enter details for app',
+				'properties': {
+					'name': {
+						'type': 'string',
+						'title': 'App Name',
+						'description': 'This name is what your application will be called on devices. You can change it later through config.json.'
+					}
+				}
+			})
+
+			name = async.current_call().wait_for_response(event_id)['data']['name']
 		uuid = remote.create(name)
 		remote.fetch_initial(uuid)
 		LOG.info("Building app for the first time...")
@@ -339,7 +315,7 @@ def development_build(unhandled_args):
 	instructions_dir = defaults.INSTRUCTIONS_DIR
 	if forge.settings.get('full', False):
 		# do this first, so that bugs in generate_dynamic can always be nuked with a -f
-		LOG.debug("full rebuild requested: removing previous templates")
+		LOG.debug("Full rebuild requested: removing previous templates")
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 	app_config = build_config.load_app()
@@ -362,7 +338,7 @@ def development_build(unhandled_args):
 			LOG.info("Your Forge platform has been updated: we need to rebuild your app")
 
 		if path.exists(instructions_dir):
-			LOG.debug("removing previous templates")
+			LOG.debug("Removing previous templates")
 			shutil.rmtree(instructions_dir, ignore_errors=True)
 
 		# configuration has changed: new template build!
@@ -372,7 +348,7 @@ def development_build(unhandled_args):
 		# have templates - now fetch injection instructions
 		remote.fetch_generate_instructions(instructions_dir)
 	else:
-		LOG.info('configuration is unchanged: using existing templates')
+		LOG.info('Configuration is unchanged: using existing templates')
 	
 	app_config = build_config.load_app()
 	cur_version = app_config['platform_version'].split('.')
@@ -426,7 +402,6 @@ def run(unhandled_args):
 	generate_dynamic.customer_goals.run_app(
 		generate_module=generate_dynamic,
 		build_to_run=build_to_run,
-		server=False,
 	)
 
 def package(unhandled_args):
@@ -442,7 +417,6 @@ def package(unhandled_args):
 	generate_dynamic.customer_goals.package_app(
 		generate_module=generate_dynamic,
 		build_to_run=build_to_run,
-		server=False,
 	)
 
 def check(unhandled_args):
@@ -528,10 +502,119 @@ def cojones(unhandled_args):
 	)
 
 def _dispatch_command(command, other_args):
-	other_other_args = handle_secondary_options(command, other_args)
+	"""Runs our subcommand in a separate thread, and handles events emitted by it"""
+	call = None
+	task_thread = None
+	try:
+		other_other_args = handle_secondary_options(command, other_args)
 
-	subcommand = COMMANDS[command]
-	with_error_handler(subcommand)(other_other_args)
+		subcommand = COMMANDS[command]
+
+		# setup enough stuff so the target function can communicate back using events
+		call = async.Call(
+			call_id=0,
+			target=subcommand,
+			args=(other_other_args, ),
+			input=Queue.Queue(),
+			output=Queue.Queue(),
+		)
+		async.set_current_call(call, thread_local=True)
+
+		# capture logging on any thread but this one and turn it into events
+		handler = async.CallHandler(call)
+		handler.setLevel(logging.DEBUG)
+
+		current_thread = threading.current_thread().ident
+		filtered_handler = FilterHandler(handler, lambda r: r.thread != current_thread)
+		filtered_handler.setLevel(logging.DEBUG)
+
+		logging.root.addHandler(filtered_handler)
+		logging.root.setLevel(logging.DEBUG)
+
+		task_thread = threading.Thread(target=call.run)
+		task_thread.daemon = True
+		task_thread.start()
+
+		while True:
+			next_event = call._output.get(block=True)
+			event_type = next_event['type']
+
+			if event_type == 'question':
+				answer = cli.ask_question(next_event)
+
+				call.input({
+					'eventId': next_event['eventId'],
+					'data': answer,
+				})
+
+			if event_type == 'progressStart':
+				cli.start_progress(next_event)
+
+			if event_type == 'progressEnd':
+				cli.end_progress(next_event)
+
+			if event_type == 'progress':
+				cli.progress_bar(next_event)
+
+			# TODO: handle situation of logging while progress bar is running
+			# e.g. extra newline before using LOG.log
+			if event_type == 'log':
+				# all logging in our task thread comes out as events, which we then
+				# plug back into the logging system, which then directs it to file/console output
+				logging_level = getattr(logging, next_event.get('level', 'DEBUG'))
+				LOG.log(logging_level, next_event.get('message', ''))
+
+			elif event_type == 'success':
+				return 0
+
+			elif event_type == 'error':
+				# re-raise exception originally from other thread/process
+				try:
+					raise call.exception
+
+				except RunningInForgeRoot:
+					LOG.error(
+						"You're trying to run commands in the build tools directory.\n"
+						"You need to move to another directory outside of this one first.\n"
+					)
+
+				except UpdateRequired:
+					LOG.info("An update to these command line tools is required, downloading...")
+
+					# TODO: refactor so that we don't need to instantiate Remote here
+					config = build_config.load()
+					remote = Remote(config)
+					try:
+						remote.update()
+						LOG.info("Update complete, run your command again to continue")
+
+					except Exception as e:
+						LOG.error("Upgrade process failed: %s" % e)
+						LOG.debug("%s" % traceback.format_exc(e))
+						LOG.error("You can get the tools from https://trigger.io/api/latest_tools and extract them yourself")
+						LOG.error("Contact support@trigger.io if you have any further issues")
+
+				except ForgeError as e:
+					# thrown by us, expected
+					LOG.error(next_event.get('message'))
+					LOG.debug(str(next_event.get('traceback')))
+
+				except Exception:
+					LOG.error("Something went wrong that we didn't expect:")
+					LOG.error(next_event.get('message'))
+					LOG.debug(str(next_event.get('traceback')))
+
+					LOG.error("See %s for more details" % ERROR_LOG_FILE)
+					LOG.error("Please contact support@trigger.io")
+
+				return 1
+	except KeyboardInterrupt:
+		sys.stdout.write('\n')
+		LOG.info('Exiting...')
+		if call:
+			call.interrupt()
+			task_thread.join(timeout=5)
+		return 1
 
 def main():
 	# The main entry point for the program.
@@ -544,7 +627,7 @@ def main():
 	if USING_DEPRECATED_COMMAND:
 		_warn_about_deprecated_command()
 
-	_dispatch_command(forge.settings['command'], other_args)
+	return _dispatch_command(forge.settings['command'], other_args)
 
 COMMANDS = {
 	'create'  : create,

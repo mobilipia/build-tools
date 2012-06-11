@@ -9,8 +9,8 @@ import os
 from os import path
 import time
 import urlparse
+import threading
 
-import forge
 from forge import defaults
 
 LOG = logging.getLogger(__file__)
@@ -73,6 +73,7 @@ def unzip_with_permissions(filename, out_path="."):
 	This is because a ZipFile doesn't understand unix permissions (which aren't really in the zip spec),
 	and strips them when it has its contents extracted.
 	'''
+	LOG.debug('Unzipping {zip} to {dest}'.format(zip=filename, dest=out_path))
 	try:
 		PopenWithoutNewConsole(["unzip"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	except OSError:
@@ -176,3 +177,67 @@ class PopenWithoutNewConsole(subprocess.Popen):
 			kwargs['startupinfo'] = startupinfo
 
 		self._old_popen.__init__(self, *args, **kwargs)
+
+
+class FilterHandler(logging.Handler):
+	def __init__(self, target_handler, filter, *args, **kwargs):
+		logging.Handler.__init__(self, *args, **kwargs)
+		self._filter = filter
+		self._target_handler = target_handler
+
+	def emit(self, record):
+		# if the record originated in the desired thread,
+		# let it through to the target
+		if self._filter(record):
+			self._target_handler.emit(record)
+
+
+class CurrentThreadHandler(logging.Handler):
+	"""Wraps another logging.Handler and forwards on records to it if they originated from
+	a particular thread.
+
+	Used to distinguish between output from the main build tools thread	and the task thread.
+	"""
+	def __init__(self, target_handler, *args, **kwargs):
+		logging.Handler.__init__(self, *args, **kwargs)
+		self._target_handler = target_handler
+		self._thread_ident = threading.current_thread().ident
+
+	def emit(self, record):
+		# if the record originated in the desired thread,
+		# let it through to the target
+		if record.thread == self._thread_ident:
+			self._target_handler.emit(record)
+
+
+class ProgressBar(object):
+	"""Helper context manager to emit progress events. e.g.
+
+	with ProgressBar('Downloading Android SDK'):
+		time.sleep('2')
+		bar.progress(0.25) # 25% complete
+		time.sleep('2')
+		bar.progress(0.5) # 50% complete
+
+	# 100% complete if finishes without exception
+
+	*N.B* any logging occuring during the progress bar will mess up
+	how it looks in the commandline, might be able to resolve this later
+	by erasing the progress bar, printing the log output then printing the progress bar.
+	"""
+	def __init__(self, message):
+		self._message = message
+		from forge import async
+		self._call = async.current_call()
+
+	def __enter__(self):
+		self._call.emit('progressStart', message=self._message)
+		return self
+
+	def progress(self, fraction):
+		self._call.emit('progress', fraction=fraction, message=self._message)
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		if exc_type is not None:
+			self.progress(1)
+		self._call.emit('progressEnd', message=self._message)

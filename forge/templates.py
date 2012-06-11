@@ -58,11 +58,10 @@ class Manager(object):
 		remote = Remote(self._config)
 		
 		# remove old templates
-		LOG.debug('removing %s' % self._tmpl_dir)
+		LOG.debug('Removing %s' % self._tmpl_dir)
 		shutil.rmtree(self._tmpl_dir, ignore_errors=True)
 		
 		# grab templated platform
-		LOG.info('fetching new Forge templates')
 		remote.fetch_unpackaged(build, to_dir=self._tmpl_dir)
 		if sys.platform == 'win32':
 			try:
