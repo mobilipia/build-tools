@@ -229,11 +229,6 @@ def _add_migrate_options(parser):
 def _handle_migrate_options(handled):
 	pass
 
-def _add_cojones_options(parser):
-	parser.description='Run cojones commands'
-def _handle_cojones_options(handled):
-	pass
-
 def handle_secondary_options(command, args):
 	parser = argparse.ArgumentParser(
 		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command),
@@ -246,7 +241,6 @@ def handle_secondary_options(command, args):
 		"package": (_add_package_options, _handle_package_options),
 		"check": (_add_check_options, _handle_check_options),
 		"migrate": (_add_migrate_options, _handle_migrate_options),
-		"cojones": (_add_cojones_options, _handle_cojones_options),
 	}
 
 	# add command-specific arguments
@@ -464,28 +458,6 @@ def migrate(unhandled_args):
 		build_to_run,
 	)
 
-def cojones(unhandled_args):
-	'''
-	Run cojones module command
-	'''
-	if not os.path.isdir(defaults.SRC_DIR):
-		raise ForgeError(
-			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
-				src=defaults.SRC_DIR,
-				prog=ENTRY_POINT_NAME,
-			)
-		)
-	
-	try:
-		generate_dynamic = forge_build.import_generate_dynamic()
-	except ForgeError:
-		# don't have generate_dynamic available yet
-		raise ForgeError("Unable to migrate until a build has completed")
-
-	generate_dynamic.cojones.run_command(
-		unhandled_args,
-	)
-
 def _dispatch_command(command, other_args):
 	"""Runs our subcommand in a separate thread, and handles events emitted by it"""
 	call = None
@@ -621,7 +593,6 @@ COMMANDS = {
 	'package' : package,
 	'check'   : check,
 	'migrate' : migrate,
-	'cojones' : cojones
 }
 
 if __name__ == "__main__":
