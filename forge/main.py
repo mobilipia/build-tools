@@ -232,7 +232,7 @@ def _handle_migrate_options(handled):
 def handle_secondary_options(command, args):
 	parser = argparse.ArgumentParser(
 		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command),
-		epilog="For more detailed information, see http://current-docs.trigger.io/command-line.html",
+		epilog="For more detailed information, see http://current-docs.trigger.io/tools/commands.html",
 	)
 	options_handlers = {
 		"create": (_add_create_options, _handle_create_options),
