@@ -231,9 +231,9 @@ def _add_migrate_options(parser):
 def _handle_migrate_options(handled):
 	pass
 
-def _add_cojones_options(parser):
-	parser.description='Run cojones commands'
-def _handle_cojones_options(handled):
+def _add_reload_options(parser):
+	parser.description='Run reload commands'
+def _handle_reload_options(handled):
 	pass
 
 def handle_secondary_options(command, args):
@@ -248,7 +248,7 @@ def handle_secondary_options(command, args):
 		"package": (_add_package_options, _handle_package_options),
 		"check": (_add_check_options, _handle_check_options),
 		"migrate": (_add_migrate_options, _handle_migrate_options),
-		"cojones": (_add_cojones_options, _handle_cojones_options),
+		"reload": (_add_reload_options, _handle_reload_options),
 	}
 
 	# add command-specific arguments
@@ -319,10 +319,10 @@ def development_build(unhandled_args):
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 	app_config = build_config.load_app()
-	cojones_result = remote._api_post('cojones/buildevents/%s' % app_config['uuid'], files={'config': StringIO(json.dumps(app_config))})
+	reload_result = remote._api_post('reload/buildevents/%s' % app_config['uuid'], files={'config': StringIO(json.dumps(app_config))})
 	
-	cojones_config = cojones_result['config']
-	cojones_config_hash = cojones_result['config_hash']
+	reload_config = reload_result['config']
+	reload_config_hash = reload_result['config_hash']
 	
 	config_changed = manager.need_new_templates_for_config()
 	should_rebuild = remote.server_says_should_rebuild()
@@ -342,7 +342,7 @@ def development_build(unhandled_args):
 			shutil.rmtree(instructions_dir, ignore_errors=True)
 
 		# configuration has changed: new template build!
-		build = remote.build(development=True, template_only=True, config=cojones_config)
+		build = remote.build(development=True, template_only=True, config=reload_config)
 		manager.fetch_templates(build)
 
 		# have templates - now fetch injection instructions
@@ -379,8 +379,8 @@ def development_build(unhandled_args):
 	# have templates and instructions - inject code
 	generator = Generate()
 	# Put config hash in config object for local generation
-	cojones_config['config_hash'] = cojones_config_hash
-	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args, config=cojones_config)
+	reload_config['config_hash'] = reload_config_hash
+	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args, config=reload_config)
 	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
 	))
@@ -474,9 +474,9 @@ def migrate(unhandled_args):
 		build_to_run,
 	)
 
-def cojones(unhandled_args):
+def reload(unhandled_args):
 	'''
-	Run cojones module command
+	Run reload module command
 	'''
 	if not os.path.isdir(defaults.SRC_DIR):
 		raise ForgeError(
@@ -490,13 +490,13 @@ def cojones(unhandled_args):
 		generate_dynamic = forge_build.import_generate_dynamic()
 	except ForgeError:
 		# don't have generate_dynamic available yet
-		raise ForgeError("Unable to use cojones until a build has completed")
+		raise ForgeError("Unable to use reload until a build has completed")
 
 	build_to_run = forge_build.create_build(
 		"development",
 		targets=[],
 	)
-	generate_dynamic.cojones.run_command(
+	generate_dynamic.reload.run_command(
 		build_to_run,
 		unhandled_args,
 	)
@@ -636,7 +636,7 @@ COMMANDS = {
 	'package' : package,
 	'check'   : check,
 	'migrate' : migrate,
-	'cojones' : cojones
+	'reload' : reload
 }
 
 if __name__ == "__main__":
