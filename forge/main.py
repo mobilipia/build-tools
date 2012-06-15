@@ -493,7 +493,12 @@ def _dispatch_command(command, other_args):
 		task_thread.start()
 
 		while True:
-			next_event = call._output.get(block=True)
+			try:
+				# KeyboardInterrupts aren't seen until the .get() completes :S
+				# So we set a timeout here to make sure we receive it
+				next_event = call._output.get(block=True, timeout=1)
+			except Queue.Empty:
+				continue
 			event_type = next_event['type']
 
 			if event_type == 'question':
