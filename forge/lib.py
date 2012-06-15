@@ -201,12 +201,14 @@ class CurrentThreadHandler(logging.Handler):
 	def __init__(self, target_handler, *args, **kwargs):
 		logging.Handler.__init__(self, *args, **kwargs)
 		self._target_handler = target_handler
-		self._thread_ident = threading.current_thread().ident
+		# Thread.name more reliable than Thread.ident:
+		# http://bugs.python.org/issue5632
+		self._thread_name = threading.current_thread().name
 
 	def emit(self, record):
 		# if the record originated in the desired thread,
 		# let it through to the target
-		if record.thread == self._thread_ident:
+		if record.threadName == self._thread_name:
 			self._target_handler.emit(record)
 
 

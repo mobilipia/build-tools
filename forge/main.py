@@ -481,8 +481,8 @@ def _dispatch_command(command, other_args):
 		handler = async.CallHandler(call)
 		handler.setLevel(logging.DEBUG)
 
-		current_thread = threading.current_thread().ident
-		filtered_handler = FilterHandler(handler, lambda r: r.thread != current_thread)
+		current_thread = threading.current_thread().name
+		filtered_handler = FilterHandler(handler, lambda r: r.threadName != current_thread)
 		filtered_handler.setLevel(logging.DEBUG)
 
 		logging.root.addHandler(filtered_handler)
