@@ -573,3 +573,10 @@ class Remote(object):
 			return result['platforms']
 		else:
 			return {}
+
+	def buildevents(self, path_to_app="."):
+		self._authenticate()
+		app_config = build_config.load_app(path_to_app)
+		url = 'reload/buildevents/{uuid}'.format(uuid=app_config['uuid'])
+		resp = self._api_get(url)
+		return resp
