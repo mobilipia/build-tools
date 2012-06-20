@@ -321,7 +321,7 @@ def development_build(unhandled_args):
 	app_config = build_config.load_app()
 	reload_result = remote._api_post('reload/buildevents/%s' % app_config['uuid'], files={'config': StringIO(json.dumps(app_config))})
 	
-	reload_config = reload_result['config']
+	reload_config = json.loads(reload_result['config'])
 	reload_config_hash = reload_result['config_hash']
 	
 	config_changed = manager.need_new_templates_for_config()
