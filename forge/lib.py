@@ -247,7 +247,6 @@ class ProgressBar(object):
 
 def set_file_as_hidden(to_hide):
 	if sys.platform == 'win32':
-		import pdb; pdb.set_trace()
 		try:
 			PopenWithoutNewConsole(['attrib', '+h', to_hide], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
 		except Exception as e:

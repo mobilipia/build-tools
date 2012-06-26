@@ -13,9 +13,9 @@ from forge.remote import Remote
 
 LOG = logging.getLogger(__name__)
 
+
 class Manager(object):
 	'Handles the fetching, updating and management of generic templates'
-	
 	
 	def __init__(self, config):
 		'''Operations on the locally stored template code
