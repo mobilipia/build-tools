@@ -421,8 +421,6 @@ class Remote(object):
 			if path.isfile(path.join(to_dir, temp_instructions_file)):
 				os.remove(path.join(to_dir, temp_instructions_file))
 
-		forge_build.import_generate_dynamic(do_reload=True)
-
 		return to_dir
 
 	def _request_development_build(self):
