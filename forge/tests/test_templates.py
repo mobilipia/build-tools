@@ -54,7 +54,8 @@ class TestFetchTemplateAppsAndInstructions(object):
 	@mock.patch('forge.templates.shutil')
 	@mock.patch('forge.templates.Remote')
 	@mock.patch('forge.templates.tempfile')
-	def test_no_templates(self, tempfile, Remote, shutil):
+	@mock.patch('forge.templates.import_generate_dynamic')
+	def test_no_templates(self, import_generate_dynamic, tempfile, Remote, shutil):
 		remote = Remote.return_value
 		temp_dir = tempfile.mkdtemp.return_value = 'dummy temp dir'
 		
@@ -71,3 +72,5 @@ class TestFetchTemplateAppsAndInstructions(object):
 		)
 
 		shutil.move.assert_called_once_with(temp_templates_dir, '.template')
+		# ensure invalidation of any cached generate_dynamic module
+		import_generate_dynamic.assert_called_once_with(do_reload=True)
