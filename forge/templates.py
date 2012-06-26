@@ -90,6 +90,12 @@ class Manager(object):
 			LOG.info('Using new templates')
 			LOG.debug('Moving %s to %s' % (temp_templates_dir, final_templates_dir))
 			shutil.move(temp_templates_dir, final_templates_dir)
+
+			# invalidate any caching of previous generate_dynamic module after
+			# fetching templates
+			# XXX: might make more sense to just force do_reload=True on every import and
+			# get rid of this?
+			import_generate_dynamic(do_reload=True)
 		finally:
 			if temp_dir:
 				shutil.rmtree(temp_dir, ignore_errors=True)
