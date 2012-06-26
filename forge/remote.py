@@ -1,5 +1,6 @@
 'Operations which require involvement of the remote Forge build servers'
 from cookielib import LWPCookieJar
+from StringIO import StringIO
 import json
 import logging
 import os
@@ -579,4 +580,13 @@ class Remote(object):
 		app_config = build_config.load_app(path_to_app)
 		url = 'reload/buildevents/{uuid}'.format(uuid=app_config['uuid'])
 		resp = self._api_get(url)
+		return resp
+	
+	def normalize_config(self, path_to_app="."):
+		self._authenticate()
+		app_config = build_config.load_app(path_to_app)
+		url = 'reload/{uuid}/normalize_config'.format(uuid=app_config['uuid'])
+		resp = self._api_post(url, files={
+			'config': StringIO(json.dumps(app_config))
+		})
 		return resp
