@@ -22,7 +22,9 @@ LOG = logging.getLogger(__name__)
 cookie_lock = Lock()
 
 class RequestError(ForgeError):
-	pass
+	def __init__(self, response, *args, **kwargs):
+		ForgeError.__init__(self, *args, **kwargs)
+		self.response = response
 
 def _check_api_response_for_error(url, method, resp, error_message=None):
 	'''Check an API response from the website to see if there was an error. Checks for one of the following:
@@ -49,13 +51,13 @@ def _check_api_response_for_error(url, method, resp, error_message=None):
 
 	if not resp.ok:
 		if resp.status_code is None:
-			raise RequestError("Request to {url} got no response".format(url=url))
+			raise RequestError(resp, "Request to {url} got no response".format(url=url))
 		try:
 			content_dict = json.loads(resp.content)
 			if content_dict['result'] == 'error':
 				reason = content_dict.get('text', 'Unknown error')
 				error_message = error_template.format(url=url, reason=reason)
-				raise RequestError(error_message)
+				raise RequestError(resp, error_message)
 
 		except ValueError:
 			try:
@@ -68,24 +70,24 @@ def _check_api_response_for_error(url, method, resp, error_message=None):
 					# XXX: seems way too chatty, would be good to have as debug output though
 					#getattr(resp, 'content', 'unknown error')[:25]
 				)
-			raise RequestError(msg)
+			raise RequestError(resp, msg)
 	else:
 		try:
 			content_dict = json.loads(resp.content)
 			if content_dict['result'] == 'error':
 				reason = content_dict.get('text', 'unknown error')
 				error_message = error_template.format(reason=reason, url=url)
-				raise RequestError(error_message)
+				raise RequestError(resp, error_message)
 
 		except ValueError:
 			reason = 'Server meant to respond with JSON, but response content was: %s' % resp.content
 			error_message = error_template.format(reason=reason, url=url)
-			raise RequestError(reason)
+			raise RequestError(resp, reason)
 
 
 def _check_response_for_error(url, method, resp):
 	if not resp.ok:
-		raise RequestError("Request to {url} went wrong, error code: {code}".format(url=url, code=resp.status_code))
+		raise RequestError(resp, "Request to {url} went wrong, error code: {code}".format(url=url, code=resp.status_code))
 
 def _cookies_for_domain(domain, cookies):
 	return dict((c.name, c.value) for c in cookies if c.domain == domain)
@@ -421,8 +423,6 @@ class Remote(object):
 		finally:
 			if path.isfile(path.join(to_dir, temp_instructions_file)):
 				os.remove(path.join(to_dir, temp_instructions_file))
-
-		forge_build.import_generate_dynamic(do_reload=True)
 
 		return to_dir
 

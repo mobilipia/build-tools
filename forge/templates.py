@@ -4,8 +4,7 @@ to start with, and inject the user code into those templates whenever possible.
 import logging
 from os import path
 import shutil
-import subprocess
-import sys
+import tempfile
 
 from forge import defaults
 from forge import lib
@@ -14,9 +13,9 @@ from forge.remote import Remote
 
 LOG = logging.getLogger(__name__)
 
+
 class Manager(object):
 	'Handles the fetching, updating and management of generic templates'
-	
 	
 	def __init__(self, config):
 		'''Operations on the locally stored template code
@@ -26,6 +25,7 @@ class Manager(object):
 		:param tmpl_dir: directory name in which the templates will be sat
 		'''
 		self._tmpl_dir = defaults.TEMPLATE_DIR
+		self._instructions_dir = defaults.INSTRUCTIONS_DIR
 		self._config = config
 		
 	def need_new_templates_for_config(self):
@@ -49,30 +49,53 @@ class Manager(object):
 				new_config_filename=defaults.APP_CONFIG_FILE,
 		)
 		
-	def fetch_templates(self, build):
-		'''
-		Retrieve remote template files for a specified build, and the config to match.
+	def fetch_template_apps_and_instructions(self, build):
+		'''Retrieve everything needed for the customer side of the build process,
+		and replace the current templates/instructions.
+
+		* Template apps for each platform
+		* generate_dynamic python module
+		* various helper programs/schema files into a lib folder
 		
-		:param build: the build to fetch templates for
+		:param build: the build id to fetch templates for
+
+		*N.B.* Assumes working directory is the app dir
 		'''
 		remote = Remote(self._config)
-		
-		# remove old templates
-		LOG.debug('Removing %s' % self._tmpl_dir)
-		shutil.rmtree(self._tmpl_dir, ignore_errors=True)
-		
-		# grab templated platform
-		remote.fetch_unpackaged(build, to_dir=self._tmpl_dir)
-		if sys.platform == 'win32':
-			try:
-				lib.PopenWithoutNewConsole(['attrib', '+h', self._tmpl_dir]).wait()
-			except Exception:
-				# don't care if we fail to hide the templates dir
-				pass
 
-		# copy config.json across to be compared to next time
-		shutil.copy(
-				defaults.APP_CONFIG_FILE,
-				path.join(self._tmpl_dir, "config.json"))
-		
-		return self._tmpl_dir
+		temp_dir = None
+		try:
+			temp_dir = tempfile.mkdtemp(prefix="forge-templates-")
+			temp_templates_dir = path.join(temp_dir, self._tmpl_dir)
+			temp_instructions_dir = path.join(temp_dir, self._instructions_dir)
+			final_templates_dir = self._tmpl_dir
+
+			remote.fetch_unpackaged(build, to_dir=temp_templates_dir)
+			remote.fetch_generate_instructions(temp_instructions_dir)
+
+			lib.set_file_as_hidden(final_templates_dir)
+
+			# copy config.json across to be compared to next time
+			shutil.copy(
+					defaults.APP_CONFIG_FILE,
+					path.join(temp_templates_dir, "config.json"))
+
+			# XXX: assumption here that instructions dir is inside of
+			# the templates dir (currently it is the same)
+			# remove old templates
+			LOG.info('Removing old templates if present')
+			LOG.debug('Removing %s ' % final_templates_dir)
+			shutil.rmtree(final_templates_dir, ignore_errors=True)
+
+			LOG.info('Using new templates')
+			LOG.debug('Moving %s to %s' % (temp_templates_dir, final_templates_dir))
+			shutil.move(temp_templates_dir, final_templates_dir)
+
+			# invalidate any caching of previous generate_dynamic module after
+			# fetching templates
+			# XXX: might make more sense to just force do_reload=True on every import and
+			# get rid of this?
+			import_generate_dynamic(do_reload=True)
+		finally:
+			if temp_dir:
+				shutil.rmtree(temp_dir, ignore_errors=True)

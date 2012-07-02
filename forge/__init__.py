@@ -6,9 +6,9 @@ import sys
 VERSION = '3.3.2'
 
 def _check_version():
-	'''Throw error if we're on Python < 2.6'''
-	if sys.hexversion < 0x020600f0:
-		raise Exception('Forge tools require Python at least version 2.6.0: please update your interpreter')
+	'''Throw error if we're not on Python 2.7'''
+	if not 0x020700f0 <= sys.hexversion < 0x02080000:
+		raise Exception('Forge tools require Python 2.7.0: please update your interpreter')
 
 _check_version()
 

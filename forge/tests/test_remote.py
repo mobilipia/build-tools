@@ -311,8 +311,6 @@ class TestGenerateInstructions(TestRemote):
 
 		cd.assert_called_once_with('my/path')
 		unzip_with_permissions.assert_called_once_with('instructions.zip')
-		forge_build.import_generate_dynamic.assert_called_once_with(
-				do_reload=True)
 
 class TestCheckApiResponseForError(TestRemote):
 	

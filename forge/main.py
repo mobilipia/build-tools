@@ -231,6 +231,7 @@ def _add_migrate_options(parser):
 def _handle_migrate_options(handled):
 	pass
 
+
 def _add_reload_options(parser):
 	parser.description='Run reload commands'
 def _handle_reload_options(handled):
@@ -239,7 +240,7 @@ def _handle_reload_options(handled):
 def handle_secondary_options(command, args):
 	parser = argparse.ArgumentParser(
 		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command),
-		epilog="For more detailed information, see http://current-docs.trigger.io/command-line.html",
+		epilog="For more detailed information, see http://current-docs.trigger.io/tools/commands.html",
 	)
 	options_handlers = {
 		"create": (_add_create_options, _handle_create_options),
@@ -337,16 +338,9 @@ def development_build(unhandled_args):
 			LOG.debug("Server requires rebuild: {reason}".format(reason=reason))
 			LOG.info("Your Forge platform has been updated: we need to rebuild your app")
 
-		if path.exists(instructions_dir):
-			LOG.debug("Removing previous templates")
-			shutil.rmtree(instructions_dir, ignore_errors=True)
-
 		# configuration has changed: new template build!
 		build = remote.build(development=True, template_only=True, config=reload_config)
-		manager.fetch_templates(build)
-
-		# have templates - now fetch injection instructions
-		remote.fetch_generate_instructions(instructions_dir)
+		manager.fetch_template_apps_and_instructions(build)
 	else:
 		LOG.info('Configuration is unchanged: using existing templates')
 	
@@ -524,8 +518,8 @@ def _dispatch_command(command, other_args):
 		handler = async.CallHandler(call)
 		handler.setLevel(logging.DEBUG)
 
-		current_thread = threading.current_thread().ident
-		filtered_handler = FilterHandler(handler, lambda r: r.thread != current_thread)
+		current_thread = threading.current_thread().name
+		filtered_handler = FilterHandler(handler, lambda r: r.threadName != current_thread)
 		filtered_handler.setLevel(logging.DEBUG)
 
 		logging.root.addHandler(filtered_handler)
@@ -536,7 +530,12 @@ def _dispatch_command(command, other_args):
 		task_thread.start()
 
 		while True:
-			next_event = call._output.get(block=True)
+			try:
+				# KeyboardInterrupts aren't seen until the .get() completes :S
+				# So we set a timeout here to make sure we receive it
+				next_event = call._output.get(block=True, timeout=1)
+			except Queue.Empty:
+				continue
 			event_type = next_event['type']
 
 			if event_type == 'question':
