@@ -216,7 +216,7 @@ class TestBuild(object):
 
 		Manager.return_value.need_new_templates_for_config.assert_called_once_with()
 		Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
-		Manager.return_value.fetch_templates.assert_called_once_with(Remote.return_value.build.return_value)
+		Manager.return_value.fetch_template_apps_and_instructions.assert_called_once_with(Remote.return_value.build.return_value)
 
 		eq_(shutil.rmtree.call_args_list, [
 			(

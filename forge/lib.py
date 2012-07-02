@@ -243,3 +243,13 @@ class ProgressBar(object):
 		if exc_type is not None:
 			self.progress(1)
 		self._call.emit('progressEnd', message=self._message)
+
+
+def set_file_as_hidden(to_hide):
+	if sys.platform == 'win32':
+		try:
+			PopenWithoutNewConsole(['attrib', '+h', to_hide], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
+		except Exception as e:
+			import traceback
+			LOG.debug("Failed to mark %s as hidden: %s" % (to_hide, e))
+			LOG.debug(traceback.format_exc(e))

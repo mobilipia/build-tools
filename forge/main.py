@@ -323,16 +323,9 @@ def development_build(unhandled_args):
 			LOG.debug("Server requires rebuild: {reason}".format(reason=reason))
 			LOG.info("Your Forge platform has been updated: we need to rebuild your app")
 
-		if path.exists(instructions_dir):
-			LOG.debug("Removing previous templates")
-			shutil.rmtree(instructions_dir, ignore_errors=True)
-
 		# configuration has changed: new template build!
 		build = remote.build(development=True, template_only=True)
-		manager.fetch_templates(build)
-
-		# have templates - now fetch injection instructions
-		remote.fetch_generate_instructions(instructions_dir)
+		manager.fetch_template_apps_and_instructions(build)
 	else:
 		LOG.info('Configuration is unchanged: using existing templates')
 	
