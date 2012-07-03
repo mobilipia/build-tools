@@ -6,6 +6,8 @@ from os import path
 import shutil
 import sys
 import traceback
+from StringIO import StringIO
+import json
 import threading
 import Queue
 
@@ -229,6 +231,12 @@ def _add_migrate_options(parser):
 def _handle_migrate_options(handled):
 	pass
 
+
+def _add_reload_options(parser):
+	parser.description='Run reload commands'
+def _handle_reload_options(handled):
+	pass
+
 def handle_secondary_options(command, args):
 	parser = argparse.ArgumentParser(
 		prog="{entry} {command}".format(entry=ENTRY_POINT_NAME, command=command),
@@ -241,6 +249,7 @@ def handle_secondary_options(command, args):
 		"package": (_add_package_options, _handle_package_options),
 		"check": (_add_check_options, _handle_check_options),
 		"migrate": (_add_migrate_options, _handle_migrate_options),
+		"reload": (_add_reload_options, _handle_reload_options),
 	}
 
 	# add command-specific arguments
@@ -310,6 +319,12 @@ def development_build(unhandled_args):
 		LOG.debug("Full rebuild requested: removing previous templates")
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
+	app_config = build_config.load_app()
+	reload_result = remote._api_post('reload/buildevents/%s' % app_config['uuid'], files={'config': StringIO(json.dumps(app_config))})
+	
+	reload_config = json.loads(reload_result['config'])
+	reload_config_hash = reload_result['config_hash']
+	
 	config_changed = manager.need_new_templates_for_config()
 	should_rebuild = remote.server_says_should_rebuild()
 	server_changed = should_rebuild['should_rebuild']
@@ -324,7 +339,7 @@ def development_build(unhandled_args):
 			LOG.info("Your Forge platform has been updated: we need to rebuild your app")
 
 		# configuration has changed: new template build!
-		build = remote.build(development=True, template_only=True)
+		build = remote.build(development=True, template_only=True, config=reload_config)
 		manager.fetch_template_apps_and_instructions(build)
 	else:
 		LOG.info('Configuration is unchanged: using existing templates')
@@ -357,7 +372,9 @@ def development_build(unhandled_args):
 
 	# have templates and instructions - inject code
 	generator = Generate()
-	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args)
+	# Put config hash in config object for local generation
+	reload_config['config_hash'] = reload_config_hash
+	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args, config=reload_config)
 	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
 	))
@@ -449,6 +466,33 @@ def migrate(unhandled_args):
 	generate_dynamic.customer_goals.migrate_app(
 		generate_dynamic,
 		build_to_run,
+	)
+
+def reload(unhandled_args):
+	'''
+	Run reload module command
+	'''
+	if not os.path.isdir(defaults.SRC_DIR):
+		raise ForgeError(
+			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
+				src=defaults.SRC_DIR,
+				prog=ENTRY_POINT_NAME,
+			)
+		)
+	
+	try:
+		generate_dynamic = forge_build.import_generate_dynamic()
+	except ForgeError:
+		# don't have generate_dynamic available yet
+		raise ForgeError("Unable to use reload until a build has completed")
+
+	build_to_run = forge_build.create_build(
+		"development",
+		targets=[],
+	)
+	generate_dynamic.reload.run_command(
+		build_to_run,
+		unhandled_args,
 	)
 
 def _dispatch_command(command, other_args):
@@ -591,6 +635,7 @@ COMMANDS = {
 	'package' : package,
 	'check'   : check,
 	'migrate' : migrate,
+	'reload' : reload
 }
 
 if __name__ == "__main__":
