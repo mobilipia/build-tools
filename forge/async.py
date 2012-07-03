@@ -80,6 +80,9 @@ class Call(object):
 		* Raising an uncaught exception causes an 'error' event.
 		* Returning normally causes a 'success' event.
 		"""
+		# exceptions that aren't necessarily fatal
+		EXPECTED_EXCEPTIONS = ('ForgeError',)
+		
 		# create workers to distribute responses and wait for an interrupt
 		self.setup_response_processing()
 
@@ -93,7 +96,8 @@ class Call(object):
 			event = dict(
 				message=str(e),
 				error_type=str(e.__class__.__name__),
-				traceback=traceback.format_exc(e)
+				traceback=traceback.format_exc(e),
+				expected=(e.__class__.__name__ in EXPECTED_EXCEPTIONS)
 			)
 
 			self.exception = sys.exc_info()[0]
