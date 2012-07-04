@@ -5,6 +5,7 @@ import uuid
 import Queue
 import sys
 
+from forge import ForgeError
 
 LOG = logging.getLogger(__name__)
 _thread_local_call = None
@@ -29,7 +30,7 @@ def current_call():
 		return _thread_local_call
 
 
-class CallInterrupted(Exception):
+class CallInterrupted(ForgeError):
 	"""Exception to be thrown when a Call is marked as interrupted"""
 	def __init__(self):
 		Exception.__init__(self, "Got kill signal")
@@ -81,7 +82,6 @@ class Call(object):
 		* Returning normally causes a 'success' event.
 		"""
 		# exceptions that aren't necessarily fatal
-		from forge import ForgeError
 		EXPECTED_EXCEPTIONS = (ForgeError,)
 		
 		# create workers to distribute responses and wait for an interrupt

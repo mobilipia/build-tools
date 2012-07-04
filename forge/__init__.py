@@ -1,5 +1,4 @@
 '''Forge Build Tools'''
-from forge import async
 import sys
 
 
@@ -15,6 +14,8 @@ _check_version()
 
 class ForgeError(Exception):
 	pass
+
+from forge import async
 
 
 def get_version():
