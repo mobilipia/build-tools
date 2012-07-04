@@ -81,7 +81,7 @@ class Call(object):
 		* Returning normally causes a 'success' event.
 		"""
 		# exceptions that aren't necessarily fatal
-		EXPECTED_EXCEPTIONS = ('ForgeError',)
+		EXPECTED_EXCEPTIONS = ('ForgeError', 'CallInterrupted')
 		
 		# create workers to distribute responses and wait for an interrupt
 		self.setup_response_processing()
