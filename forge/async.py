@@ -81,7 +81,8 @@ class Call(object):
 		* Returning normally causes a 'success' event.
 		"""
 		# exceptions that aren't necessarily fatal
-		EXPECTED_EXCEPTIONS = ('ForgeError', 'CallInterrupted')
+		from forge import ForgeError
+		EXPECTED_EXCEPTIONS = (ForgeError,)
 		
 		# create workers to distribute responses and wait for an interrupt
 		self.setup_response_processing()
@@ -97,7 +98,7 @@ class Call(object):
 				message=str(e),
 				error_type=str(e.__class__.__name__),
 				traceback=traceback.format_exc(e),
-				expected=(e.__class__.__name__ in EXPECTED_EXCEPTIONS)
+				expected=any(isinstance(e, expected_exception_type) for expected_exception_type in EXPECTED_EXCEPTIONS)
 			)
 
 			self.exception = sys.exc_info()[0]
