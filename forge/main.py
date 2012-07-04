@@ -373,8 +373,10 @@ def development_build(unhandled_args):
 	# have templates and instructions - inject code
 	generator = Generate()
 	# Put config hash in config object for local generation
-	reload_config['config_hash'] = reload_config_hash
-	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args, config=reload_config)
+	# copy first as mutating dict makes assertions about previous uses tricky
+	reload_config_for_local = reload_config.copy()
+	reload_config_for_local['config_hash'] = reload_config_hash
+	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args, config=reload_config_for_local)
 	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
 	))

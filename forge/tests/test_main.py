@@ -169,6 +169,10 @@ class TestBuild(object):
 			platform_state = 'active',
 		)
 		args.full = False
+		Remote.return_value._api_post.return_value = {
+				"config": '{"dummy_config": true}',
+				"config_hash": "dummy config hash",
+		}
 		build_config.load.return_value = tests.dummy_config()
 		build_config.load_app.return_value = tests.dummy_app_config()
 
@@ -186,7 +190,10 @@ class TestBuild(object):
 			)
 		])
 		shutil.copytree.assert_called_once_with(".template", "development")
-		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR, extra_args=[])
+		Generate.return_value.all.assert_called_once_with('development',
+				defaults.SRC_DIR, extra_args=[],
+				config={'config_hash': 'dummy config hash', u'dummy_config': True}
+		)
 
 	@mock.patch('forge.main.build_config')
 	@mock.patch('forge.main.os.path.isdir')
@@ -208,6 +215,10 @@ class TestBuild(object):
 			platform_state = 'active',
 		)
 		Remote.return_value.build.return_value = {"id": -1}
+		Remote.return_value._api_post.return_value = {
+				"config": '{"dummy_config": true}',
+				"config_hash": "dummy config hash",
+		}
 		isdir.return_value = True
 		build_config.load.return_value = tests.dummy_config()
 		build_config.load_app.return_value = tests.dummy_app_config()
@@ -215,7 +226,8 @@ class TestBuild(object):
 		main.development_build([])
 
 		Manager.return_value.need_new_templates_for_config.assert_called_once_with()
-		Remote.return_value.build.assert_called_once_with(development=True, template_only=True)
+		Remote.return_value.build.assert_called_once_with(development=True,
+				template_only=True, config={'dummy_config': True})
 		Manager.return_value.fetch_template_apps_and_instructions.assert_called_once_with(Remote.return_value.build.return_value)
 
 		eq_(shutil.rmtree.call_args_list, [
@@ -229,7 +241,10 @@ class TestBuild(object):
 			)
 		])
 		shutil.copytree.assert_called_once_with(".template", 'development')
-		Generate.return_value.all.assert_called_once_with('development', defaults.SRC_DIR, extra_args=[])
+		Generate.return_value.all.assert_called_once_with('development',
+				defaults.SRC_DIR, extra_args=[],
+				config={'config_hash': 'dummy config hash', 'dummy_config': True}
+		)
 
 class TestMain(object):
 	@mock.patch('forge.main._dispatch_command')
