@@ -22,9 +22,15 @@ LOG = logging.getLogger(__name__)
 cookie_lock = Lock()
 
 class RequestError(ForgeError):
-	def __init__(self, response, *args, **kwargs):
-		ForgeError.__init__(self, *args, **kwargs)
+	def __init__(self, response, message, errors=None):
+		ForgeError.__init__(self, message)
 		self.response = response
+		self.errors = errors
+
+	def extra(self):
+		return dict(
+			errors=self.errors,
+		)
 
 def _check_api_response_for_error(url, method, resp, error_message=None):
 	'''Check an API response from the website to see if there was an error. Checks for one of the following:
@@ -56,8 +62,9 @@ def _check_api_response_for_error(url, method, resp, error_message=None):
 			content_dict = json.loads(resp.content)
 			if content_dict['result'] == 'error':
 				reason = content_dict.get('text', 'Unknown error')
+				errors = content_dict.get('errors')
 				error_message = error_template.format(url=url, reason=reason)
-				raise RequestError(resp, error_message)
+				raise RequestError(resp, error_message, errors=errors)
 
 		except ValueError:
 			try:
@@ -76,8 +83,9 @@ def _check_api_response_for_error(url, method, resp, error_message=None):
 			content_dict = json.loads(resp.content)
 			if content_dict['result'] == 'error':
 				reason = content_dict.get('text', 'unknown error')
+				errors = content_dict.get('errors')
 				error_message = error_template.format(reason=reason, url=url)
-				raise RequestError(resp, error_message)
+				raise RequestError(resp, error_message, errors=errors)
 
 		except ValueError:
 			reason = 'Server meant to respond with JSON, but response content was: %s' % resp.content
