@@ -43,6 +43,11 @@ def _run_call(call):
 	call.run()
 
 
+def _extra_error_properties(e):
+	"""Helper for extracting extra information from an exception"""
+	return getattr(e, 'extra', False) and e.extra() or {}
+
+
 class Call(object):
 	"""Wraps a function so that it can easily emit a stream of events while running, and
 	listen for responses to those events.
@@ -94,11 +99,13 @@ class Call(object):
 		except Exception as e:
 			# TODO: consider using e.__class__.__module__ for providing qualified exception types?
 			event_type = 'error'
+			extra = _extra_error_properties(e)
 			event = dict(
 				message=str(e),
 				error_type=str(e.__class__.__name__),
 				traceback=traceback.format_exc(e),
-				expected=any(isinstance(e, expected_exception_type) for expected_exception_type in EXPECTED_EXCEPTIONS)
+				expected=any(isinstance(e, expected_exception_type) for expected_exception_type in EXPECTED_EXCEPTIONS),
+				extra=extra
 			)
 
 			self.exception = sys.exc_info()[0]
