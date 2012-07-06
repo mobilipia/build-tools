@@ -253,3 +253,28 @@ def set_file_as_hidden(to_hide):
 			import traceback
 			LOG.debug("Failed to mark %s as hidden: %s" % (to_hide, e))
 			LOG.debug(traceback.format_exc(e))
+
+
+#TODO: some versions should be marked as old and minor?
+def classify_platform(stable_version, current_version):
+	"""Classifies a platform version as:
+
+	'nonstandard', 'minor', 'old' or None if it's up to date.
+	"""
+	stable_version = stable_version.split('.')
+	current_version = current_version.split('.')
+	
+	if not current_version[0].startswith('v'):
+		return 'nonstandard'
+
+	try:
+		without_v = [current_version[0][1:]] + current_version[1:]
+		map(int, without_v)
+	except ValueError:
+		return 'nonstandard'
+
+	if len(current_version) > 2:
+		return 'minor'
+
+	if int(current_version[0][1:]) < int(stable_version[0][1:]) or (int(current_version[0][1:]) == int(stable_version[0][1:]) and int(current_version[1]) < int(stable_version[1])):
+		return 'old'

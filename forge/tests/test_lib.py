@@ -10,6 +10,7 @@ from nose.tools import eq_
 
 from forge import lib
 
+
 class TestUnzipWithPermissions(object):
 
 	@patch('forge.lib.PopenWithoutNewConsole')
@@ -36,6 +37,7 @@ class TestUnzipWithPermissions(object):
 		extract_zipfile.assert_called_once_with(zip_object, '.')
 		zip_object.close.assert_called_once_with()
 
+
 class TestPlatformChangeset(object):
 	def setup(self):
 		self.tdir = tempfile.mkdtemp()
@@ -45,9 +47,27 @@ class TestPlatformChangeset(object):
 		os.makedirs(path.join('.template', 'lib'))
 		with open(path.join('.template', 'lib', 'changeset.txt'), 'w') as changeset_f:
 			changeset_f.write("0123456789AB")
+	
 	def teardown(self):
 		os.chdir(self.orig_dir)
 		shutil.rmtree(self.tdir, ignore_errors=True)
 
 	def test_read_changeset(self):
 		eq_(lib.platform_changeset(), '0123456789AB')
+
+
+class TestClassifyPlatform(object):
+	_stable_version = 'v1.3'
+	
+	def test_no_v_at_start_is_non_standard(self):
+		eq_(lib.classify_platform(self._stable_version, '1.2'), 'nonstandard')
+		eq_(lib.classify_platform(self._stable_version, 'hello_world'), 'nonstandard')
+
+	def test_v_and_three_parts_is_minor(self):
+		eq_(lib.classify_platform(self._stable_version, 'v1.2.3'), 'minor')
+
+	def test_staging_branch_is_nonstandard(self):
+		eq_(lib.classify_platform(self._stable_version, 'v1.3_staging'), 'nonstandard')
+
+	def test_one_major_version_less_is_old(self):
+		eq_(lib.classify_platform(self._stable_version, 'v1.2'), 'old')
