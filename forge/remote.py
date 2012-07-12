@@ -589,6 +589,13 @@ class Remote(object):
 		url = 'reload/buildevents/{uuid}'.format(uuid=app_config['uuid'])
 		resp = self._api_get(url)
 		return resp
+
+	def create_buildevent(self, app_config):
+		self._authenticate()
+		result = self._api_post('reload/buildevents/{}'.format(app_config['uuid']),
+				files={'config': StringIO(json.dumps(app_config))}
+		)
+		return result
 	
 	def normalize_config(self, path_to_app="."):
 		self._authenticate()
@@ -598,3 +605,4 @@ class Remote(object):
 			'config': StringIO(json.dumps(app_config))
 		})
 		return resp
+	

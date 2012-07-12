@@ -320,8 +320,7 @@ def development_build(unhandled_args):
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 	app_config = build_config.load_app()
-	reload_result = remote._api_post('reload/buildevents/%s' % app_config['uuid'], files={'config': StringIO(json.dumps(app_config))})
-	
+	reload_result = remote.create_buildevent(app_config)
 	reload_config = json.loads(reload_result['config'])
 	reload_config_hash = reload_result['config_hash']
 	
