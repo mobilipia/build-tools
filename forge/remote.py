@@ -250,6 +250,16 @@ class Remote(object):
 
 		self.login(email, password)
 
+	def list_plugins(self):
+		self._authenticate()
+		return self._api_get('plugin/')
+
+	def create_plugin(self, plugin_name):
+		self._authenticate()
+		self._api_post('plugin/', data={
+			'name': plugin_name
+		})
+
 	def list_apps(self):
 		self._authenticate()
 		return self._api_get('app/')
