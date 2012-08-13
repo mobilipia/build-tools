@@ -260,6 +260,20 @@ class Remote(object):
 			'name': plugin_name
 		})
 
+	def list_plugin_builds(self, plugin_id):
+		self._authenticate()
+		return self._api_get('plugin/%s/build/' % plugin_id)
+
+	def create_plugin_build(self, plugin_id, version, description, target, location):
+		self._authenticate()
+		self._api_post('plugin/%s/build/' % plugin_id, data={
+			'target': target,
+			'version': version,
+			'description': description
+		}, files={
+			'built_file': open(location, mode='rb')
+		})
+
 	def list_apps(self):
 		self._authenticate()
 		return self._api_get('app/')
