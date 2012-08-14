@@ -625,6 +625,16 @@ class Remote(object):
 		else:
 			return {}
 
+	def config_info(self):
+		result = self._api_get(
+			'config_info'
+		)
+
+		if result['result'] == 'ok':
+			return result
+		else:
+			return {}
+
 	def buildevents(self, path_to_app="."):
 		self._authenticate()
 		app_config = build_config.load_app(path_to_app)
