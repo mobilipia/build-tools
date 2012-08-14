@@ -2,7 +2,7 @@
 import sys
 
 
-VERSION = '3.3.10'
+VERSION = '3.3.11'
 
 def _check_version():
 	'''Throw error if we're not on Python 2.7'''
