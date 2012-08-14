@@ -4,14 +4,15 @@ from StringIO import StringIO
 import json
 import logging
 import os
-import sys
 from os import path
-import requests
+import errno
 import shutil
 import time
 import urlparse
 from urlparse import urljoin, urlsplit
 from threading import Lock
+
+import requests
 
 import forge
 from forge import build as forge_build, build_config, defaults
@@ -29,7 +30,18 @@ class RequestError(ForgeError):
 
 	def extra(self):
 		return dict(
+			content=self.response.content,
 			errors=self.errors,
+		)
+
+class FormError(ForgeError):
+	def __init__(self, errors, *args, **kw):
+		ForgeError.__init__(self, *args, **kw)
+		self.errors = errors
+
+	def extra(self):
+		return dict(
+			errors=self.errors
 		)
 
 def _check_api_response_for_error(url, method, resp, error_message=None):
@@ -265,14 +277,20 @@ class Remote(object):
 		return self._api_get('plugin/%s/build/' % plugin_id)
 
 	def create_plugin_build(self, plugin_id, version, description, target, location):
-		self._authenticate()
-		self._api_post('plugin/%s/build/' % plugin_id, data={
-			'target': target,
-			'version': version,
-			'description': description
-		}, files={
-			'built_file': open(location, mode='rb')
-		})
+		try:
+			with open(location, mode='rb') as f:
+				self._authenticate()
+				self._api_post('plugin/%s/build/' % plugin_id, data={
+					'target': target,
+					'version': version,
+					'description': description
+				}, files={
+					'built_file': f
+				})
+		except IOError as e:
+			if e.errno == errno.ENOENT:
+				raise FormError({target: ['No such file: %s' % location]})
+			raise
 
 	def list_apps(self):
 		self._authenticate()
