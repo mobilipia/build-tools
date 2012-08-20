@@ -266,15 +266,18 @@ class Remote(object):
 		self._authenticate()
 		return self._api_get('plugin/')
 
+	def list_builds_for_plugin(self, plugin_id):
+		self._authenticate()
+		return self._api_get('plugin/%s/build/' % plugin_id)
+
+	def list_builds_for_team(self):
+		return self._api_get('plugin_build/')
+
 	def create_plugin(self, plugin_name):
 		self._authenticate()
 		self._api_post('plugin/', data={
 			'name': plugin_name
 		})
-
-	def list_plugin_builds(self, plugin_id):
-		self._authenticate()
-		return self._api_get('plugin/%s/build/' % plugin_id)
 
 	def create_plugin_build(self, plugin_id, version, description, target, location):
 		try:
