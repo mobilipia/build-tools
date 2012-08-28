@@ -5,12 +5,13 @@ import json
 import logging
 import os
 from os import path
-import errno
 import shutil
 import time
 import urlparse
 from urlparse import urljoin, urlsplit
 from threading import Lock
+import errno
+import traceback
 
 import requests
 
@@ -279,21 +280,14 @@ class Remote(object):
 			'name': plugin_name
 		})
 
-	def create_plugin_build(self, plugin_id, version, description, target, location):
-		try:
-			with open(location, mode='rb') as f:
-				self._authenticate()
-				self._api_post('plugin/%s/build/' % plugin_id, data={
-					'target': target,
-					'version': version,
-					'description': description
-				}, files={
-					'built_file': f
-				})
-		except IOError as e:
-			if e.errno == errno.ENOENT:
-				raise FormError({target: ['No such file: %s' % location]})
-			raise
+	def create_plugin_build(self, plugin_id, version, description, files_to_upload):
+		with FilesUploadDict(**files_to_upload) as upload_dict:
+			self._authenticate()
+			self._api_post('multiple_plugin_build/', data={
+				'plugin_id': plugin_id,
+				'version': version,
+				'description': description
+			}, files=upload_dict)
 
 	def list_apps(self):
 		self._authenticate()
@@ -661,3 +655,31 @@ class Remote(object):
 		})
 		return resp
 	
+class FilesUploadDict(object):
+	def __init__(self, **files_to_upload):
+		try:
+			self._files = {}
+			for name, location in files_to_upload.items():
+				self._files[name] = open(location, mode='rb')
+		except IOError as e:
+			self._close_files()
+			if e.errno == errno.ENOENT:
+				raise FormError({name: ['No such file: %s' % location]})
+			raise
+		except Exception:
+			self._close_files()
+			raise
+
+	def _close_files(self):
+		for name, f in self._files.items():
+			try:
+				f.close()
+			except Exception as e:
+				LOG.debug("Failed to close file for %s upload" % name)
+				LOG.debug(traceback.format_exc(e))
+
+	def __enter__(self):
+		return self._files
+
+	def __exit__(self, *args, **kw):
+		self._close_files()
