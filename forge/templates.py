@@ -49,15 +49,8 @@ class Manager(object):
 				new_config_filename=defaults.APP_CONFIG_FILE,
 		)
 		
-	def fetch_template_apps_and_instructions(self, build):
-		'''Retrieve everything needed for the customer side of the build process,
-		and replace the current templates/instructions.
-
-		* Template apps for each platform
-		* generate_dynamic python module
-		* various helper programs/schema files into a lib folder
-		
-		:param build: the build id to fetch templates for
+	def fetch_instructions(self):
+		'''Remove current .template folder and create new one with instructions downloaded
 
 		*N.B.* Assumes working directory is the app dir
 		'''
@@ -70,7 +63,6 @@ class Manager(object):
 			temp_instructions_dir = path.join(temp_dir, self._instructions_dir)
 			final_templates_dir = self._tmpl_dir
 
-			remote.fetch_unpackaged(build, to_dir=temp_templates_dir)
 			remote.fetch_generate_instructions(temp_instructions_dir)
 
 			lib.set_file_as_hidden(final_templates_dir)

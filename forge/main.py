@@ -290,16 +290,24 @@ def create(unhandled_args):
 		uuid = remote.create(name)
 		remote.fetch_initial(uuid)
 		LOG.info("Building app for the first time...")
-		development_build([])
+		development_build([], has_target=False)
 		LOG.info('App structure created. To proceed:')
 		LOG.info('1) Put your code in the "%s" folder' % defaults.SRC_DIR)
 		LOG.info('2) Run %s build to make a build' % ENTRY_POINT_NAME)
 		LOG.info('3) Run %s run to test out your build' % ENTRY_POINT_NAME)
 
-def development_build(unhandled_args):
+def development_build(unhandled_args, has_target=True):
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
 	_check_working_directory_is_safe()
 
+	if has_target:
+		try:
+			target = unhandled_args.pop(0)
+			if target.startswith("-"):
+				raise ForgeError("Target required for 'forge build'")
+		except IndexError:
+			raise ForgeError("Target required for 'forge build'")
+	
 	if not os.path.isdir(defaults.SRC_DIR):
 		raise ForgeError(
 			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
@@ -330,16 +338,23 @@ def development_build(unhandled_args):
 	reason = should_rebuild['reason']
 	stable_platform = should_rebuild['stable_platform']
 	platform_state = should_rebuild['platform_state']
-	if config_changed or server_changed:
-		if config_changed:
+	
+	if server_changed:
+		LOG.debug("Server requires rebuild: {reason}".format(reason=reason))
+		LOG.info("Your Forge platform has been updated: we need to rebuild your app")
+		manager.fetch_instructions()
+		
+	if not has_target:
+		# No need to go further if we aren't building a target
+		return
+	
+	if target != "reload": # Don't do a server side build for reload
+		if config_changed or not path.exists(path.join('.template', target)):
 			LOG.info("Your app configuration has changed: we need to rebuild your app")
-		elif server_changed:
-			LOG.debug("Server requires rebuild: {reason}".format(reason=reason))
-			LOG.info("Your Forge platform has been updated: we need to rebuild your app")
 
-		# configuration has changed: new template build!
-		build = remote.build(development=True, template_only=True, config=reload_config)
-		manager.fetch_template_apps_and_instructions(build)
+			shutil.rmtree(path.join(defaults.TEMPLATE_DIR, target), ignore_errors=True)
+			build = remote.build(config=reload_config, target=target)
+			remote.fetch_unpackaged(build, to_dir=defaults.TEMPLATE_DIR, target=target)
 	else:
 		LOG.info('Configuration is unchanged: using existing templates')
 	
@@ -361,9 +376,12 @@ def development_build(unhandled_args):
 		LOG.warning("Platform version: %s is deprecated, it is highly recommended you migrate to a newer version as soon as possible." % current_platform)
 
 	def move_files_across():
-		shutil.rmtree('development', ignore_errors=True)
-		shutil.copytree(defaults.TEMPLATE_DIR, 'development')
-		shutil.rmtree(path.join('development', 'generate_dynamic'), ignore_errors=True)
+		shutil.rmtree(path.join('development', target), ignore_errors=True)
+		if target != "reload":
+			# Delete reload as other targets may build it
+			shutil.rmtree(path.join('development', 'reload'), ignore_errors=True)
+			# No reload server template
+			shutil.copytree(path.join(defaults.TEMPLATE_DIR, target), path.join('development', target))
 
 	# Windows often gives a permission error without a small wait
 	try_a_few_times(move_files_across)
@@ -374,7 +392,7 @@ def development_build(unhandled_args):
 	# copy first as mutating dict makes assertions about previous uses tricky
 	reload_config_for_local = reload_config.copy()
 	reload_config_for_local['config_hash'] = reload_config_hash
-	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args, config=reload_config_for_local)
+	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args, config=reload_config_for_local, target=target)
 	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
 	))

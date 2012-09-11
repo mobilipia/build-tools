@@ -360,7 +360,7 @@ class Remote(object):
 		os.remove(filename)
 		LOG.debug('removed downloaded file "%s"' % filename)
 
-	def fetch_unpackaged(self, build, to_dir='development'):
+	def fetch_unpackaged(self, build, to_dir, target):
 		'''Retrieves the unpackaged artefacts for a particular build.
 		
 		:param build: the build to fetch
@@ -375,22 +375,20 @@ class Remote(object):
 			os.mkdir(to_dir)
 			
 		with lib.cd(to_dir):
-			locations = build['unpackaged']
-			available_platforms = [plat for plat, url in locations.iteritems() if url]
+			location = build['file_output']
+
+			filename = urlsplit(location).path.split('/')[-1]
 			
-			for platform in available_platforms:
-				filename = urlsplit(locations[platform]).path.split('/')[-1]
-				
-				LOG.debug('writing %s to %s' % (locations[platform], path.abspath(filename)))
-				self._get_file(
-					locations[platform],
-					write_to_path=filename,
-					progress_bar_title=platform,
-				)
-				
-				self._handle_unpackaged(platform, filename)
-				
-				filenames.append(path.abspath(platform))
+			LOG.debug('writing %s to %s' % (location, path.abspath(filename)))
+			self._get_file(
+				location,
+				write_to_path=filename,
+				progress_bar_title=target,
+			)
+			
+			self._handle_unpackaged(target, filename)
+			
+			filenames.append(path.abspath(target))
 		
 		LOG.debug('Fetched build into "%s"' % '", "'.join(filenames))
 		return filenames
@@ -434,14 +432,12 @@ class Remote(object):
 
 		return to_dir
 
-	def _request_development_build(self, config=None):
+	def _request_development_build(self, config, target):
 		data = {}
-		if config == None:
-			app_config = build_config.load_app()
-		else:
-			app_config = config
+		app_config = config
 
 		data['config'] = json.dumps(app_config)
+		data['target'] = target
 		
 		url = 'app/{uuid}/template'.format(uuid=app_config['uuid'])
 		return self._api_post(url, data=data)
@@ -462,16 +458,11 @@ class Remote(object):
 		else:
 			raise ForgeError('build failed: %s' % build['log_output'])
 
-	def build(self, development=True, template_only=False, config=None):
+	def build(self, config, target):
 		'''Start a build on the remote server.
 
 		**NB:** this method blocks until the remote build has completed!
 
-		:param development: if ``True``, we will not do any packaging of the
-			build; it will be left in an expanded directory layout
-		:param template_only: if ``True`` we will not use
-			the "user" code - we will just recreate the app templates using the
-			current app configuration
 		:return: the primary key of the build
 		:raises Exception: if any errors occur during the build
 		'''
@@ -483,7 +474,7 @@ class Remote(object):
 		if not path.isdir(src_dir):
 			raise ForgeError("No {0} directory found: are you currently in the right directory?".format(src_dir))
 
-		build = self._request_development_build(config)
+		build = self._request_development_build(config, target)
 
 		if build["state"] == 'complete':
 			return build
@@ -506,8 +497,7 @@ class Remote(object):
 		resp = self._api_get(url,
 				params = dict(
 					platform_version=app_config['platform_version'],
-					platform_changeset=lib.platform_changeset(path_to_app),
-					targets=",".join(forge_build._enabled_platforms(path.join(path_to_app, 'development'))),
+					platform_changeset=lib.platform_changeset(path_to_app)
 				)
 		)
 		return resp
