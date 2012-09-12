@@ -300,14 +300,6 @@ def development_build(unhandled_args, has_target=True):
 	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
 	_check_working_directory_is_safe()
 
-	if has_target:
-		try:
-			target = unhandled_args.pop(0)
-			if target.startswith("-"):
-				raise ForgeError("Target required for 'forge build'")
-		except IndexError:
-			raise ForgeError("Target required for 'forge build'")
-	
 	if not os.path.isdir(defaults.SRC_DIR):
 		raise ForgeError(
 			'Source folder "{src}" does not exist - have you run {prog} create yet?'.format(
@@ -328,11 +320,7 @@ def development_build(unhandled_args, has_target=True):
 		shutil.rmtree(instructions_dir, ignore_errors=True)
 
 	app_config = build_config.load_app()
-	reload_result = remote.create_buildevent(app_config)
-	reload_config = json.loads(reload_result['config'])
-	reload_config_hash = reload_result['config_hash']
 	
-	config_changed = manager.need_new_templates_for_config()
 	should_rebuild = remote.server_says_should_rebuild()
 	server_changed = should_rebuild['should_rebuild']
 	reason = should_rebuild['reason']
@@ -340,25 +328,38 @@ def development_build(unhandled_args, has_target=True):
 	platform_state = should_rebuild['platform_state']
 	
 	if server_changed:
+		# Need new generate dynamic - download it
 		LOG.debug("Server requires rebuild: {reason}".format(reason=reason))
-		LOG.info("Your Forge platform has been updated: we need to rebuild your app")
+		LOG.info("Your Forge platform has been updated, downloading updated build instructions.")
 		manager.fetch_instructions()
 		
 	if not has_target:
 		# No need to go further if we aren't building a target
 		return
+		
+	try:
+		target = unhandled_args.pop(0)
+		if target.startswith("-"):
+			raise ForgeError("Target required for 'forge build'")
+	except IndexError:
+		raise ForgeError("Target required for 'forge build'")
+
+	reload_result = remote.create_buildevent(app_config)
+	reload_config = json.loads(reload_result['config'])
+	reload_config_hash = reload_result['config_hash']
+
+	config_changed = manager.need_new_templates_for_config()
 	
 	if target != "reload": # Don't do a server side build for reload
 		if config_changed or not path.exists(path.join('.template', target)):
-			LOG.info("Your app configuration has changed: we need to rebuild your app")
+			LOG.info("Your app configuration has changed, performing a remote build of your app. Once this is downloaded future builds will be faster.")
 
 			shutil.rmtree(path.join(defaults.TEMPLATE_DIR, target), ignore_errors=True)
 			build = remote.build(config=reload_config, target=target)
 			remote.fetch_unpackaged(build, to_dir=defaults.TEMPLATE_DIR, target=target)
 	else:
-		LOG.info('Configuration is unchanged: using existing templates')
+		LOG.info('Config matches previously downloaded build, performing local build.')
 	
-	app_config = build_config.load_app()
 	current_platform = app_config['platform_version']
 	
 	# Advise user about state of their current platform
@@ -386,13 +387,15 @@ def development_build(unhandled_args, has_target=True):
 	# Windows often gives a permission error without a small wait
 	try_a_few_times(move_files_across)
 
-	# have templates and instructions - inject code
-	generator = Generate()
 	# Put config hash in config object for local generation
 	# copy first as mutating dict makes assertions about previous uses tricky
 	reload_config_for_local = reload_config.copy()
 	reload_config_for_local['config_hash'] = reload_config_hash
+
+	# have templates and instructions - inject code
+	generator = Generate()
 	generator.all('development', defaults.SRC_DIR, extra_args=unhandled_args, config=reload_config_for_local, target=target)
+
 	LOG.info("Development build created. Use {prog} run to run your app.".format(
 		prog=ENTRY_POINT_NAME
 	))
