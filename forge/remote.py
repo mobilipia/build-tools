@@ -439,24 +439,8 @@ class Remote(object):
 		data['config'] = json.dumps(app_config)
 		data['target'] = target
 		
-		url = 'app/{uuid}/template'.format(uuid=app_config['uuid'])
+		url = 'app/{uuid}/build'.format(uuid=app_config['uuid'])
 		return self._api_post(url, data=data)
-
-	def _poll_until_build_complete(self, build_id):
-		build = self._api_get('build/{id}/detail/'.format(id=build_id))
-
-		while build['state'] in ('pending', 'working'):
-			LOG.debug('build {id} is {state}...'.format(id=build_id, state=build['state']))
-			time.sleep(self.POLL_DELAY)
-			build = self._api_get('build/{id}/detail/'.format(id=build_id))
-
-		if build['state'] in ('complete',):
-			LOG.info('build completed successfully')
-			LOG.debug(build['log_output'])
-			return build
-
-		else:
-			raise ForgeError('build failed: %s' % build['log_output'])
 
 	def build(self, config, target):
 		'''Start a build on the remote server.
@@ -474,21 +458,23 @@ class Remote(object):
 		if not path.isdir(src_dir):
 			raise ForgeError("No {0} directory found: are you currently in the right directory?".format(src_dir))
 
-		build = self._request_development_build(config, target)
-
-		if build["state"] == 'complete':
-			return build
-
-		build_id = build['id']
-		messages = build.get('messages', None)
-
-		if messages:
-			LOG.warning(messages)
-		LOG.info('Build %s started...' % build_id)
-
 		LOG.info('This could take a while, but will only happen again if you modify config.json')
-		build = self._poll_until_build_complete(build_id)
-		return build
+		build = False
+		while not build or build['state'] in ('pending', 'working'):
+			build = self._request_development_build(config, target)
+
+			messages = build.get('messages', None)
+			if messages:
+				LOG.warning(messages)
+				
+			if build["state"] == 'complete':
+				return build
+			
+			if not build['state'] in ('pending', 'working'):
+				raise ForgeError('build failed: %s' % build['log_output'])
+			
+			LOG.debug('build {id} is {state}...'.format(id=build['id'], state=build['state']))
+			time.sleep(self.POLL_DELAY)
 
 	def server_says_should_rebuild(self, path_to_app="."):
 		self._authenticate()
