@@ -471,12 +471,14 @@ class Remote(object):
 
 		return to_dir
 
-	def _request_development_build(self, config, target):
+	def _request_development_build(self, config, target, id=None):
 		data = {}
 		app_config = config
 
 		data['config'] = json.dumps(app_config)
 		data['target'] = target
+		if not id is None:
+			data['id'] = id
 		
 		url = 'app/{uuid}/build'.format(uuid=app_config['uuid'])
 		return self._api_post(url, data=data)
@@ -498,9 +500,11 @@ class Remote(object):
 			raise ForgeError("No {0} directory found: are you currently in the right directory?".format(src_dir))
 
 		LOG.info('This could take a while, but will only happen again if you modify config.json')
-		build = False
-		while not build or build['state'] in ('pending', 'working'):
-			build = self._request_development_build(config, target)
+		build = {
+			"state": "pending"
+		}
+		while build['state'] in ('pending', 'working'):
+			build = self._request_development_build(config, target, id=build.get('id', None))
 
 			messages = build.get('messages', None)
 			if messages:
