@@ -4,14 +4,16 @@ from StringIO import StringIO
 import json
 import logging
 import os
-import sys
 from os import path
-import requests
 import shutil
 import time
 import urlparse
 from urlparse import urljoin, urlsplit
 from threading import Lock
+import errno
+import traceback
+
+import requests
 
 import forge
 from forge import build as forge_build, build_config, defaults
@@ -29,7 +31,18 @@ class RequestError(ForgeError):
 
 	def extra(self):
 		return dict(
+			content=self.response.content,
 			errors=self.errors,
+		)
+
+class FormError(ForgeError):
+	def __init__(self, errors, *args, **kw):
+		ForgeError.__init__(self, *args, **kw)
+		self.errors = errors
+
+	def extra(self):
+		return dict(
+			errors=self.errors
 		)
 
 def _check_api_response_for_error(url, method, resp, error_message=None):
@@ -249,6 +262,32 @@ class Remote(object):
 		password = forge.request_password()
 
 		self.login(email, password)
+
+	def list_plugins(self):
+		self._authenticate()
+		return self._api_get('plugin/')
+
+	def list_builds_for_plugin(self, plugin_id):
+		self._authenticate()
+		return self._api_get('plugin/%s/build/' % plugin_id)
+
+	def list_builds_for_team(self):
+		return self._api_get('plugin_build/')
+
+	def create_plugin(self, plugin_name):
+		self._authenticate()
+		self._api_post('plugin/', data={
+			'name': plugin_name
+		})
+
+	def create_plugin_build(self, plugin_id, version, description, files_to_upload):
+		with FilesUploadDict(**files_to_upload) as upload_dict:
+			self._authenticate()
+			self._api_post('multiple_plugin_build/', data={
+				'plugin_id': plugin_id,
+				'version': version,
+				'description': description
+			}, files=upload_dict)
 
 	def list_apps(self):
 		self._authenticate()
@@ -592,3 +631,31 @@ class Remote(object):
 		})
 		return resp
 	
+class FilesUploadDict(object):
+	def __init__(self, **files_to_upload):
+		try:
+			self._files = {}
+			for name, location in files_to_upload.items():
+				self._files[name] = open(location, mode='rb')
+		except IOError as e:
+			self._close_files()
+			if e.errno == errno.ENOENT:
+				raise FormError({name: ['No such file: %s' % location]})
+			raise
+		except Exception:
+			self._close_files()
+			raise
+
+	def _close_files(self):
+		for name, f in self._files.items():
+			try:
+				f.close()
+			except Exception as e:
+				LOG.debug("Failed to close file for %s upload" % name)
+				LOG.debug(traceback.format_exc(e))
+
+	def __enter__(self):
+		return self._files
+
+	def __exit__(self, *args, **kw):
+		self._close_files()
