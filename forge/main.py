@@ -343,6 +343,14 @@ def development_build(unhandled_args, has_target=True):
 			raise ForgeError("Target required for 'forge build'")
 	except IndexError:
 		raise ForgeError("Target required for 'forge build'")
+	
+	# Not all targets output into a folder by the same name.
+	target_dirs = {
+		'safari': 'forge.safariextension',
+	}
+	target_dir = target
+	if target in target_dirs:
+		target_dir = target_dirs[target]
 
 	reload_result = remote.create_buildevent(app_config)
 	reload_config = json.loads(reload_result['config'])
@@ -351,10 +359,10 @@ def development_build(unhandled_args, has_target=True):
 	config_changed = manager.need_new_templates_for_config()
 	
 	if target != "reload": # Don't do a server side build for reload
-		if config_changed or not path.exists(path.join('.template', target)):
+		if config_changed or not path.exists(path.join('.template', target_dir)):
 			LOG.info("Your app configuration has changed, performing a remote build of your app. Once this is downloaded future builds will be faster.")
 
-			shutil.rmtree(path.join(defaults.TEMPLATE_DIR, target), ignore_errors=True)
+			shutil.rmtree(path.join(defaults.TEMPLATE_DIR, target_dir), ignore_errors=True)
 			build = remote.build(config=reload_config, target=target)
 			remote.fetch_unpackaged(build, to_dir=defaults.TEMPLATE_DIR, target=target)
 	else:
@@ -377,12 +385,12 @@ def development_build(unhandled_args, has_target=True):
 		LOG.warning("Platform version: %s is deprecated, it is highly recommended you migrate to a newer version as soon as possible." % current_platform)
 
 	def move_files_across():
-		shutil.rmtree(path.join('development', target), ignore_errors=True)
+		shutil.rmtree(path.join('development', target_dir), ignore_errors=True)
 		if target != "reload":
 			# Delete reload as other targets may build it
 			shutil.rmtree(path.join('development', 'reload'), ignore_errors=True)
 			# No reload server template
-			shutil.copytree(path.join(defaults.TEMPLATE_DIR, target), path.join('development', target))
+			shutil.copytree(path.join(defaults.TEMPLATE_DIR, target_dir), path.join('development', target_dir))
 
 	# Windows often gives a permission error without a small wait
 	try_a_few_times(move_files_across)
