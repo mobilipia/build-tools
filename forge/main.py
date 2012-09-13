@@ -333,6 +333,12 @@ def development_build(unhandled_args, has_target=True):
 		LOG.info("Your Forge platform has been updated, downloading updated build instructions.")
 		manager.fetch_instructions()
 		
+	config_changed = manager.need_new_templates_for_config()
+	if config_changed:
+		# Need new builds due to local config change
+		LOG.info("Your local config has been changed, downloading updated build instructions.")
+		manager.fetch_instructions()
+
 	if not has_target:
 		# No need to go further if we aren't building a target
 		return
@@ -356,13 +362,11 @@ def development_build(unhandled_args, has_target=True):
 	reload_config = json.loads(reload_result['config'])
 	reload_config_hash = reload_result['config_hash']
 
-	config_changed = manager.need_new_templates_for_config()
 	
 	if target != "reload": # Don't do a server side build for reload
-		if config_changed or not path.exists(path.join('.template', target_dir)):
-			LOG.info("Your app configuration has changed, performing a remote build of your app. Once this is downloaded future builds will be faster.")
+		if not path.exists(path.join('.template', target_dir)):
+			LOG.info("Your app configuration has changed since your last build of this platform, performing a remote build of your app. Once this is downloaded future builds will be faster.")
 
-			shutil.rmtree(path.join(defaults.TEMPLATE_DIR, target_dir), ignore_errors=True)
 			build = remote.build(config=reload_config, target=target)
 			remote.fetch_unpackaged(build, to_dir=defaults.TEMPLATE_DIR, target=target)
 	else:
