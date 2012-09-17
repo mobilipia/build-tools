@@ -297,7 +297,10 @@ def create(unhandled_args):
 		LOG.info('3) Run %s run to test out your build' % ENTRY_POINT_NAME)
 
 def development_build(unhandled_args, has_target=True):
-	'Pull down new version of platform code in a customised build, and create unpacked development add-on'
+	'''Pull down new version of platform code in a customised build, and create unpacked development add-on.
+
+	:param has_target: If this is False, just fetch the generation instructions, don't build any targets.
+	'''
 	_check_working_directory_is_safe()
 
 	if not os.path.isdir(defaults.SRC_DIR):
@@ -339,6 +342,7 @@ def development_build(unhandled_args, has_target=True):
 		LOG.info("Your local config has been changed, downloading updated build instructions.")
 		manager.fetch_instructions()
 
+	reload_result = remote.create_buildevent(app_config)
 	if not has_target:
 		# No need to go further if we aren't building a target
 		return
@@ -358,7 +362,6 @@ def development_build(unhandled_args, has_target=True):
 	if target in target_dirs:
 		target_dir = target_dirs[target]
 
-	reload_result = remote.create_buildevent(app_config)
 	reload_config = json.loads(reload_result['config'])
 	reload_config_hash = reload_result['config_hash']
 
